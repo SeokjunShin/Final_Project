@@ -99,6 +99,9 @@ export const UserLayout = () => {
               </Typography>
             ))}
           </Breadcrumbs>
+          <Link component={RouterLink} to="/" underline="hover" sx={{ mr: 2 }}>
+            메인페이지
+          </Link>
           <Typography sx={{ mr: 2, fontWeight: 600 }}>{user?.name}</Typography>
           <Link
             component="button"

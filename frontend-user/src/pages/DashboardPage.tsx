@@ -46,6 +46,11 @@ export const DashboardPage = () => {
       <Typography variant="h5" sx={{ mb: 2 }}>
         대시보드
       </Typography>
+      <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
+        <Button href="/" variant="outlined">
+          메인페이지로
+        </Button>
+      </Stack>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} lg={8}>

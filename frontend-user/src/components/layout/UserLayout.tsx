@@ -2,23 +2,43 @@
   AppBar,
   Box,
   Breadcrumbs,
+  Button,
   Drawer,
   IconButton,
   Link,
   List,
   ListItemButton,
+  ListItemIcon,
   ListItemText,
   Toolbar,
   Typography,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import HomeIcon from '@mui/icons-material/Home';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { userMenu } from '@shared/menu';
 import { useAuth } from '@/contexts/AuthContext';
 
-const drawerWidth = 284;
+const drawerWidth = 260;
+
+const menuIcons: Record<string, React.ReactNode> = {
+  '/dashboard': <DashboardIcon />,
+  '/cards': <CreditCardIcon />,
+  '/statements': <ReceiptLongIcon />,
+  '/approvals': <CheckCircleIcon />,
+  '/points': <CardGiftcardIcon />,
+  '/notifications': <NotificationsIcon />,
+  '/support/inquiries': <SupportAgentIcon />,
+};
 
 export const UserLayout = () => {
   const [open, setOpen] = useState(false);
@@ -29,19 +49,23 @@ export const UserLayout = () => {
   const crumbs = location.pathname.split('/').filter(Boolean);
 
   const drawer = (
-    <Box sx={{ width: drawerWidth, height: '100%', bgcolor: '#0f2f67', color: '#dbe7ff' }}>
-      <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-          <CreditCardIcon />
-          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 800 }}>
-            MYCARD PORTAL
-          </Typography>
+    <Box sx={{ width: drawerWidth, height: '100%', bgcolor: '#1a1a1a', color: '#999', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ p: 2.5, borderBottom: '1px solid #333' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: '#d32f2f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CreditCardIcon sx={{ color: '#fff', fontSize: 20 }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ color: '#fff', fontWeight: 800, fontSize: '1.1rem', lineHeight: 1.2 }}>
+              MyCard
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
+              금융 포털
+            </Typography>
+          </Box>
         </Box>
-        <Typography variant="caption" sx={{ color: '#a8c0ee' }}>
-          금융거래/명세서/고객지원
-        </Typography>
       </Box>
-      <List sx={{ px: 1.2, py: 1.5 }}>
+      <List sx={{ px: 1.5, py: 2, flex: 1 }}>
         {userMenu.map((item) => {
           const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
           return (
@@ -53,66 +77,80 @@ export const UserLayout = () => {
                 setOpen(false);
               }}
               sx={{
-                borderRadius: 2,
-                mb: 0.4,
-                color: active ? '#fff' : '#dbe7ff',
-                '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.14)' },
-                '&.Mui-selected:hover': { bgcolor: 'rgba(255,255,255,0.2)' },
+                borderRadius: 1.5,
+                mb: 0.5,
+                py: 1.2,
+                color: active ? '#fff' : '#999',
+                bgcolor: active ? '#d32f2f' : 'transparent',
+                '&.Mui-selected': { bgcolor: '#d32f2f' },
+                '&.Mui-selected:hover': { bgcolor: '#b71c1c' },
+                '&:hover': { bgcolor: active ? '#b71c1c' : 'rgba(255,255,255,0.05)' },
               }}
             >
+              <ListItemIcon sx={{ minWidth: 36, color: active ? '#fff' : '#666' }}>
+                {menuIcons[item.path] || <DashboardIcon />}
+              </ListItemIcon>
               <ListItemText
                 primary={item.label}
-                primaryTypographyProps={{ fontSize: 14, fontWeight: active ? 700 : 500 }}
+                primaryTypographyProps={{ fontSize: 14, fontWeight: active ? 600 : 400 }}
               />
             </ListItemButton>
           );
         })}
       </List>
+      <Box sx={{ p: 2, borderTop: '1px solid #333' }}>
+        <Box sx={{ bgcolor: '#252525', borderRadius: 2, p: 2, mb: 2 }}>
+          <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem', mb: 0.5 }}>{user?.name || '사용자'}</Typography>
+          <Typography sx={{ color: '#666', fontSize: '0.75rem' }}>{user?.email || ''}</Typography>
+        </Box>
+        <Button
+          fullWidth
+          startIcon={<HomeIcon />}
+          component={RouterLink}
+          to="/"
+          sx={{ color: '#999', justifyContent: 'flex-start', mb: 1, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}
+        >
+          메인페이지
+        </Button>
+        <Button
+          fullWidth
+          startIcon={<LogoutIcon />}
+          onClick={async () => { await logout(); navigate('/login'); }}
+          sx={{ color: '#d32f2f', justifyContent: 'flex-start', '&:hover': { bgcolor: 'rgba(211,47,47,0.1)' } }}
+        >
+          로그아웃
+        </Button>
+      </Box>
     </Box>
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#eef3fb' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f5f5f5' }}>
       <AppBar
         position="fixed"
         elevation={0}
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
-          bgcolor: 'rgba(255,255,255,0.94)',
+          bgcolor: '#fff',
           color: 'text.primary',
-          borderBottom: '1px solid #dce6f6',
-          backdropFilter: 'blur(8px)',
+          borderBottom: '1px solid #e0e0e0',
         }}
       >
         <Toolbar>
-          <IconButton sx={{ display: { md: 'none' }, mr: 1 }} onClick={() => setOpen(true)}>
+          <IconButton sx={{ display: { md: 'none' }, mr: 1, color: '#d32f2f' }} onClick={() => setOpen(true)}>
             <MenuIcon />
           </IconButton>
           <Breadcrumbs sx={{ flex: 1 }}>
-            <Link component={RouterLink} to="/dashboard" underline="hover" color="inherit">
+            <Link component={RouterLink} to="/dashboard" underline="hover" sx={{ color: '#d32f2f' }}>
               홈
             </Link>
             {crumbs.map((c, i) => (
-              <Typography key={`${c}-${i}`} color="text.primary">
+              <Typography key={`${c}-${i}`} color="text.secondary" sx={{ fontSize: '0.9rem' }}>
                 {c}
               </Typography>
             ))}
           </Breadcrumbs>
-          <Link component={RouterLink} to="/" underline="hover" sx={{ mr: 2 }}>
-            메인페이지
-          </Link>
-          <Typography sx={{ mr: 2, fontWeight: 600 }}>{user?.name}</Typography>
-          <Link
-            component="button"
-            onClick={async () => {
-              await logout();
-              navigate('/login');
-            }}
-            underline="hover"
-          >
-            로그아웃
-          </Link>
         </Toolbar>
       </AppBar>
 

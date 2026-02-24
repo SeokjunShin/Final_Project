@@ -1,9 +1,12 @@
-﻿import { Box, Button, Card, CardContent, Chip, Grid, Stack, Typography } from '@mui/material';
+﻿import { Box, Card, CardContent, Chip, Grid, Stack, Typography, Avatar, LinearProgress } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from 'recharts';
 import { dashboardApi } from '@/api';
-import platinumCard from '@/assets/cards/mycard-platinum.svg';
-import checkCard from '@/assets/cards/mycard-check.svg';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import { useAuth } from '@/contexts/AuthContext';
 
 const fallback = {
   upcomingPayment: 1280000,
@@ -27,7 +30,14 @@ const fallback = {
 
 const money = (v: number | undefined | null) => `${(v ?? 0).toLocaleString('ko-KR')}원`;
 
+const statCards = [
+  { key: 'upcomingPayment', label: '이번 달 결제예정', icon: <AccountBalanceWalletIcon />, color: '#d32f2f', format: money },
+  { key: 'totalAvailableLimit', label: '사용 가능 한도', icon: <CreditCardIcon />, color: '#1976d2', format: money },
+  { key: 'pointBalance', label: '포인트 잔액', icon: <CardGiftcardIcon />, color: '#ff9800', format: (v: number | null | undefined) => `${(v ?? 0).toLocaleString('ko-KR')}P` },
+];
+
 export const DashboardPage = () => {
+  const { user } = useAuth();
   const { data } = useQuery({
     queryKey: ['user-dashboard'],
     queryFn: async () => {
@@ -43,60 +53,69 @@ export const DashboardPage = () => {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        대시보드
-      </Typography>
-      <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
-        <Button href="/" variant="outlined">
-          메인페이지로
-        </Button>
-      </Stack>
+      {/* Welcome Section */}
+      <Card sx={{ mb: 3, background: 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)', color: '#fff' }}>
+        <CardContent sx={{ py: 3 }}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Avatar sx={{ width: 56, height: 56, bgcolor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}>
+              {user?.name?.charAt(0) || 'U'}
+            </Avatar>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                안녕하세요, {user?.name || '고객'}님
+              </Typography>
+              <Typography sx={{ opacity: 0.9 }}>
+                오늘도 MyCard와 함께 스마트한 금융생활 되세요.
+              </Typography>
+            </Box>
+          </Stack>
+        </CardContent>
+      </Card>
 
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} lg={8}>
-          <Card sx={{ p: 1.5 }}>
-            <CardContent>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <Box component="img" src={platinumCard} alt="MyCard Platinum" sx={{ width: { xs: '100%', sm: 320 }, borderRadius: 2 }} />
-                <Box component="img" src={checkCard} alt="MyCard Check" sx={{ width: { xs: '100%', sm: 320 }, borderRadius: 2 }} />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} lg={4}>
-          <Grid container spacing={2}>
-            {[
-              ['결제예정액', money(summary.upcomingPayment)],
-              ['사용가능한도', money(summary.totalAvailableLimit)],
-              ['포인트', `${(summary.pointBalance ?? 0).toLocaleString('ko-KR')}P`],
-            ].map(([title, value]) => (
-              <Grid item xs={12} key={title}>
-                <Card>
-                  <CardContent>
-                    <Typography color="text.secondary" sx={{ fontSize: 13 }}>
-                      {title}
+      {/* Stat Cards */}
+      <Grid container spacing={2.5} sx={{ mb: 3 }}>
+        {statCards.map((stat) => (
+          <Grid item xs={12} md={4} key={stat.key}>
+            <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
+              <CardContent sx={{ p: 3 }}>
+                <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+                  <Box>
+                    <Typography color="text.secondary" sx={{ fontSize: 13, mb: 1 }}>
+                      {stat.label}
                     </Typography>
-                    <Typography variant="h6">{value}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                      {stat.format((summary as any)[stat.key])}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: `${stat.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.color }}>
+                    {stat.icon}
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
           </Grid>
-        </Grid>
+        ))}
       </Grid>
 
-      <Grid container spacing={2}>
+      <Grid container spacing={2.5}>
         <Grid item xs={12} lg={7}>
           <Card>
-            <CardContent>
-              <Typography sx={{ mb: 1.5, fontWeight: 700 }}>월별 소비 추이</Typography>
+            <CardContent sx={{ p: 3 }}>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+                <TrendingUpIcon sx={{ color: '#d32f2f' }} />
+                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem' }}>월별 소비 추이</Typography>
+              </Stack>
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer>
-                  <BarChart data={summary.monthlySpend ?? []}>
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(v) => money(Number(v))} />
-                    <Bar dataKey="amount" fill="#1f56bd" radius={[8, 8, 0, 0]} />
+                  <BarChart data={summary.monthlySpend ?? []} barCategoryGap="20%">
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} tickFormatter={(v) => `${(v/10000).toFixed(0)}만`} />
+                    <Tooltip formatter={(v) => money(Number(v))} cursor={{ fill: 'rgba(211,47,47,0.05)' }} />
+                    <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
+                      {(summary.monthlySpend ?? []).map((_: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={index === (summary.monthlySpend?.length ?? 0) - 1 ? '#d32f2f' : '#ffcdd2'} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
@@ -105,40 +124,51 @@ export const DashboardPage = () => {
         </Grid>
 
         <Grid item xs={12} lg={5}>
-          <Card>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                <Typography sx={{ fontWeight: 700 }}>최근 승인 5건</Typography>
-                <Button size="small" href="/approvals">
-                  전체보기
-                </Button>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem' }}>최근 승인 내역</Typography>
+                <Typography component="a" href="/approvals" sx={{ color: '#d32f2f', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 500, '&:hover': { textDecoration: 'underline' } }}>
+                  전체보기 →
+                </Typography>
               </Stack>
-              <Stack spacing={1.2}>
-                {(summary.recentApprovals ?? []).slice(0, 5).map((row: any) => (
+              <Stack spacing={1.5} sx={{ flex: 1 }}>
+                {(summary.recentApprovals ?? []).slice(0, 5).map((row: any, idx: number) => (
                   <Box
                     key={row.id}
                     sx={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr auto',
-                      gap: 1,
-                      p: 1.2,
-                      border: '1px solid #e2eaf8',
-                      borderRadius: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      p: 1.5,
+                      bgcolor: idx % 2 === 0 ? '#fafafa' : '#fff',
+                      borderRadius: 1.5,
+                      border: '1px solid #f0f0f0',
                     }}
                   >
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 0.3 }}>
                         {row.merchantName}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {row.approvedAt}
+                        {row.approvedAt} · {row.cardMaskedNumber}
                       </Typography>
                     </Box>
                     <Stack alignItems="flex-end" spacing={0.5}>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        {money(row.amount)}
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: row.status === 'CANCELED' ? '#999' : '#333' }}>
+                        {row.status === 'CANCELED' ? '-' : ''}{money(row.amount)}
                       </Typography>
-                      <Chip size="small" color={row.status === 'CANCELED' ? 'default' : 'primary'} label={row.status === 'CANCELED' ? '취소' : '승인'} />
+                      <Chip
+                        size="small"
+                        label={row.status === 'CANCELED' ? '취소' : '승인'}
+                        sx={{
+                          height: 22,
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          bgcolor: row.status === 'CANCELED' ? '#f5f5f5' : '#ffebee',
+                          color: row.status === 'CANCELED' ? '#999' : '#d32f2f',
+                        }}
+                      />
                     </Stack>
                   </Box>
                 ))}

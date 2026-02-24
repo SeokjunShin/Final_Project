@@ -1,0 +1,59 @@
+# =====================================================
+# MyCard API - systemd Service Unit
+# Location: /etc/systemd/system/mycard-api.service
+# =====================================================
+
+[Unit]
+Description=MyCard API Service (Spring Boot)
+Documentation=https://github.com/your-org/mycard
+After=network.target mysql.service
+Requires=network.target
+
+[Service]
+Type=simple
+User=mycard
+Group=mycard
+WorkingDirectory=/opt/mycard/api
+
+# Environment configuration
+EnvironmentFile=/etc/mycard/mycard-api.env
+
+# Java options
+Environment="JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
+# Command
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/mycard/api/mycard-api.jar
+
+# Graceful shutdown
+ExecStop=/bin/kill -TERM $MAINPID
+TimeoutStopSec=30
+KillMode=mixed
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/mycard /var/log/mycard
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mycard-api
+
+[Install]
+WantedBy=multi-user.target

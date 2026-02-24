@@ -1,4 +1,4 @@
-﻿package com.mycard.api.dto.user;
+package com.mycard.api.dto.user;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

@@ -1,4 +1,4 @@
-﻿package com.mycard.api.controller;
+package com.mycard.api.controller;
 
 import com.mycard.api.dto.ApprovalResponse;
 import com.mycard.api.security.UserPrincipal;

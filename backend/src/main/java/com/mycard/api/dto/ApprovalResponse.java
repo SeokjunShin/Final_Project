@@ -1,4 +1,4 @@
-﻿package com.mycard.api.dto;
+package com.mycard.api.dto;
 
 import lombok.Builder;
 import lombok.Getter;

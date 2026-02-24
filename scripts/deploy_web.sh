@@ -57,21 +57,12 @@ deploy_portal() {
     local name=$3
     
     log_info "Deploying $name to $dest..."
-    
-    # Create backup
-    if [ -d "$dest" ]; then
-        BACKUP_DIR="${dest}.backup.$(date +%Y%m%d_%H%M%S)"
-        log_info "Creating backup at $BACKUP_DIR"
-        sudo mv "$dest" "$BACKUP_DIR"
-    fi
-    
-    # Create destination directory
+
     sudo mkdir -p "$dest"
-    
-    # Copy files
-    sudo cp -r "$src"/* "$dest/"
-    
-    # Set permissions
+
+    # Sync files (delete stale files from previous deployment)
+    sudo rsync -av --delete "$src"/ "$dest"/
+
     sudo chown -R www-data:www-data "$dest"
     sudo chmod -R 755 "$dest"
     

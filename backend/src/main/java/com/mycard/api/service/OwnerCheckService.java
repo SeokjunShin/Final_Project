@@ -1,7 +1,10 @@
 package com.mycard.api.service;
 
 import com.mycard.api.exception.AccessDeniedException;
+import com.mycard.api.exception.ResourceNotFoundException;
+import com.mycard.api.repository.AttachmentRepository;
 import com.mycard.api.repository.StatementRepository;
+import com.mycard.api.entity.Attachment;
 import com.mycard.api.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,38 @@ import org.springframework.stereotype.Service;
 public class OwnerCheckService {
 
     private final StatementRepository statementRepository;
+    private final AttachmentRepository attachmentRepository;
+
+    public void requireUserRole(UserPrincipal principal) {
+        if (principal == null || !principal.isUser()) {
+            throw new AccessDeniedException("USER 권한이 필요합니다.");
+        }
+    }
+
+    public void requireOperatorOrAdmin(UserPrincipal principal) {
+        if (!isAdminOrOperator(principal)) {
+            throw new AccessDeniedException("OPERATOR 또는 ADMIN 권한이 필요합니다.");
+        }
+    }
+
+    public void requireOwner(Long entityUserId, Long principalUserId) {
+        if (entityUserId == null || principalUserId == null || !entityUserId.equals(principalUserId)) {
+            throw new AccessDeniedException("본인 소유 데이터만 접근할 수 있습니다.");
+        }
+    }
+
+    public Attachment requireAttachmentAccess(Long attachmentId, UserPrincipal principal) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("첨부파일", attachmentId));
+
+        if (isAdminOrOperator(principal)) {
+            return attachment;
+        }
+        if (principal == null || !attachment.isAccessibleBy(principal.getId())) {
+            throw new AccessDeniedException("첨부파일 접근 권한이 없습니다.");
+        }
+        return attachment;
+    }
 
     /**
      * 현재 사용자가 리소스의 소유자인지 확인

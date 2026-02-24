@@ -1,0 +1,22 @@
+﻿<svg width="680" height="420" viewBox="0 0 680 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="680" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#103B35"/>
+      <stop offset="1" stop-color="#2D8B7E"/>
+    </linearGradient>
+    <radialGradient id="fade" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(160 64) rotate(28) scale(210 130)">
+      <stop stop-color="#B2F9D8" stop-opacity="0.56"/>
+      <stop offset="1" stop-color="#B2F9D8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="20" y="20" width="640" height="380" rx="28" fill="url(#bg)"/>
+  <rect x="20" y="20" width="640" height="380" rx="28" fill="url(#fade)"/>
+  <rect x="70" y="110" width="96" height="72" rx="10" fill="#D4A156"/>
+  <path d="M80 120h76v52H80z" fill="#EBC27A"/>
+  <text x="72" y="78" fill="#C9F5DF" font-size="18" font-family="Pretendard, Noto Sans KR, sans-serif">MYCARD CHECK</text>
+  <text x="72" y="258" fill="#FFFFFF" font-size="34" font-family="Consolas, monospace" letter-spacing="4">9012  ••••  ••••  8844</text>
+  <text x="72" y="312" fill="#D8F6EA" font-size="17" font-family="Pretendard, Noto Sans KR, sans-serif">KIM MIN SU</text>
+  <text x="72" y="340" fill="#A7DAC8" font-size="13" font-family="Pretendard, Noto Sans KR, sans-serif">INTERNATIONAL</text>
+  <circle cx="560" cy="308" r="40" fill="#001F3F" fill-opacity="0.5"/>
+  <circle cx="560" cy="308" r="22" fill="#89E2C4" fill-opacity="0.9"/>
+</svg>

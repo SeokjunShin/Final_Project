@@ -1,6 +1,10 @@
 package com.mycard.api.service;
 
-import com.mycard.api.dto.inquiry.*;
+import com.mycard.api.dto.inquiry.InquiryCreateRequest;
+import com.mycard.api.dto.inquiry.InquiryDetailResponse;
+import com.mycard.api.dto.inquiry.InquiryListResponse;
+import com.mycard.api.dto.inquiry.InquiryReplyRequest;
+import com.mycard.api.dto.inquiry.InquiryReplyResponse;
 import com.mycard.api.entity.AuditLog;
 import com.mycard.api.entity.Inquiry;
 import com.mycard.api.entity.InquiryReply;
@@ -8,8 +12,8 @@ import com.mycard.api.entity.User;
 import com.mycard.api.exception.AccessDeniedException;
 import com.mycard.api.exception.BadRequestException;
 import com.mycard.api.exception.ResourceNotFoundException;
-import com.mycard.api.repository.InquiryRepository;
 import com.mycard.api.repository.InquiryReplyRepository;
+import com.mycard.api.repository.InquiryRepository;
 import com.mycard.api.repository.UserRepository;
 import com.mycard.api.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -39,9 +43,8 @@ public class InquiryService {
     @Transactional(readOnly = true)
     public InquiryDetailResponse getInquiry(Long inquiryId, UserPrincipal currentUser) {
         Inquiry inquiry = inquiryRepository.findByIdWithDetails(inquiryId)
-                .orElseThrow(() -> new ResourceNotFoundException("è‡¾ëª„ì“½ç‘œ?ï§¡ì– ì“£ ???ë†ë’¿?ëˆë–."));
+                .orElseThrow(() -> new ResourceNotFoundException("¹®ÀÇ", inquiryId));
 
-        // è¹‚ëª„ì”¤ è‡¾ëª„ì“½?ë‹¿êµ…???ëŒìº??æ„¿Â€ç”±ÑŠì˜„ï§?è­°ê³ ì‰¶ åª›Â€??
         if (!inquiry.isOwnedBy(currentUser.getId()) && !ownerCheckService.isAdminOrOperator(currentUser)) {
             throw new AccessDeniedException();
         }
@@ -56,8 +59,7 @@ public class InquiryService {
         Inquiry inquiry = new Inquiry(user, request.getCategory(), request.getTitle(), request.getContent());
         inquiryRepository.save(inquiry);
 
-        auditService.log(AuditLog.ActionType.CREATE, "Inquiry", inquiry.getId(),
-                "è‡¾ëª„ì“½ ?ê¹…ì¤‰: " + request.getTitle());
+        auditService.log(AuditLog.ActionType.CREATE, "Inquiry", inquiry.getId(), "¹®ÀÇ »ı¼º: " + request.getTitle());
 
         return toDetailResponse(inquiry);
     }
@@ -65,33 +67,39 @@ public class InquiryService {
     @Transactional
     public InquiryDetailResponse addReply(Long inquiryId, UserPrincipal currentUser, InquiryReplyRequest request) {
         Inquiry inquiry = inquiryRepository.findByIdWithDetails(inquiryId)
-                .orElseThrow(() -> new ResourceNotFoundException("è‡¾ëª„ì“½ç‘œ?ï§¡ì– ì“£ ???ë†ë’¿?ëˆë–."));
+                .orElseThrow(() -> new ResourceNotFoundException("¹®ÀÇ", inquiryId));
 
-        // è¹‚ëª„ì”¤ è‡¾ëª„ì“½?ë‹¿êµ…???ëŒìº??æ„¿Â€ç”±ÑŠì˜„ï§??ë“¬? åª›Â€??
         if (!inquiry.isOwnedBy(currentUser.getId()) && !ownerCheckService.isAdminOrOperator(currentUser)) {
             throw new AccessDeniedException();
+        }
+
+        if (ownerCheckService.isAdminOrOperator(currentUser)
+                && !currentUser.isAdmin()
+                && inquiry.getAssignedOperator() != null
+                && !inquiry.isAssignedTo(currentUser.getId())) {
+            throw new AccessDeniedException("¹èÁ¤µÈ ¿î¿µÀÚ¸¸ ´äº¯À» µî·ÏÇÒ ¼ö ÀÖ½À´Ï´Ù.");
         }
 
         User author = userRepository.getReferenceById(currentUser.getId());
         boolean isStaffReply = ownerCheckService.isAdminOrOperator(currentUser);
 
         InquiryReply reply = new InquiryReply(inquiry, author, request.getContent(), isStaffReply);
+        inquiryReplyRepository.save(reply);
         inquiry.addReply(reply);
 
-        // ?ëŒìº???ë“¬? ???ê³¹ê¹­ è¹‚Â€å¯ƒ?
         if (isStaffReply && inquiry.getStatus() == Inquiry.InquiryStatus.OPEN) {
             inquiry.setStatus(Inquiry.InquiryStatus.ASSIGNED);
+            if (inquiry.getAssignedOperator() == null) {
+                inquiry.setAssignedOperator(author);
+            }
         }
 
         inquiryRepository.save(inquiry);
 
-        auditService.log(AuditLog.ActionType.UPDATE, "Inquiry", inquiry.getId(),
-                "è‡¾ëª„ì“½ ?ë“¬? ç•°ë¶½? (staff: " + isStaffReply + ")");
+        auditService.log(AuditLog.ActionType.UPDATE, "Inquiry", inquiry.getId(), "¹®ÀÇ ´äº¯ µî·Ï");
 
         return toDetailResponse(inquiry);
     }
-
-    // === ?ëŒìº?ë¨¯ìŠœ ï§ë¶¿ê½Œ??===
 
     @Transactional(readOnly = true)
     public Page<InquiryListResponse> getUnassignedInquiries(Pageable pageable) {
@@ -108,10 +116,13 @@ public class InquiryService {
     @Transactional
     public InquiryDetailResponse assignInquiry(Long inquiryId, UserPrincipal currentUser) {
         Inquiry inquiry = inquiryRepository.findById(inquiryId)
-                .orElseThrow(() -> new ResourceNotFoundException("è‡¾ëª„ì“½ç‘œ?ï§¡ì– ì“£ ???ë†ë’¿?ëˆë–."));
+                .orElseThrow(() -> new ResourceNotFoundException("¹®ÀÇ", inquiryId));
 
         if (inquiry.getAssignedOperator() != null) {
-            throw new BadRequestException("?ëŒ€? è«›ê³—ì ™??è‡¾ëª„ì“½?ë‚…ë•²??");
+            throw new BadRequestException("ÀÌ¹Ì ¹èÁ¤µÈ ¹®ÀÇÀÔ´Ï´Ù.");
+        }
+        if (inquiry.getStatus() != Inquiry.InquiryStatus.OPEN) {
+            throw new BadRequestException("OPEN »óÅÂ ¹®ÀÇ¸¸ ¹èÁ¤ÇÒ ¼ö ÀÖ½À´Ï´Ù.");
         }
 
         User operator = userRepository.getReferenceById(currentUser.getId());
@@ -119,8 +130,7 @@ public class InquiryService {
         inquiry.setStatus(Inquiry.InquiryStatus.ASSIGNED);
         inquiryRepository.save(inquiry);
 
-        auditService.log(AuditLog.ActionType.UPDATE, "Inquiry", inquiry.getId(),
-                "è‡¾ëª„ì“½ è«›ê³—ì ™: " + currentUser.getUsername());
+        auditService.log(AuditLog.ActionType.UPDATE, "Inquiry", inquiry.getId(), "¹®ÀÇ ¹èÁ¤");
 
         return toDetailResponse(inquiry);
     }
@@ -128,13 +138,20 @@ public class InquiryService {
     @Transactional
     public InquiryDetailResponse resolveInquiry(Long inquiryId, UserPrincipal currentUser) {
         Inquiry inquiry = inquiryRepository.findById(inquiryId)
-                .orElseThrow(() -> new ResourceNotFoundException("è‡¾ëª„ì“½ç‘œ?ï§¡ì– ì“£ ???ë†ë’¿?ëˆë–."));
+                .orElseThrow(() -> new ResourceNotFoundException("¹®ÀÇ", inquiryId));
+
+        if (!currentUser.isAdmin() && !inquiry.isAssignedTo(currentUser.getId())) {
+            throw new AccessDeniedException("¹èÁ¤µÈ ¿î¿µÀÚ ¶Ç´Â °ü¸®ÀÚ¸¸ ¹®ÀÇ¸¦ Á¾·áÇÒ ¼ö ÀÖ½À´Ï´Ù.");
+        }
+        if (inquiry.getStatus() == Inquiry.InquiryStatus.CLOSED || inquiry.getStatus() == Inquiry.InquiryStatus.ANSWERED) {
+            throw new BadRequestException("ÀÌ¹Ì Ã³¸® ¿Ï·áµÈ ¹®ÀÇÀÔ´Ï´Ù.");
+        }
 
         inquiry.setStatus(Inquiry.InquiryStatus.ANSWERED);
         inquiry.setResolvedAt(LocalDateTime.now());
         inquiryRepository.save(inquiry);
 
-        auditService.log(AuditLog.ActionType.UPDATE, "Inquiry", inquiry.getId(), "è‡¾ëª„ì“½ ?ë‹¿ê» ?ê¾¨ì¦º");
+        auditService.log(AuditLog.ActionType.UPDATE, "Inquiry", inquiry.getId(), "¹®ÀÇ Á¾·á Ã³¸®");
 
         return toDetailResponse(inquiry);
     }
@@ -157,11 +174,8 @@ public class InquiryService {
                 .title(inquiry.getTitle())
                 .content(inquiry.getContent())
                 .status(inquiry.getStatus())
-                .assignedOperatorName(inquiry.getAssignedOperator() != null ?
-                        inquiry.getAssignedOperator().getFullName() : null)
-                .replies(inquiry.getReplies().stream()
-                        .map(this::toReplyResponse)
-                        .toList())
+                .assignedOperatorName(inquiry.getAssignedOperator() != null ? inquiry.getAssignedOperator().getFullName() : null)
+                .replies(inquiry.getReplies().stream().map(this::toReplyResponse).toList())
                 .createdAt(inquiry.getCreatedAt())
                 .resolvedAt(inquiry.getResolvedAt())
                 .build();

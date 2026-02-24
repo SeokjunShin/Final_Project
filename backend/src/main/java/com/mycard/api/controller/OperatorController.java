@@ -1,11 +1,18 @@
 package com.mycard.api.controller;
 
-import com.mycard.api.dto.*;
+import com.mycard.api.dto.AuditLogResponse;
+import com.mycard.api.dto.UserAdminResponse;
+import com.mycard.api.dto.inquiry.InquiryDetailResponse;
+import com.mycard.api.dto.inquiry.InquiryListResponse;
+import com.mycard.api.dto.inquiry.InquiryReplyRequest;
 import com.mycard.api.entity.AuditLog;
 import com.mycard.api.repository.AuditLogRepository;
+import com.mycard.api.security.UserPrincipal;
+import com.mycard.api.service.InquiryService;
 import com.mycard.api.service.UserAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,15 +20,15 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-/**
- * ìš´ì˜ì(OPERATOR) ì „ìš© API ì»¨íŠ¸ë¡¤ëŸ¬
- * - ì‚¬ìš©ì ì¡°íšŒ (ìˆ˜ì • ë¶ˆê°€)
- * - ë¬¸ì˜ ë‹µë³€
- * - ê°ì‚¬ ë¡œê·¸ ì¡°íšŒ
- */
-@Tag(name = "Operator", description = "ìš´ì˜ì ì „ìš© API")
+@Tag(name = "Operator", description = "¿î¿µÀÚ Àü¿ë API")
 @RestController
 @RequestMapping("/operator")
 @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN')")
@@ -30,11 +37,9 @@ public class OperatorController {
 
     private final UserAdminService userAdminService;
     private final AuditLogRepository auditLogRepository;
+    private final InquiryService inquiryService;
 
-    /**
-     * ì‚¬ìš©ì ëª©ë¡ ì¡°íšŒ
-     */
-    @Operation(summary = "ì‚¬ìš©ì ëª©ë¡ ì¡°íšŒ", description = "ì „ì²´ ì‚¬ìš©ì ëª©ë¡ì„ ì¡°íšŒí•©ë‹ˆë‹¤.")
+    @Operation(summary = "»ç¿ëÀÚ ¸ñ·Ï Á¶È¸")
     @GetMapping("/users")
     public ResponseEntity<Page<UserAdminResponse>> getUsers(
             @RequestParam(required = false) String keyword,
@@ -49,20 +54,60 @@ public class OperatorController {
         return ResponseEntity.ok(users);
     }
 
-    /**
-     * ì‚¬ìš©ì ìƒì„¸ ì¡°íšŒ
-     */
-    @Operation(summary = "ì‚¬ìš©ì ìƒì„¸ ì¡°íšŒ", description = "íŠ¹ì • ì‚¬ìš©ìì˜ ìƒì„¸ ì •ë³´ë¥¼ ì¡°íšŒí•©ë‹ˆë‹¤.")
+    @Operation(summary = "»ç¿ëÀÚ »ó¼¼ Á¶È¸")
     @GetMapping("/users/{userId}")
     public ResponseEntity<UserAdminResponse> getUser(@PathVariable Long userId) {
         UserAdminResponse user = userAdminService.getUser(userId);
         return ResponseEntity.ok(user);
     }
 
-    /**
-     * ê°ì‚¬ ë¡œê·¸ ì¡°íšŒ
-     */
-    @Operation(summary = "ê°ì‚¬ ë¡œê·¸ ì¡°íšŒ", description = "ì‹œìŠ¤í…œ ê°ì‚¬ ë¡œê·¸ë¥¼ ì¡°íšŒí•©ë‹ˆë‹¤.")
+    @Operation(summary = "¹®ÀÇ Å¥ Á¶È¸")
+    @GetMapping("/inquiries")
+    public ResponseEntity<Page<InquiryListResponse>> getInquiries(
+            @RequestParam(defaultValue = "unassigned") String queue,
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        Page<InquiryListResponse> response = "assigned".equalsIgnoreCase(queue)
+                ? inquiryService.getMyAssignedInquiries(currentUser, pageable)
+                : inquiryService.getUnassignedInquiries(pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "¹®ÀÇ »ó¼¼ Á¶È¸")
+    @GetMapping("/inquiries/{inquiryId}")
+    public ResponseEntity<InquiryDetailResponse> getInquiry(
+            @PathVariable Long inquiryId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(inquiryService.getInquiry(inquiryId, currentUser));
+    }
+
+    @Operation(summary = "¹®ÀÇ ¹èÁ¤")
+    @PostMapping("/inquiries/{inquiryId}/assign")
+    public ResponseEntity<InquiryDetailResponse> assignInquiry(
+            @PathVariable Long inquiryId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(inquiryService.assignInquiry(inquiryId, currentUser));
+    }
+
+    @Operation(summary = "¹®ÀÇ ´äº¯ µî·Ï")
+    @PostMapping("/inquiries/{inquiryId}/replies")
+    public ResponseEntity<InquiryDetailResponse> addReply(
+            @PathVariable Long inquiryId,
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @Valid @org.springframework.web.bind.annotation.RequestBody InquiryReplyRequest request) {
+        return ResponseEntity.ok(inquiryService.addReply(inquiryId, currentUser, request));
+    }
+
+    @Operation(summary = "¹®ÀÇ Á¾·á")
+    @PostMapping("/inquiries/{inquiryId}/resolve")
+    public ResponseEntity<InquiryDetailResponse> resolveInquiry(
+            @PathVariable Long inquiryId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(inquiryService.resolveInquiry(inquiryId, currentUser));
+    }
+
+    @Operation(summary = "°¨»ç·Î±× Á¶È¸")
     @GetMapping("/audit-logs")
     public ResponseEntity<Page<AuditLogResponse>> getAuditLogs(
             @RequestParam(required = false) Long userId,
@@ -75,7 +120,7 @@ public class OperatorController {
         } else if (action != null && !action.isEmpty()) {
             logs = auditLogRepository.findByAction(action, pageable);
         } else {
-            logs = auditLogRepository.findAll(pageable);
+            logs = auditLogRepository.findAllOrderByCreatedAtDesc(pageable);
         }
 
         Page<AuditLogResponse> response = logs.map(this::toAuditLogResponse);

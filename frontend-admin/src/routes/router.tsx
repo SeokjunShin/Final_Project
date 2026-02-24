@@ -8,6 +8,7 @@ import { DocumentsPage } from '@/pages/DocumentsPage';
 import { MessagesPage } from '@/pages/MessagesPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { MerchantsPage } from '@/pages/MerchantsPage';
+import { BenefitsPage } from '@/pages/BenefitsPage';
 import { EventsPage } from '@/pages/EventsPage';
 import { PointPolicyPage } from '@/pages/PointPolicyPage';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
@@ -27,7 +28,8 @@ export const router = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { path: '/dashboard', element: <AdminDashboardPage /> },
-          { path: '/inquiries', element: <InquiriesPage /> },
+          { path: '/support/inquiries', element: <InquiriesPage /> },
+          { path: '/inquiries', element: <Navigate to="/support/inquiries" replace /> },
           { path: '/documents', element: <DocumentsPage /> },
           { path: '/messages', element: <MessagesPage /> },
         ],
@@ -42,6 +44,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/users', element: <UsersPage /> },
           { path: '/merchants', element: <MerchantsPage /> },
+          { path: '/benefits', element: <BenefitsPage /> },
           { path: '/events', element: <EventsPage /> },
           { path: '/policies/points', element: <PointPolicyPage /> },
           { path: '/audit-logs', element: <AuditLogsPage /> },

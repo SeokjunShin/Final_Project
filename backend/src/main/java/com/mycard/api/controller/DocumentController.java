@@ -1,40 +1,42 @@
-package com.mycard.api.controller;
+﻿package com.mycard.api.controller;
 
 import com.mycard.api.dto.DocumentResponse;
+import com.mycard.api.entity.Attachment;
 import com.mycard.api.entity.Document;
+import com.mycard.api.security.UserPrincipal;
 import com.mycard.api.service.DocumentService;
+import com.mycard.api.service.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.net.MalformedURLException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
-/**
- * 문서 API 컨트롤러
- */
-@Tag(name = "Documents", description = "문서 관리 API")
+@Tag(name = "Documents", description = "문서 API")
 @RestController
 @RequestMapping("/documents")
 @RequiredArgsConstructor
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final FileStorageService fileStorageService;
 
-    /**
-     * 문서 목록 조회
-     */
-    @Operation(summary = "문서 목록 조회", description = "공개된 문서 목록을 조회합니다.")
+    @Operation(summary = "문서 목록 조회")
     @GetMapping
     public ResponseEntity<Page<DocumentResponse>> getDocuments(
             @RequestParam(required = false) String category,
@@ -51,39 +53,30 @@ public class DocumentController {
         return ResponseEntity.ok(documents);
     }
 
-    /**
-     * 문서 상세 조회
-     */
-    @Operation(summary = "문서 상세 조회", description = "특정 문서의 상세 정보를 조회합니다.")
+    @Operation(summary = "문서 상세 조회")
     @GetMapping("/{documentId}")
     public ResponseEntity<DocumentResponse> getDocument(@PathVariable Long documentId) {
         DocumentResponse document = documentService.getDocument(documentId);
         return ResponseEntity.ok(document);
     }
 
-    /**
-     * 문서 다운로드
-     */
-    @Operation(summary = "문서 다운로드", description = "문서 파일을 다운로드합니다.")
+    @Operation(summary = "문서 다운로드", description = "Owner/Staff 권한 검증 후 다운로드")
     @GetMapping("/{documentId}/download")
-    public ResponseEntity<Resource> downloadDocument(@PathVariable Long documentId) {
-        Document document = documentService.getDocumentForDownload(documentId);
+    @PreAuthorize("hasAnyRole('USER','OPERATOR','ADMIN')")
+    public ResponseEntity<Resource> downloadDocument(
+            @PathVariable Long documentId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
 
-        try {
-            Path filePath = Paths.get(document.getFilePath());
-            Resource resource = new UrlResource(filePath.toUri());
+        Attachment attachment = documentService.getDocumentAttachmentForDownload(documentId, currentUser);
+        Resource resource = fileStorageService.loadFileAsResource(attachment.getId(), currentUser);
 
-            if (!resource.exists()) {
-                return ResponseEntity.notFound().build();
-            }
+        String encodedFilename = URLEncoder.encode(attachment.getOriginalFilename(), StandardCharsets.UTF_8)
+                .replaceAll("\\+", "%20");
 
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(document.getContentType()))
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + document.getFileName() + "\"")
-                    .body(resource);
-        } catch (MalformedURLException e) {
-            return ResponseEntity.internalServerError().build();
-        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(attachment.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + encodedFilename + "\"; filename*=UTF-8''" + encodedFilename)
+                .body(resource);
     }
 }

@@ -20,8 +20,8 @@ export const statementApi = {
   list: (params: Record<string, unknown>) =>
     apiClient.get<Paged<Statement>>('/statements', { params }).then((r) => r.data),
   detail: (id: number) => apiClient.get<StatementDetail>(`/statements/${id}`).then((r) => r.data),
-  downloadCsv: (params: Record<string, unknown>) =>
-    apiClient.get('/statements/export', { params, responseType: 'blob' }).then((r) => r.data),
+  downloadCsv: (id: number) =>
+    apiClient.get(`/statements/${id}/export.csv`, { responseType: 'blob' }).then((r) => r.data),
 };
 
 export const approvalsApi = {
@@ -44,9 +44,10 @@ export const pointsApi = {
 };
 
 export const supportApi = {
-  list: () => apiClient.get<Inquiry[]>('/support/inquiries').then((r) => r.data),
-  detail: (id: number) => apiClient.get<Inquiry>(`/support/inquiries/${id}`).then((r) => r.data),
-  create: (form: FormData) => apiClient.post('/support/inquiries', form),
+  list: (params: Record<string, unknown>) => apiClient.get<Paged<Inquiry>>('/inquiries', { params }).then((r) => r.data),
+  detail: (id: number) => apiClient.get<Inquiry>(`/inquiries/${id}`).then((r) => r.data),
+  create: (payload: { category: string; title: string; content: string }) => apiClient.post('/inquiries', payload),
+  reply: (id: number, content: string) => apiClient.post(`/inquiries/${id}/replies`, { content }),
 };
 
 export const docsApi = {

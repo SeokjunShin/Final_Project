@@ -37,7 +37,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Base64;
 import java.util.List;
 
 @Slf4j
@@ -223,6 +222,7 @@ public class AuthService {
     private void logLoginAttempt(String email, String ipAddress, String userAgent,
                                   boolean success, String failureReason) {
         LoginAttempt attempt = new LoginAttempt(email, ipAddress, userAgent, success, failureReason);
+        userRepository.findByEmail(email).ifPresent(attempt::setUser);
         loginAttemptRepository.save(attempt);
     }
 
@@ -230,7 +230,11 @@ public class AuthService {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hash);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 algorithm not available", e);
         }

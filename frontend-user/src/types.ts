@@ -24,29 +24,29 @@ export interface LoginResponse {
 }
 
 export interface DashboardSummary {
-  dueAmount: number;
-  availableLimit: number;
-  points: number;
+  upcomingPayment: number;
+  totalAvailableLimit: number;
+  pointBalance: number;
   recentApprovals: Approval[];
-  monthlySpend: { month: string; amount: number }[];
+  monthlySpend?: { month: string; amount: number }[];
 }
 
 export interface Statement {
   id: number;
-  billingMonth: string;
-  cardName: string;
-  cardMaskedNumber: string;
+  year: number;
+  month: number;
   dueDate: string;
   totalAmount: number;
-  status: 'DUE' | 'PAID' | 'OVERDUE';
+  paidAmount: number;
+  status: 'DRAFT' | 'ISSUED' | 'PAID';
 }
 
 export interface StatementDetail extends Statement {
-  paidAmount: number;
-  transactions: Array<{
+  items: Array<{
     id: number;
-    approvedAt: string;
+    transactionDate: string;
     merchantName: string;
+    categoryName: string;
     amount: number;
     status: 'APPROVED' | 'CANCELED';
   }>;
@@ -79,10 +79,18 @@ export interface PointLedger {
 
 export interface Inquiry {
   id: number;
+  category: string;
   title: string;
-  status: 'RECEIVED' | 'IN_PROGRESS' | 'ANSWERED';
+  content?: string;
+  status: 'OPEN' | 'ASSIGNED' | 'ANSWERED' | 'CLOSED';
   createdAt: string;
-  hasAttachment: boolean;
+  replies?: Array<{
+    id: number;
+    content: string;
+    authorName: string;
+    isStaffReply: boolean;
+    createdAt: string;
+  }>;
 }
 
 export interface DocumentItem {

@@ -1,4 +1,5 @@
-﻿import { Box, Card, CardContent, Stack, Typography } from '@mui/material';
+﻿import { Box, Button, Card, CardContent, Divider, Stack, Typography } from '@mui/material';
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { statementApi } from '@/api';
@@ -16,50 +17,81 @@ export const StatementDetailPage = () => {
       } catch {
         return {
           id: statementId,
-          billingMonth: '2026-02',
-          cardName: 'MyCard Platinum',
-          cardMaskedNumber: '1234-****-****-5678',
-          dueDate: '2026-02-25',
+          year: 2026,
+          month: 3,
+          dueDate: '2026-04-15',
           totalAmount: 348100,
           paidAmount: 0,
-          status: 'DUE',
-          transactions: [
-            { id: 1, approvedAt: '2026-02-21 12:13', merchantName: '카페', amount: 5500, status: 'APPROVED' },
-            { id: 2, approvedAt: '2026-02-20 19:22', merchantName: '마트', amount: 89300, status: 'APPROVED' },
+          status: 'ISSUED',
+          items: [
+            { id: 1, transactionDate: '2026-03-21 12:13', merchantName: '스타벅스', categoryName: 'CAFE', amount: 5500, status: 'APPROVED' },
+            { id: 2, transactionDate: '2026-03-20 19:22', merchantName: '이마트', categoryName: 'MART', amount: 89300, status: 'APPROVED' },
           ],
         };
       }
     },
   });
 
-  if (!data) {
-    return null;
-  }
+  if (!data) return null;
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
-        명세서 상세
-      </Typography>
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} sx={{ mb: 2 }}>
+        <Typography variant="h5">명세서 상세</Typography>
+        <Button
+          variant="contained"
+          startIcon={<FileDownloadOutlinedIcon />}
+          onClick={async () => {
+            const blob = await statementApi.downloadCsv(statementId);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `statement_${statementId}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          CSV 다운로드
+        </Button>
+      </Stack>
+
       <Card sx={{ mb: 2 }}>
         <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
-            <Typography>청구월: {data.billingMonth}</Typography>
-            <Typography>결제일: {data.dueDate}</Typography>
-            <Typography>총 청구: {data.totalAmount.toLocaleString('ko-KR')}원</Typography>
-            <Typography>결제상태: {data.status}</Typography>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} divider={<Divider orientation="vertical" flexItem />}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">청구월</Typography>
+              <Typography sx={{ fontWeight: 700 }}>{data.year}-{String(data.month).padStart(2, '0')}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">결제일</Typography>
+              <Typography sx={{ fontWeight: 700 }}>{data.dueDate}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">총 청구금액</Typography>
+              <Typography sx={{ fontWeight: 700 }}>{Number(data.totalAmount).toLocaleString('ko-KR')}원</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">상태</Typography>
+              <Typography sx={{ fontWeight: 700 }}>{data.status}</Typography>
+            </Box>
           </Stack>
         </CardContent>
       </Card>
-      <TableSection
-        rows={data.transactions}
-        columns={[
-          { field: 'approvedAt', headerName: '승인일시', flex: 1 },
-          { field: 'merchantName', headerName: '가맹점', flex: 1 },
-          { field: 'amount', headerName: '금액', flex: 1, valueFormatter: (v: number) => `${v.toLocaleString('ko-KR')}원` },
-          { field: 'status', headerName: '상태', flex: 1 },
-        ]}
-      />
+
+      <Card>
+        <CardContent>
+          <TableSection
+            rows={data.items}
+            columns={[
+              { field: 'transactionDate', headerName: '승인일시', flex: 1.2 },
+              { field: 'merchantName', headerName: '가맹점', flex: 1 },
+              { field: 'categoryName', headerName: '업종', flex: 1 },
+              { field: 'amount', headerName: '금액', flex: 1, valueFormatter: (v: number) => `${Number(v ?? 0).toLocaleString('ko-KR')}원` },
+              { field: 'status', headerName: '상태', flex: 0.7 },
+            ]}
+          />
+        </CardContent>
+      </Card>
     </Box>
   );
 };

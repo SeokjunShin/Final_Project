@@ -34,8 +34,14 @@ public class User {
     @Column(name = "phone", length = 30)
     private String phoneNumber;
 
+    @Column(name = "address", length = 255)
+    private String address;
+
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE";
+
+    @Column(name = "two_factor_enabled", nullable = false)
+    private Boolean twoFactorEnabled = false;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;

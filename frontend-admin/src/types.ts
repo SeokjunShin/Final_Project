@@ -1,7 +1,7 @@
 ﻿import type { AuthUser, PageResponse } from '@shared/types';
 
 export interface AdminLoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -13,9 +13,10 @@ export interface AdminLoginResponse {
 
 export interface QueueItem {
   id: number;
+  category?: string;
   title: string;
   status: string;
-  assignee: string;
+  assignee?: string;
   createdAt: string;
 }
 

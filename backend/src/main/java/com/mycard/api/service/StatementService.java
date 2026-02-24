@@ -1,56 +1,90 @@
-package com.mycard.api.service;
+﻿package com.mycard.api.service;
 
 import com.mycard.api.dto.StatementDetailResponse;
 import com.mycard.api.dto.StatementListResponse;
 import com.mycard.api.entity.Statement;
 import com.mycard.api.entity.StatementItem;
 import com.mycard.api.exception.ResourceNotFoundException;
-import com.mycard.api.repository.CardRepository;
 import com.mycard.api.repository.StatementRepository;
+import com.mycard.api.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
-/**
- * 청구서 서비스
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class StatementService {
 
     private final StatementRepository statementRepository;
-    private final CardRepository cardRepository;
+    private final OwnerCheckService ownerCheckService;
 
-    /**
-     * 사용자의 청구서 목록 조회
-     */
-    public Page<StatementListResponse> getStatements(Long userId, Pageable pageable) {
-        return statementRepository.findByUserId(userId, pageable)
-                .map(this::toListResponse);
+    public Page<StatementListResponse> getStatements(
+            Long userId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            Long cardId,
+            Pageable pageable
+    ) {
+        Page<Statement> page;
+        if (cardId != null) {
+            page = statementRepository.findByUserIdAndCardIdWithPeriod(userId, cardId, fromDate, toDate, pageable);
+        } else {
+            page = statementRepository.findByUserIdWithPeriod(userId, fromDate, toDate, pageable);
+        }
+        return page.map(this::toListResponse);
     }
 
-    /**
-     * 청구서 상세 조회
-     */
-    public StatementDetailResponse getStatementDetail(Long statementId) {
-        Statement statement = statementRepository.findByIdWithItems(statementId)
-                .orElseThrow(() -> new ResourceNotFoundException("청구서", statementId));
-
+    public StatementDetailResponse getStatementDetail(Long statementId, UserPrincipal principal) {
+        Statement statement = loadAndAuthorizeStatement(principal, statementId);
         return toDetailResponse(statement);
     }
 
-    /**
-     * 청구서 소유자 ID 조회
-     */
+    public String exportStatementCsv(Long statementId, UserPrincipal principal) {
+        Statement statement = loadAndAuthorizeStatement(principal, statementId);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("statement_id,year,month,due_date,status,total_amount,item_id,approved_at,merchant,category,amount\n");
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        for (StatementItem item : statement.getItems()) {
+            sb.append(statement.getId()).append(',')
+                    .append(statement.getYear()).append(',')
+                    .append(statement.getMonth()).append(',')
+                    .append(statement.getDueDate()).append(',')
+                    .append(statement.getStatus()).append(',')
+                    .append(statement.getTotalAmount()).append(',')
+                    .append(item.getId()).append(',')
+                    .append(item.getTransactionDate() != null ? dtf.format(item.getTransactionDate()) : "").append(',')
+                    .append(escapeCsv(item.getMerchantName())).append(',')
+                    .append(escapeCsv(item.getCategoryName())).append(',')
+                    .append(item.getAmount())
+                    .append('\n');
+        }
+
+        return sb.toString();
+    }
+
     public Long getStatementOwnerId(Long statementId) {
         return statementRepository.findById(statementId)
                 .map(s -> s.getUser().getId())
                 .orElse(null);
+    }
+
+    private Statement loadAndAuthorizeStatement(UserPrincipal principal, Long statementId) {
+        Statement statement = statementRepository.findByIdWithItems(statementId)
+                .orElseThrow(() -> new ResourceNotFoundException("명세서", statementId));
+
+        if (!ownerCheckService.isAdminOrOperator(principal)) {
+            ownerCheckService.requireOwner(statement.getUser().getId(), principal.getId());
+        }
+        return statement;
     }
 
     private StatementListResponse toListResponse(Statement statement) {
@@ -104,5 +138,13 @@ public class StatementService {
             return cardNumber;
         }
         return "**** **** **** " + cardNumber.substring(cardNumber.length() - 4);
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) {
+            return "";
+        }
+        String escaped = value.replace("\"", "\"\"");
+        return "\"" + escaped + "\"";
     }
 }

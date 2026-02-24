@@ -11,6 +11,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 @Tag(name = "파일", description = "파일 업로드/다운로드 API")
 @RestController
 @RequestMapping("/files")
+@PreAuthorize("hasAnyRole('USER','OPERATOR','ADMIN')")
 @RequiredArgsConstructor
 public class FileController {
 

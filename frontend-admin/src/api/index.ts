@@ -4,8 +4,11 @@ import type { AuditLog, Paged, QueueItem } from '@/types';
 export const adminApi = {
   dashboard: () => adminApiClient.get('/admin/dashboard').then((r) => r.data),
   inquiries: (params: Record<string, unknown>) =>
-    adminApiClient.get<Paged<QueueItem>>('/admin/inquiries', { params }).then((r) => r.data),
-  inquiryAnswer: (id: number, answer: string) => adminApiClient.post(`/admin/inquiries/${id}/answer`, { answer }),
+    adminApiClient.get<Paged<QueueItem>>('/operator/inquiries', { params }).then((r) => r.data),
+  inquiryDetail: (id: number) => adminApiClient.get(`/operator/inquiries/${id}`).then((r) => r.data),
+  inquiryAssign: (id: number) => adminApiClient.post(`/operator/inquiries/${id}/assign`),
+  inquiryAnswer: (id: number, answer: string) => adminApiClient.post(`/operator/inquiries/${id}/replies`, { content: answer }),
+  inquiryResolve: (id: number) => adminApiClient.post(`/operator/inquiries/${id}/resolve`),
   documents: (params: Record<string, unknown>) =>
     adminApiClient.get<Paged<QueueItem>>('/admin/documents', { params }).then((r) => r.data),
   documentTransition: (id: number, status: 'APPROVED' | 'REJECTED') =>

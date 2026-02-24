@@ -1,4 +1,4 @@
-import { Link as RouterLink } from 'react-router-dom';
+﻿import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -8,200 +8,71 @@ import {
   Grid,
   Stack,
   Typography,
-  useTheme,
 } from '@mui/material';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import LocalAtmIcon from '@mui/icons-material/LocalAtm';
 import SecurityIcon from '@mui/icons-material/Security';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
-import SpeedIcon from '@mui/icons-material/Speed';
+import AutoGraphIcon from '@mui/icons-material/AutoGraph';
+import CreditScoreIcon from '@mui/icons-material/CreditScore';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { useAuth } from '@/contexts/AuthContext';
+import platinumCard from '@/assets/cards/mycard-platinum.svg';
 
 const features = [
-  {
-    icon: <CreditCardIcon sx={{ fontSize: 48 }} />,
-    title: '내 카드 관리',
-    description: '카드 상태 확인, 한도 조회, 해외 결제 설정 등 편리한 카드 관리',
-  },
-  {
-    icon: <ReceiptLongIcon sx={{ fontSize: 48 }} />,
-    title: '이용내역 조회',
-    description: '실시간 승인내역과 월별 명세서를 한눈에 확인',
-  },
-  {
-    icon: <LocalAtmIcon sx={{ fontSize: 48 }} />,
-    title: '포인트 전환',
-    description: '적립된 포인트를 현금으로 전환하고 관리',
-  },
-  {
-    icon: <SecurityIcon sx={{ fontSize: 48 }} />,
-    title: '보안 관리',
-    description: '카드 분실 신고, 일시 정지 등 신속한 보안 조치',
-  },
-  {
-    icon: <SupportAgentIcon sx={{ fontSize: 48 }} />,
-    title: '고객 지원',
-    description: '1:1 문의 및 빠른 상담원 연결',
-  },
-  {
-    icon: <SpeedIcon sx={{ fontSize: 48 }} />,
-    title: '빠른 서비스',
-    description: '언제 어디서나 빠르고 편리하게 이용',
-  },
+  { icon: <CreditScoreIcon />, title: '카드 관리', description: '카드 상태/해외결제/재발급 요청을 한 번에 관리합니다.' },
+  { icon: <ReceiptLongIcon />, title: '명세서/승인내역', description: '목록-상세-CSV 다운로드 흐름으로 이용내역을 추적합니다.' },
+  { icon: <AutoGraphIcon />, title: '소비 요약', description: '월별 소비 추이와 결제예정액을 대시보드로 확인합니다.' },
+  { icon: <SupportAgentIcon />, title: '고객센터', description: '문의 등록, 답변 이력, 문서/첨부를 포털에서 확인합니다.' },
+  { icon: <NotificationsActiveIcon />, title: '알림센터', description: '공지사항과 운영 메시지를 읽음 상태까지 관리합니다.' },
+  { icon: <SecurityIcon />, title: '보안 운영', description: 'request_id 기반 추적과 표준 오류 응답 정책을 제공합니다.' },
 ];
 
 export const HomePage = () => {
-  const theme = useTheme();
   const { isAuthenticated } = useAuth();
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f7fb' }}>
-      {/* Header */}
-      <Box
-        component="header"
-        sx={{
-          py: 2,
-          px: 3,
-          backgroundColor: 'white',
-          borderBottom: '1px solid #e0e0e0',
-        }}
-      >
-        <Container maxWidth="lg">
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="h5" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
-              MyCard
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(180deg,#edf4ff 0%,#f7fbff 45%,#ffffff 100%)' }}>
+      <Container maxWidth="lg" sx={{ pt: 6, pb: 5 }}>
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} lg={6}>
+            <Typography variant="h4" sx={{ mb: 1.5 }}>
+              MyCard 사용자 포털
             </Typography>
-            <Stack direction="row" spacing={2}>
-              {isAuthenticated ? (
-                <Button
-                  component={RouterLink}
-                  to="/dashboard"
-                  variant="contained"
-                  color="primary"
-                >
-                  내 카드 관리
+            <Typography color="text.secondary" sx={{ mb: 3 }}>
+              카드사 운영 환경을 가정한 포털 구조로 대시보드, 명세서, 승인내역, 문의, 문서함을 제공합니다.
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2}>
+              <Button component={RouterLink} to={isAuthenticated ? '/dashboard' : '/login'} variant="contained" size="large">
+                {isAuthenticated ? '대시보드 이동' : '로그인'}
+              </Button>
+              {!isAuthenticated && (
+                <Button component={RouterLink} to="/register" variant="outlined" size="large">
+                  회원가입
                 </Button>
-              ) : (
-                <>
-                  <Button component={RouterLink} to="/login" variant="outlined">
-                    로그인
-                  </Button>
-                  <Button component={RouterLink} to="/login" variant="contained">
-                    회원가입
-                  </Button>
-                </>
               )}
             </Stack>
-          </Stack>
-        </Container>
-      </Box>
-
-      {/* Hero Section */}
-      <Box
-        sx={{
-          py: 10,
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: 'white',
-        }}
-      >
-        <Container maxWidth="lg">
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <Typography variant="h2" sx={{ fontWeight: 800, mb: 2 }}>
-                스마트한 카드 생활
-              </Typography>
-              <Typography variant="h5" sx={{ mb: 4, opacity: 0.9 }}>
-                MyCard와 함께 더 편리하고 안전한 금융 서비스를 경험하세요
-              </Typography>
-              <Stack direction="row" spacing={2}>
-                {isAuthenticated ? (
-                  <Button
-                    component={RouterLink}
-                    to="/dashboard"
-                    variant="contained"
-                    size="large"
-                    sx={{
-                      backgroundColor: 'white',
-                      color: theme.palette.primary.main,
-                      '&:hover': { backgroundColor: '#f0f0f0' },
-                    }}
-                  >
-                    대시보드 바로가기
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      component={RouterLink}
-                      to="/login"
-                      variant="contained"
-                      size="large"
-                      sx={{
-                        backgroundColor: 'white',
-                        color: theme.palette.primary.main,
-                        '&:hover': { backgroundColor: '#f0f0f0' },
-                      }}
-                    >
-                      시작하기
-                    </Button>
-                    <Button
-                      component={RouterLink}
-                      to="/login"
-                      variant="outlined"
-                      size="large"
-                      sx={{
-                        borderColor: 'white',
-                        color: 'white',
-                        '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' },
-                      }}
-                    >
-                      로그인
-                    </Button>
-                  </>
-                )}
-              </Stack>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                <CreditCardIcon sx={{ fontSize: 280, opacity: 0.3 }} />
-              </Box>
-            </Grid>
           </Grid>
-        </Container>
-      </Box>
+          <Grid item xs={12} lg={6}>
+            <Card>
+              <CardContent sx={{ p: 1.5 }}>
+                <Box component="img" src={platinumCard} alt="MyCard" sx={{ width: '100%', borderRadius: 2 }} />
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Container>
 
-      {/* Features Section */}
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Typography variant="h4" align="center" sx={{ fontWeight: 700, mb: 1 }}>
-          주요 서비스
+      <Container maxWidth="lg" sx={{ pb: 8 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          주요 기능
         </Typography>
-        <Typography variant="body1" align="center" color="text.secondary" sx={{ mb: 6 }}>
-          MyCard가 제공하는 다양한 서비스를 만나보세요
-        </Typography>
-        <Grid container spacing={3}>
-          {features.map((feature, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              <Card
-                sx={{
-                  height: '100%',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 4,
-                  },
-                }}
-              >
-                <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                  <Box sx={{ color: theme.palette.primary.main, mb: 2 }}>{feature.icon}</Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                    {feature.title}
-                  </Typography>
+        <Grid container spacing={2}>
+          {features.map((feature) => (
+            <Grid item xs={12} md={6} lg={4} key={feature.title}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ color: 'primary.main', mb: 1 }}>{feature.icon}</Box>
+                  <Typography sx={{ fontWeight: 700, mb: 0.7 }}>{feature.title}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {feature.description}
                   </Typography>
@@ -211,90 +82,6 @@ export const HomePage = () => {
           ))}
         </Grid>
       </Container>
-
-      {/* CTA Section */}
-      <Box sx={{ py: 8, backgroundColor: 'white' }}>
-        <Container maxWidth="md">
-          <Card
-            sx={{
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              color: 'white',
-              textAlign: 'center',
-              py: 6,
-              px: 4,
-            }}
-          >
-            <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
-              지금 바로 시작하세요
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 4, opacity: 0.9 }}>
-              MyCard와 함께 더 스마트한 카드 생활을 시작해보세요
-            </Typography>
-            {!isAuthenticated && (
-              <Button
-                component={RouterLink}
-                to="/login"
-                variant="contained"
-                size="large"
-                sx={{
-                  backgroundColor: 'white',
-                  color: theme.palette.primary.main,
-                  px: 4,
-                  '&:hover': { backgroundColor: '#f0f0f0' },
-                }}
-              >
-                무료로 시작하기
-              </Button>
-            )}
-          </Card>
-        </Container>
-      </Box>
-
-      {/* Footer */}
-      <Box
-        component="footer"
-        sx={{
-          py: 4,
-          px: 3,
-          backgroundColor: '#1a1a2e',
-          color: 'white',
-        }}
-      >
-        <Container maxWidth="lg">
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={4}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                MyCard
-              </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                더 스마트한 카드 생활의 시작
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                고객센터
-              </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                1588-0000
-              </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                평일 09:00 - 18:00
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                서비스
-              </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                이용약관 | 개인정보처리방침
-              </Typography>
-            </Grid>
-          </Grid>
-          <Typography variant="body2" align="center" sx={{ mt: 4, opacity: 0.5 }}>
-            © 2026 MyCard. All rights reserved.
-          </Typography>
-        </Container>
-      </Box>
     </Box>
   );
 };

@@ -7,10 +7,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface AttachmentRepository extends JpaRepository<Attachment, Long> {
 
     @Query("SELECT a FROM Attachment a WHERE a.storedFilename = :storedFilename")
     Optional<Attachment> findByStoredFilename(@Param("storedFilename") String storedFilename);
+
+    List<Attachment> findByDocumentId(Long documentId);
 }

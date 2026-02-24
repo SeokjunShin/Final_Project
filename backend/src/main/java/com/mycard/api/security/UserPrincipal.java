@@ -36,7 +36,8 @@ public class UserPrincipal implements UserDetails {
 
     public static UserPrincipal create(User user) {
         List<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
+                .map(role -> role.getName().startsWith("ROLE_") ? role.getName() : "ROLE_" + role.getName())
+                .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
 
         return new UserPrincipal(
@@ -87,8 +88,9 @@ public class UserPrincipal implements UserDetails {
     }
 
     public boolean hasRole(String role) {
+        String normalized = role.startsWith("ROLE_") ? role : "ROLE_" + role;
         return authorities.stream()
-                .anyMatch(auth -> auth.getAuthority().equals(role));
+                .anyMatch(auth -> auth.getAuthority().equals(normalized));
     }
 
     public boolean isAdmin() {

@@ -39,8 +39,9 @@ const getDocTypeName = (docType?: string) => {
   switch (docType) {
     case 'INCOME_PROOF': return '소득증빙';
     case 'ID_CARD': return '신분증';
-    case 'ADDRESS_PROOF': return '주소증빙';
-    case 'EMPLOYMENT': return '재직증명';
+    case 'RESIDENCE_PROOF': return '주소증빙';
+    case 'EMPLOYMENT_PROOF': return '재직증명';
+    case 'OTHER': return '기타서류';
     default: return docType || '기타서류';
   }
 };

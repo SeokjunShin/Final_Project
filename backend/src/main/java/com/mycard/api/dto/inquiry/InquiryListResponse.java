@@ -14,6 +14,7 @@ public class InquiryListResponse {
     private Inquiry.InquiryCategory category;
     private String title;
     private Inquiry.InquiryStatus status;
+    private String assignee;
     private boolean hasStaffReply;
     private LocalDateTime createdAt;
 }

@@ -40,4 +40,7 @@ public interface ApprovalRepository extends JpaRepository<Approval, Long> {
     Optional<Approval> findByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
 
     Optional<Approval> findByApprovalNumber(String approvalNumber);
+
+    @Query("SELECT a FROM Approval a WHERE a.card.user.id = :userId AND a.approvedAt >= :startDate AND a.status = 'APPROVED' ORDER BY a.approvedAt ASC")
+    List<Approval> findApprovedByUserIdSince(@Param("userId") Long userId, @Param("startDate") LocalDateTime startDate);
 }

@@ -5,10 +5,16 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -38,50 +44,14 @@ export const SupportInquiriesPage = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ['support-inquiries'],
-    queryFn: async () => {
-      try {
-        return await supportApi.list({ page: 0, size: 20 });
-      } catch {
-        return {
-          content: [
-            { id: 90001, category: 'BILLING', title: '명세서 금액이 이상해요', status: 'ANSWERED', createdAt: '2026-03-02' },
-            { id: 90002, category: 'CARD', title: '해외결제 차단 설정 문의', status: 'OPEN', createdAt: '2026-03-07' },
-          ],
-          totalElements: 2,
-          totalPages: 1,
-          number: 0,
-          size: 20,
-        };
-      }
-    },
+    queryFn: () => supportApi.list({ page: 0, size: 20 }),
   });
 
   const detailQuery = useQuery({
     queryKey: ['support-inquiry', selectedId],
     enabled: !!selectedId,
-    queryFn: async () => {
-      try {
-        return await supportApi.detail(Number(selectedId));
-      } catch {
-        return {
-          id: selectedId,
-          category: 'BILLING',
-          title: '명세서 금액이 이상해요',
-          content: '2월 명세서에 포함된 내역 확인 부탁드립니다.',
-          status: 'ANSWERED',
-          createdAt: '2026-03-02',
-          replies: [
-            {
-              id: 1,
-              content: '취소건 반영 대기 상태입니다. 1~2영업일 내 자동 반영됩니다.',
-              authorName: '박상담',
-              isStaffReply: true,
-              createdAt: '2026-03-02 11:10:00',
-            },
-          ],
-        };
-      }
-    },
+    queryFn: () => supportApi.detail(Number(selectedId!)),
+    retry: false,
   });
 
   const form = useForm<CreateForm>({ resolver: zodResolver(createSchema) });
@@ -136,6 +106,7 @@ export const SupportInquiriesPage = () => {
               loading={isLoading}
               rows={data?.content ?? []}
               columns={columns as any}
+              initialState={{ sorting: { sortModel: [{ field: 'id', sort: 'desc' }] } }}
               onRowClick={(params) => setSelectedId(Number(params.id))}
             />
           </CardContent>
@@ -144,6 +115,16 @@ export const SupportInquiriesPage = () => {
         <Card sx={{ flex: 1 }}>
           <CardContent>
             <Typography sx={{ fontWeight: 700, mb: 1.4 }}>문의 상세</Typography>
+            {detailQuery.isLoading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress size={28} />
+              </Box>
+            )}
+            {detailQuery.isError && (
+              <Typography variant="body2" color="error">
+                문의 정보를 불러올 수 없습니다.
+              </Typography>
+            )}
             {detailQuery.data ? (
               <Stack spacing={1.3}>
                 <Typography variant="body2" color="text.secondary">[{detailQuery.data.category}]</Typography>
@@ -162,9 +143,9 @@ export const SupportInquiriesPage = () => {
                   </Box>
                 ))}
               </Stack>
-            ) : (
+            ) : !detailQuery.isLoading && !detailQuery.isError ? (
               <Typography variant="body2" color="text.secondary">왼쪽 목록에서 문의를 선택하세요.</Typography>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </Stack>
@@ -173,7 +154,25 @@ export const SupportInquiriesPage = () => {
         <DialogTitle>문의 등록</DialogTitle>
         <DialogContent>
           <Stack spacing={1.4} sx={{ mt: 1 }}>
-            <TextField label="분류(CARD/BILLING/POINT)" {...form.register('category')} error={!!form.formState.errors.category} helperText={form.formState.errors.category?.message} />
+            <FormControl fullWidth error={!!form.formState.errors.category}>
+              <InputLabel id="category-label">분류</InputLabel>
+              <Select
+                labelId="category-label"
+                label="분류"
+                defaultValue=""
+                {...form.register('category')}
+              >
+                <MenuItem value="GENERAL">일반</MenuItem>
+                <MenuItem value="CARD">카드</MenuItem>
+                <MenuItem value="BILLING">청구/결제</MenuItem>
+                <MenuItem value="POINT">포인트</MenuItem>
+                <MenuItem value="ACCOUNT">계정</MenuItem>
+                <MenuItem value="OTHER">기타</MenuItem>
+              </Select>
+              {form.formState.errors.category && (
+                <FormHelperText>{form.formState.errors.category.message}</FormHelperText>
+              )}
+            </FormControl>
             <TextField label="제목" {...form.register('title')} error={!!form.formState.errors.title} helperText={form.formState.errors.title?.message} />
             <TextField label="내용" multiline minRows={5} {...form.register('content')} error={!!form.formState.errors.content} helperText={form.formState.errors.content?.message} />
           </Stack>

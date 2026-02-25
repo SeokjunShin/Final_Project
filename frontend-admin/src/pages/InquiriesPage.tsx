@@ -10,6 +10,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   MenuItem,
   Stack,
   TextField,
@@ -35,6 +36,7 @@ type FormValues = z.infer<typeof schema>;
 export const InquiriesPage = () => {
   const [queue, setQueue] = useState('unassigned');
   const [open, setOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const { show } = useAdminSnackbar();
   const queryClient = useQueryClient();
@@ -44,6 +46,13 @@ export const InquiriesPage = () => {
     queryFn: async () => {
       return await adminApi.inquiries({ queue, page: 0, size: 30 });
     },
+  });
+
+  const detailQuery = useQuery({
+    queryKey: ['admin-inquiry-detail', selectedId],
+    enabled: !!selectedId && detailOpen,
+    queryFn: () => adminApi.inquiryDetail(Number(selectedId!)),
+    retry: false,
   });
 
   const {
@@ -87,6 +96,8 @@ export const InquiriesPage = () => {
   const summary = data?.content ?? [];
   const unassigned = summary.filter((x: any) => x.status === 'OPEN').length;
   const assigned = summary.filter((x: any) => x.status === 'ASSIGNED').length;
+
+  const detail = detailQuery.data as any;
 
   return (
     <Box>
@@ -138,10 +149,27 @@ export const InquiriesPage = () => {
         <CardContent>
           <AdminTable
             rows={summary}
+            initialState={{ sorting: { sortModel: [{ field: 'id', sort: 'desc' }] } }}
             columns={[
               { field: 'id', headerName: 'ID', width: 90 },
               { field: 'category', headerName: '분류', width: 120 },
-              { field: 'title', headerName: '제목', flex: 1.4 },
+              {
+                field: 'title',
+                headerName: '제목',
+                flex: 1.4,
+                renderCell: (params: any) => (
+                  <Typography
+                    variant="body2"
+                    sx={{ cursor: 'pointer', textDecoration: 'underline', '&:hover': { color: 'primary.main' } }}
+                    onClick={() => {
+                      setSelectedId(params.row.id);
+                      setDetailOpen(true);
+                    }}
+                  >
+                    {params.row.title}
+                  </Typography>
+                ),
+              },
               {
                 field: 'status',
                 headerName: '상태',
@@ -153,52 +181,48 @@ export const InquiriesPage = () => {
               {
                 field: 'action',
                 headerName: '처리',
-                width: 280,
+                width: 220,
                 sortable: false,
-                renderCell: (params: any) => (
-                  <Stack direction="row" spacing={0.5}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() =>
-                        adminApi.inquiryAssign(params.row.id).then(() => {
-                          show('문의가 배정되었습니다.', 'success');
-                          queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
-                        })
-                      }
-                    >
-                      배정
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={() => {
-                        setSelectedId(params.row.id);
-                        setOpen(true);
-                      }}
-                    >
-                      답변
-                    </Button>
-                    <Button
-                      size="small"
-                      color="success"
-                      onClick={() =>
-                        adminApi.inquiryResolve(params.row.id).then(() => {
-                          show('문의가 종료되었습니다.', 'success');
-                          queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
-                        })
-                      }
-                    >
-                      종료
-                    </Button>
-                  </Stack>
-                ),
+                renderCell: (params: any) => {
+                  const status = params.row.status;
+                  return (
+                    <Stack direction="row" spacing={0.5}>
+                      {status === 'OPEN' && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() =>
+                            adminApi.inquiryAssign(params.row.id).then(() => {
+                              show('문의가 배정되었습니다.', 'success');
+                              queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
+                            })
+                          }
+                        >
+                          배정
+                        </Button>
+                      )}
+                      {status === 'ASSIGNED' && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => {
+                            setSelectedId(params.row.id);
+                            setOpen(true);
+                          }}
+                        >
+                          답변
+                        </Button>
+                      )}
+                    </Stack>
+                  );
+                },
               },
             ]}
           />
         </CardContent>
       </Card>
 
+      {/* 답변 등록 다이얼로그 */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>문의 답변 등록</DialogTitle>
         <DialogContent>
@@ -218,6 +242,70 @@ export const InquiriesPage = () => {
           <Button variant="contained" onClick={handleSubmit(submitAnswer)}>
             저장
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 문의 상세보기 다이얼로그 */}
+      <Dialog
+        open={detailOpen}
+        onClose={() => { setDetailOpen(false); setSelectedId(null); }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>문의 상세</DialogTitle>
+        <DialogContent>
+          {detailQuery.isLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          )}
+          {detailQuery.isError && (
+            <Typography color="error" sx={{ py: 2 }}>문의 정보를 불러올 수 없습니다.</Typography>
+          )}
+          {detail && !detailQuery.isLoading && (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Stack direction="row" spacing={2}>
+                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>분류</Typography>
+                <Typography variant="body2">{detail.category}</Typography>
+              </Stack>
+              <Stack direction="row" spacing={2}>
+                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>상태</Typography>
+                {renderStatus(detail.status)}
+              </Stack>
+              <Stack direction="row" spacing={2}>
+                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>담당자</Typography>
+                <Typography variant="body2">{detail.assignedOperatorName || '미배정'}</Typography>
+              </Stack>
+              <Stack direction="row" spacing={2}>
+                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>접수일</Typography>
+                <Typography variant="body2">{detail.createdAt}</Typography>
+              </Stack>
+              <Divider />
+              <Typography variant="subtitle1" fontWeight={700}>{detail.title}</Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{detail.content}</Typography>
+
+              {detail.replies && detail.replies.length > 0 && (
+                <>
+                  <Divider />
+                  <Typography variant="subtitle2" fontWeight={700}>답변 목록</Typography>
+                  {detail.replies.map((reply: any) => (
+                    <Card key={reply.id} variant="outlined" sx={{ p: 1.5 }}>
+                      <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                        <Typography variant="caption" fontWeight={700}>
+                          {reply.authorName} {reply.isStaffReply && <Chip size="small" label="상담원" color="info" sx={{ ml: 0.5 }} />}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">{reply.createdAt}</Typography>
+                      </Stack>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{reply.content}</Typography>
+                    </Card>
+                  ))}
+                </>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setDetailOpen(false); setSelectedId(null); }}>닫기</Button>
         </DialogActions>
       </Dialog>
     </Box>

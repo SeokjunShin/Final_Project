@@ -16,10 +16,10 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
     @Query("SELECT i FROM Inquiry i WHERE i.user.id = :userId ORDER BY i.createdAt DESC")
     Page<Inquiry> findByUserId(@Param("userId") Long userId, Pageable pageable);
 
-    @Query("SELECT i FROM Inquiry i LEFT JOIN FETCH i.replies LEFT JOIN FETCH i.attachments WHERE i.id = :id AND i.user.id = :userId")
+    @Query("SELECT i FROM Inquiry i LEFT JOIN FETCH i.replies r LEFT JOIN FETCH r.author WHERE i.id = :id AND i.user.id = :userId")
     Optional<Inquiry> findByIdAndUserIdWithDetails(@Param("id") Long id, @Param("userId") Long userId);
 
-    @Query("SELECT i FROM Inquiry i LEFT JOIN FETCH i.replies LEFT JOIN FETCH i.attachments WHERE i.id = :id")
+    @Query("SELECT i FROM Inquiry i LEFT JOIN FETCH i.replies r LEFT JOIN FETCH r.author WHERE i.id = :id")
     Optional<Inquiry> findByIdWithDetails(@Param("id") Long id);
 
     Page<Inquiry> findByStatus(Inquiry.InquiryStatus status, Pageable pageable);

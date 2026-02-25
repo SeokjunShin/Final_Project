@@ -17,6 +17,14 @@ public class DashboardSummaryResponse {
     private int cardCount;
     private long unreadMessageCount;
     private List<ApprovalSummary> recentApprovals;
+    private List<MonthlySpend> monthlySpend;
+
+    @Getter
+    @Builder
+    public static class MonthlySpend {
+        private String month;
+        private BigDecimal amount;
+    }
 
     @Getter
     @Builder

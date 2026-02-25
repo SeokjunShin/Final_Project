@@ -14,7 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +56,9 @@ public class DashboardService {
         // 읽지 않은 메시지 수
         long unreadMessageCount = messageRepository.countByUserIdAndIsReadFalse(userId);
 
+        // 최근 6개월 월별 소비 집계
+        List<DashboardSummaryResponse.MonthlySpend> monthlySpendList = getMonthlySpend(userId);
+
         return DashboardSummaryResponse.builder()
                 .upcomingPayment(upcomingPayment)
                 .totalAvailableLimit(totalAvailableLimit)
@@ -61,7 +68,40 @@ public class DashboardService {
                 .recentApprovals(recentApprovals.stream()
                         .map(this::toApprovalSummary)
                         .toList())
+                .monthlySpend(monthlySpendList)
                 .build();
+    }
+
+    private List<DashboardSummaryResponse.MonthlySpend> getMonthlySpend(Long userId) {
+        // 6개월 전부터 현재까지
+        LocalDateTime sixMonthsAgo = LocalDate.now().minusMonths(5).withDayOfMonth(1).atStartOfDay();
+        List<Approval> approvals = approvalRepository.findApprovedByUserIdSince(userId, sixMonthsAgo);
+
+        // 월별로 그룹화하여 집계
+        Map<YearMonth, BigDecimal> monthlyTotals = new LinkedHashMap<>();
+        
+        // 빈 월도 포함하기 위해 미리 초기화
+        for (int i = 5; i >= 0; i--) {
+            YearMonth ym = YearMonth.now().minusMonths(i);
+            monthlyTotals.put(ym, BigDecimal.ZERO);
+        }
+
+        // 승인 내역 집계
+        for (Approval approval : approvals) {
+            YearMonth ym = YearMonth.from(approval.getApprovedAt());
+            if (monthlyTotals.containsKey(ym)) {
+                monthlyTotals.merge(ym, approval.getAmount(), BigDecimal::add);
+            }
+        }
+
+        // 응답 형식으로 변환
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("M월");
+        return monthlyTotals.entrySet().stream()
+                .map(entry -> DashboardSummaryResponse.MonthlySpend.builder()
+                        .month(entry.getKey().format(formatter))
+                        .amount(entry.getValue())
+                        .build())
+                .toList();
     }
 
     private BigDecimal calculateUpcomingPayment(Long userId) {

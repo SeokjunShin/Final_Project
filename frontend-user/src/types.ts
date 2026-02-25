@@ -1,4 +1,4 @@
-﻿import type { AuthUser, PageResponse } from '@shared/types';
+import type { AuthUser, PageResponse } from '@shared/types';
 
 export interface ApiError {
   code: string;
@@ -150,3 +150,30 @@ export interface CardApplication {
 }
 
 export type Paged<T> = PageResponse<T>;
+
+export type LoanType = 'CASH_ADVANCE' | 'CARD_LOAN';
+export type LoanStatus = 'REQUESTED' | 'APPROVED' | 'DISBURSED' | 'REPAID' | 'CANCELED';
+
+export interface LoanListItem {
+  id: number;
+  loanType: LoanType;
+  principalAmount: number;
+  status: LoanStatus;
+  requestedAt: string;
+}
+
+export interface LoanDetail extends LoanListItem {
+  interestRate: number;
+  termMonths: number | null;
+  approvedAt: string | null;
+  disbursedAt: string | null;
+  repaidAt: string | null;
+  canceledAt: string | null;
+}
+
+export interface LoanCreatePayload {
+  loanType: LoanType;
+  principalAmount: number;
+  interestRate?: number;
+  termMonths?: number;
+}

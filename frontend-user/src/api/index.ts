@@ -1,4 +1,4 @@
-﻿import { apiClient } from './client';
+import { apiClient } from './client';
 import type {
   Approval,
   CardItem,
@@ -7,6 +7,9 @@ import type {
   DashboardSummary,
   DocumentItem,
   Inquiry,
+  LoanCreatePayload,
+  LoanDetail,
+  LoanListItem,
   NotificationItem,
   Paged,
   PointLedger,
@@ -64,13 +67,17 @@ export const notificationsApi = {
 
 // 카드 신청 API
 export const cardApplicationApi = {
-  // 신청 목록 조회
   list: () => apiClient.get<CardApplication[]>('/card-applications').then((r) => r.data),
-  // 신청 상세 조회
   detail: (id: number) => apiClient.get<CardApplication>(`/card-applications/${id}`).then((r) => r.data),
-  // 신청 생성
-  create: (payload: CardApplicationRequest) => 
+  create: (payload: CardApplicationRequest) =>
     apiClient.post<CardApplication>('/card-applications', payload).then((r) => r.data),
-  // 신청 취소
   cancel: (id: number) => apiClient.delete(`/card-applications/${id}`),
+};
+
+export const loansApi = {
+  list: (params: Record<string, unknown>) =>
+    apiClient.get<Paged<LoanListItem>>('/loans', { params }).then((r) => r.data),
+  detail: (id: number) => apiClient.get<LoanDetail>(`/loans/${id}`).then((r) => r.data),
+  create: (payload: LoanCreatePayload) =>
+    apiClient.post<LoanListItem>('/loans', payload).then((r) => r.data),
 };

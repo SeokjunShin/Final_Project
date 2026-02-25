@@ -1,0 +1,22 @@
+# 로컬 개발용 MySQL (백엔드 application.yml 기본값과 맞춤)
+# 사용: docker compose up -d
+# 종료: docker compose down
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mycard-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: mycard
+      MYSQL_USER: mycard
+      MYSQL_PASSWORD: mycard_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3306:3306"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=Asia/Seoul
+    volumes:
+      - mycard_mysql_data:/var/lib/mysql
+
+volumes:
+  mycard_mysql_data:

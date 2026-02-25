@@ -58,6 +58,18 @@ export const supportApi = {
 export const docsApi = {
   list: () => apiClient.get<DocumentItem[]>('/docs').then((r) => r.data),
   upload: (form: FormData) => apiClient.post('/docs', form),
+  download: (documentId: number, fileName: string) => {
+    return apiClient.get(`/documents/${documentId}/download`, { responseType: 'blob' }).then((r) => {
+      const url = window.URL.createObjectURL(new Blob([r.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName || 'document');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    });
+  },
 };
 
 export const notificationsApi = {

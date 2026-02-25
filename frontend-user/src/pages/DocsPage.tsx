@@ -1,5 +1,5 @@
-﻿import { Box, Button, Card, CardContent, Chip, Grid, LinearProgress, Stack, Typography } from '@mui/material';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { Box, Button, Card, CardContent, Chip, Grid, LinearProgress, MenuItem, Select, Stack, Typography } from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { docsApi } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';
@@ -47,30 +47,25 @@ const getDocTypeName = (docType?: string) => {
 
 export const DocsPage = () => {
   const { show } = useSnackbar();
-  const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [docType, setDocType] = useState('OTHER');
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['docs'],
-    queryFn: async () => {
-      try {
-        return await docsApi.list();
-      } catch {
-        return [];
-      }
-    },
+    queryFn: () => docsApi.list(),
   });
 
   const documents = data ?? [];
 
   const upload = async () => {
     if (!file) return;
-    
+
     setUploading(true);
     try {
       const form = new FormData();
       form.append('file', file);
+      form.append('docType', docType);
       await docsApi.upload(form);
       show('문서가 제출되었습니다.', 'success');
       setFile(null);
@@ -96,10 +91,23 @@ export const DocsPage = () => {
             <UploadFileIcon sx={{ color: '#1976d2' }} />
             <Typography sx={{ fontWeight: 700 }}>문서 제출</Typography>
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             신분증, 소득증빙 등의 서류를 제출해 주세요. PDF, JPG, PNG 형식을 지원합니다.
           </Typography>
-          
+
+          <Select
+            value={docType}
+            onChange={(e) => setDocType(e.target.value)}
+            size="small"
+            sx={{ mb: 2, minWidth: 180 }}
+          >
+            <MenuItem value="INCOME_PROOF">소득증빙</MenuItem>
+            <MenuItem value="ID_CARD">신분증</MenuItem>
+            <MenuItem value="RESIDENCE_PROOF">주소증빙</MenuItem>
+            <MenuItem value="EMPLOYMENT_PROOF">재직증명</MenuItem>
+            <MenuItem value="OTHER">기타서류</MenuItem>
+          </Select>
+
           <Box
             sx={{
               border: '2px dashed #e0e0e0',
@@ -149,7 +157,7 @@ export const DocsPage = () => {
 
       {/* 제출 서류 목록 */}
       <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 2 }}>제출 서류 목록</Typography>
-      
+
       {isLoading ? (
         <Card><CardContent><LinearProgress /></CardContent></Card>
       ) : documents.length === 0 ? (
@@ -183,8 +191,8 @@ export const DocsPage = () => {
                       </Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-                          <Typography sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {doc.name || getDocTypeName(doc.docType)}
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: '#666' }}>
+                            [{getDocTypeName(doc.docType)}]
                           </Typography>
                           <Chip
                             label={statusInfo.label}
@@ -198,6 +206,25 @@ export const DocsPage = () => {
                             }}
                           />
                         </Stack>
+                        <Typography
+                          sx={{
+                            fontWeight: 600,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            color: '#d32f2f',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            '&:hover': { color: '#b71c1c' },
+                          }}
+                          onClick={() => {
+                            if (doc.name) {
+                              docsApi.download(doc.id, doc.name);
+                            }
+                          }}
+                        >
+                          {doc.name || '파일 정보 없음'}
+                        </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {doc.submittedAt}
                         </Typography>

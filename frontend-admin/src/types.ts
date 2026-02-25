@@ -1,4 +1,4 @@
-﻿import type { AuthUser, PageResponse } from '@shared/types';
+import type { AuthUser, PageResponse } from '@shared/types';
 
 export interface AdminLoginRequest {
   email: string;
@@ -59,3 +59,24 @@ export interface CardApplication {
 }
 
 export type Paged<T> = PageResponse<T>;
+
+// 대출 (관리자 현황 - 백엔드 /loans API 동일)
+export type LoanType = 'CASH_ADVANCE' | 'CARD_LOAN';
+export type LoanStatus = 'REQUESTED' | 'APPROVED' | 'DISBURSED' | 'REPAID' | 'CANCELED';
+export interface LoanListItem {
+  id: number;
+  loanType: LoanType;
+  principalAmount: number;
+  status: LoanStatus;
+  requestedAt: string;
+  userId?: number;
+  userName?: string;
+}
+export interface LoanDetail extends LoanListItem {
+  interestRate: number;
+  termMonths: number | null;
+  approvedAt: string | null;
+  disbursedAt: string | null;
+  repaidAt: string | null;
+  canceledAt: string | null;
+}

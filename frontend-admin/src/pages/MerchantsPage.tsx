@@ -1,4 +1,4 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Box, Button, Card, CardContent, CircularProgress, Stack, TextField, Typography } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -67,8 +67,9 @@ export const MerchantsPage = () => {
         <AdminTable
           rows={data}
           columns={[
-            { field: 'name', headerName: '가맹점명', flex: 2 },
-            { field: 'businessNo', headerName: '사업자번호', flex: 1 },
+            { field: 'merchantName', headerName: '가맹점명', flex: 2 },
+            { field: 'businessNumber', headerName: '사업자번호', flex: 1 },
+            { field: 'categoryName', headerName: '업종', flex: 1 },
             { field: 'status', headerName: '상태', flex: 1 },
           ]}
         />

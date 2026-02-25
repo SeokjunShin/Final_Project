@@ -1,6 +1,7 @@
 package com.mycard.api.controller;
 
 import com.mycard.api.dto.*;
+import com.mycard.api.dto.loan.LoanDetailResponse;
 import com.mycard.api.entity.*;
 import com.mycard.api.entity.Attachment;
 import com.mycard.api.repository.*;
@@ -58,6 +59,7 @@ public class AdminController {
     private final MessageRepository messageRepository;
     private final EventRepository eventRepository;
     private final AuditLogRepository auditLogRepository;
+    private final LoanService loanService;
 
     // ===================== 대시보드 =====================
 
@@ -206,6 +208,29 @@ public class AdminController {
     public ResponseEntity<Void> unlockUser(@PathVariable Long userId) {
         userAdminService.unlockUser(userId);
         return ResponseEntity.ok().build();
+    }
+
+    // ===================== 대출 관리 =====================
+
+    @Operation(summary = "대출 승인", description = "REQUESTED 상태의 대출을 승인 처리합니다.")
+    @PatchMapping("/loans/{loanId}/approve")
+    public ResponseEntity<LoanDetailResponse> approveLoan(@PathVariable Long loanId) {
+        LoanDetailResponse response = loanService.approveLoanAsAdmin(loanId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "대출 출금 처리", description = "APPROVED 상태의 대출을 출금완료(DISBURSED) 처리합니다.")
+    @PatchMapping("/loans/{loanId}/disburse")
+    public ResponseEntity<LoanDetailResponse> disburseLoan(@PathVariable Long loanId) {
+        LoanDetailResponse response = loanService.disburseLoanAsAdmin(loanId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "대출 취소/거절", description = "대출을 취소(CANCELED) 상태로 변경합니다.")
+    @PatchMapping("/loans/{loanId}/cancel")
+    public ResponseEntity<LoanDetailResponse> cancelLoan(@PathVariable Long loanId) {
+        LoanDetailResponse response = loanService.cancelLoanAsAdmin(loanId);
+        return ResponseEntity.ok(response);
     }
 
     // ===================== 가맹점 관리 =====================

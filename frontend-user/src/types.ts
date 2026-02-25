@@ -160,6 +160,10 @@ export interface LoanListItem {
   principalAmount: number;
   status: LoanStatus;
   requestedAt: string;
+  /** 관리자 목록에서만 내려옴: 대출 신청 회원 ID */
+  userId?: number;
+  /** 관리자 목록에서만 내려옴: 대출 신청 회원명 */
+  userName?: string;
 }
 
 export interface LoanDetail extends LoanListItem {

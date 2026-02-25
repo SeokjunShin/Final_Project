@@ -1,4 +1,4 @@
-﻿import {
+import {
   AppBar,
   Box,
   Breadcrumbs,
@@ -28,7 +28,7 @@ import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-rout
 import { userMenu } from '@shared/menu';
 import { useAuth } from '@/contexts/AuthContext';
 
-const drawerWidth = 260;
+const drawerWidth = 305;
 
 const menuIcons: Record<string, React.ReactNode> = {
   '/dashboard': <DashboardIcon />,
@@ -49,8 +49,18 @@ export const UserLayout = () => {
   const crumbs = location.pathname.split('/').filter(Boolean);
 
   const drawer = (
-    <Box sx={{ width: drawerWidth, height: '100%', bgcolor: '#1a1a1a', color: '#999', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ p: 2.5, borderBottom: '1px solid #333' }}>
+    <Box
+      sx={{
+        width: drawerWidth,
+        height: '100%',
+        minHeight: 0,
+        bgcolor: '#1a1a1a',
+        color: '#999',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Box sx={{ flexShrink: 0, p: 2.5, borderBottom: '1px solid #333' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: '#d32f2f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <CreditCardIcon sx={{ color: '#fff', fontSize: 20 }} />
@@ -65,7 +75,18 @@ export const UserLayout = () => {
           </Box>
         </Box>
       </Box>
-      <List sx={{ px: 1.5, py: 2, flex: 1 }}>
+      <List
+        sx={{
+          px: 1.5,
+          py: 2,
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        }}
+      >
         {userMenu.map((item) => {
           const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
           return (
@@ -98,7 +119,7 @@ export const UserLayout = () => {
           );
         })}
       </List>
-      <Box sx={{ p: 2, borderTop: '1px solid #333' }}>
+      <Box sx={{ flexShrink: 0, p: 2, borderTop: '1px solid #333', bgcolor: '#1a1a1a' }}>
         <Box sx={{ bgcolor: '#252525', borderRadius: 2, p: 2, mb: 2 }}>
           <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem', mb: 0.5 }}>{user?.name || '사용자'}</Typography>
           <Typography sx={{ color: '#666', fontSize: '0.75rem' }}>{user?.email || ''}</Typography>
@@ -116,7 +137,14 @@ export const UserLayout = () => {
           fullWidth
           startIcon={<LogoutIcon />}
           onClick={async () => { await logout(); navigate('/login'); }}
-          sx={{ color: '#d32f2f', justifyContent: 'flex-start', '&:hover': { bgcolor: 'rgba(211,47,47,0.1)' } }}
+          sx={{
+            color: '#999',
+            backgroundColor: 'transparent',
+            justifyContent: 'flex-start',
+            textTransform: 'none',
+            '&:hover': { backgroundColor: 'rgba(255,255,255,0.05)' },
+            '& .MuiButton-startIcon': { color: 'inherit' },
+          }}
         >
           로그아웃
         </Button>
@@ -154,13 +182,13 @@ export const UserLayout = () => {
         </Toolbar>
       </AppBar>
 
-      <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth } }}>
+      <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth, overflow: 'hidden' } }}>
         {drawer}
       </Drawer>
       <Drawer
         open={open}
         onClose={() => setOpen(false)}
-        sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
+        sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth, overflow: 'hidden' } }}
       >
         {drawer}
       </Drawer>

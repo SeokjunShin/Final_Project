@@ -222,7 +222,7 @@ export const HomePage = () => {
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>이벤트 & 혜택</Typography>
               <Typography color="text.secondary">놓치면 아쉬운 특별한 혜택들</Typography>
             </Box>
-            <Button component={RouterLink} to="/notifications" endIcon={<ArrowForwardIcon />} sx={{ color: '#d32f2f' }}>전체보기</Button>
+            <Button component={RouterLink} to="/events" endIcon={<ArrowForwardIcon />} sx={{ color: '#d32f2f' }}>전체보기</Button>
           </Box>
           <Grid container spacing={3}>
             {events.map((event) => (

@@ -37,7 +37,7 @@ export const cardsApi = {
 };
 
 export const pointsApi = {
-  balance: () => apiClient.get<{ balance: number }>('/points/balance').then((r) => r.data),
+  balance: () => apiClient.get<{ totalPoints: number; availablePoints: number; expiringPoints: number; expiringDate: string | null }>('/points/balance').then((r) => r.data),
   ledger: (params: Record<string, unknown>) =>
     apiClient.get<Paged<PointLedger>>('/points/ledger', { params }).then((r) => r.data),
   convert: (amount: number) => apiClient.post('/points/convert', { amount }),

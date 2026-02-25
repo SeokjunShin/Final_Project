@@ -18,11 +18,13 @@ import { SupportInquiriesPage } from '@/pages/support/SupportInquiriesPage';
 import { DocsPage } from '@/pages/DocsPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { EventsPage } from '@/pages/EventsPage';
+import { PublicEventsPage } from '@/pages/PublicEventsPage';
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage';
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
+  { path: '/events', element: <PublicEventsPage /> },
   {
     element: <PublicRoute />,
     children: [
@@ -48,7 +50,7 @@ export const router = createBrowserRouter([
           { path: '/points', element: <PointsPage /> },
           { path: '/support/inquiries', element: <SupportInquiriesPage /> },
           { path: '/docs', element: <DocsPage /> },
-          { path: '/events', element: <EventsPage /> },
+          { path: '/my/events', element: <EventsPage /> },
           { path: '/notifications', element: <NotificationsPage /> },
         ],
       },

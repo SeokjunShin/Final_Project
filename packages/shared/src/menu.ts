@@ -18,7 +18,7 @@ export const userMenu: MenuItemDef[] = [
   { label: '포인트', path: '/points', roles: ['USER'] },
   { label: '고객센터', path: '/support/inquiries', roles: ['USER'] },
   { label: '문서함', path: '/docs', roles: ['USER'] },
-  { label: '이벤트', path: '/events', roles: ['USER'] },
+  { label: '이벤트', path: '/my/events', roles: ['USER'] },
   { label: '알림센터', path: '/notifications', roles: ['USER'] },
 ];
 

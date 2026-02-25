@@ -108,4 +108,45 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+// 카드 신청 요청
+export interface CardApplicationRequest {
+  fullName: string;
+  ssn: string;
+  phone: string;
+  email: string;
+  address: string;
+  addressDetail?: string;
+  employmentType: string;
+  employerName?: string;
+  jobTitle?: string;
+  annualIncome: string;
+  cardType: string;
+  cardProduct: string;
+  requestedCreditLimit?: number;
+}
+
+// 카드 신청 응답
+export interface CardApplication {
+  id: number;
+  fullName: string;
+  maskedSsn: string;
+  phone: string;
+  email: string;
+  address: string;
+  addressDetail?: string;
+  employmentType: string;
+  employerName?: string;
+  jobTitle?: string;
+  cardType: string;
+  cardProduct: string;
+  requestedCreditLimit?: number;
+  status: 'PENDING' | 'REVIEWING' | 'APPROVED' | 'REJECTED';
+  reviewedAt?: string;
+  rejectionReason?: string;
+  approvedCreditLimit?: number;
+  issuedCardNumber?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type Paged<T> = PageResponse<T>;

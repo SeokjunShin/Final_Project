@@ -3,6 +3,7 @@ package com.mycard.api.controller;
 import com.mycard.api.dto.*;
 import com.mycard.api.entity.*;
 import com.mycard.api.repository.*;
+import com.mycard.api.security.UserPrincipal;
 import com.mycard.api.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,6 +48,7 @@ public class AdminController {
     private final UserAdminService userAdminService;
     private final MerchantService merchantService;
     private final PointPolicyService pointPolicyService;
+    private final CardApplicationService cardApplicationService;
     private final UserRepository userRepository;
     private final InquiryRepository inquiryRepository;
     private final DocumentRepository documentRepository;
@@ -558,5 +561,101 @@ public class AdminController {
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    // ===================== 카드 신청 관리 =====================
+
+    /**
+     * 카드 신청 목록 조회
+     */
+    @Operation(summary = "카드 신청 목록", description = "카드 신청 목록을 조회합니다.")
+    @GetMapping("/card-applications")
+    public ResponseEntity<Map<String, Object>> getCardApplications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status) {
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CardApplicationResponse> applications;
+        
+        if (status != null && !status.isEmpty()) {
+            applications = cardApplicationService.getApplicationsByStatus(status, pageable);
+        } else {
+            applications = cardApplicationService.getAllApplications(pageable);
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", applications.getContent());
+        response.put("totalElements", applications.getTotalElements());
+        response.put("totalPages", applications.getTotalPages());
+        response.put("number", applications.getNumber());
+        response.put("size", applications.getSize());
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 카드 신청 상세 조회
+     */
+    @Operation(summary = "카드 신청 상세", description = "카드 신청 상세 정보를 조회합니다.")
+    @GetMapping("/card-applications/{applicationId}")
+    public ResponseEntity<CardApplicationResponse> getCardApplicationDetail(
+            @PathVariable Long applicationId) {
+        CardApplicationResponse application = cardApplicationService.getApplicationDetail(applicationId);
+        return ResponseEntity.ok(application);
+    }
+
+    /**
+     * 카드 신청 승인
+     */
+    @Operation(summary = "카드 신청 승인", description = "카드 신청을 승인하고 카드를 발급합니다.")
+    @PostMapping("/card-applications/{applicationId}/approve")
+    @Transactional
+    public ResponseEntity<CardApplicationResponse> approveCardApplication(
+            @PathVariable Long applicationId,
+            @RequestParam BigDecimal creditLimit,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        CardApplicationResponse application = cardApplicationService.approveApplication(
+                applicationId, currentUser.getId(), creditLimit);
+        return ResponseEntity.ok(application);
+    }
+
+    /**
+     * 카드 신청 거절
+     */
+    @Operation(summary = "카드 신청 거절", description = "카드 신청을 거절합니다.")
+    @PostMapping("/card-applications/{applicationId}/reject")
+    @Transactional
+    public ResponseEntity<CardApplicationResponse> rejectCardApplication(
+            @PathVariable Long applicationId,
+            @RequestParam String reason,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        CardApplicationResponse application = cardApplicationService.rejectApplication(
+                applicationId, currentUser.getId(), reason);
+        return ResponseEntity.ok(application);
+    }
+
+    /**
+     * 카드 신청 심사 시작
+     */
+    @Operation(summary = "카드 신청 심사 시작", description = "카드 신청 상태를 심사중으로 변경합니다.")
+    @PostMapping("/card-applications/{applicationId}/start-review")
+    @Transactional
+    public ResponseEntity<CardApplicationResponse> startReview(
+            @PathVariable Long applicationId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        CardApplicationResponse application = cardApplicationService.startReview(
+                applicationId, currentUser.getId());
+        return ResponseEntity.ok(application);
+    }
+
+    /**
+     * 대기중인 카드 신청 건수
+     */
+    @Operation(summary = "대기중 카드 신청 건수", description = "대기중인 카드 신청 건수를 조회합니다.")
+    @GetMapping("/card-applications/pending-count")
+    public ResponseEntity<Map<String, Long>> getPendingApplicationCount() {
+        long count = cardApplicationService.getPendingCount();
+        return ResponseEntity.ok(Map.of("count", count));
     }
 }

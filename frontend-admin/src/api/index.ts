@@ -1,5 +1,5 @@
 ﻿import { adminApiClient } from './client';
-import type { AuditLog, Paged, QueueItem } from '@/types';
+import type { AuditLog, CardApplication, Paged, QueueItem } from '@/types';
 
 export const adminApi = {
   dashboard: () => adminApiClient.get('/admin/dashboard').then((r) => r.data),
@@ -25,4 +25,18 @@ export const adminApi = {
   savePointPolicy: (payload: Record<string, unknown>) => adminApiClient.put('/admin/policies/points', payload),
   auditLogs: (params: Record<string, unknown>) =>
     adminApiClient.get<Paged<AuditLog>>('/admin/audit-logs', { params }).then((r) => r.data),
+
+  // 카드 신청 관리
+  cardApplications: (params: Record<string, unknown>) =>
+    adminApiClient.get<Paged<CardApplication>>('/admin/card-applications', { params }).then((r) => r.data),
+  cardApplicationDetail: (id: number) =>
+    adminApiClient.get<CardApplication>(`/admin/card-applications/${id}`).then((r) => r.data),
+  approveCardApplication: (id: number, creditLimit: number) =>
+    adminApiClient.post<CardApplication>(`/admin/card-applications/${id}/approve`, null, { params: { creditLimit } }).then((r) => r.data),
+  rejectCardApplication: (id: number, reason: string) =>
+    adminApiClient.post<CardApplication>(`/admin/card-applications/${id}/reject`, null, { params: { reason } }).then((r) => r.data),
+  startReview: (id: number) =>
+    adminApiClient.post<CardApplication>(`/admin/card-applications/${id}/start-review`).then((r) => r.data),
+  pendingApplicationCount: () =>
+    adminApiClient.get<{ count: number }>('/admin/card-applications/pending-count').then((r) => r.data),
 };

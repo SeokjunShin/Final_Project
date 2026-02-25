@@ -2,6 +2,8 @@
 import type {
   Approval,
   CardItem,
+  CardApplication,
+  CardApplicationRequest,
   DashboardSummary,
   DocumentItem,
   Inquiry,
@@ -58,4 +60,17 @@ export const docsApi = {
 export const notificationsApi = {
   list: () => apiClient.get<NotificationItem[]>('/notifications').then((r) => r.data),
   read: (id: number) => apiClient.patch(`/notifications/${id}/read`),
+};
+
+// 카드 신청 API
+export const cardApplicationApi = {
+  // 신청 목록 조회
+  list: () => apiClient.get<CardApplication[]>('/card-applications').then((r) => r.data),
+  // 신청 상세 조회
+  detail: (id: number) => apiClient.get<CardApplication>(`/card-applications/${id}`).then((r) => r.data),
+  // 신청 생성
+  create: (payload: CardApplicationRequest) => 
+    apiClient.post<CardApplication>('/card-applications', payload).then((r) => r.data),
+  // 신청 취소
+  cancel: (id: number) => apiClient.delete(`/card-applications/${id}`),
 };

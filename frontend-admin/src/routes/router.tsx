@@ -12,6 +12,7 @@ import { BenefitsPage } from '@/pages/BenefitsPage';
 import { EventsPage } from '@/pages/EventsPage';
 import { PointPolicyPage } from '@/pages/PointPolicyPage';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
+import { CardApplicationsPage } from '@/pages/CardApplicationsPage';
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage';
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
           { path: '/events', element: <EventsPage /> },
           { path: '/policies/points', element: <PointPolicyPage /> },
           { path: '/audit-logs', element: <AuditLogsPage /> },
+          { path: '/card-applications', element: <CardApplicationsPage /> },
         ],
       },
     ],

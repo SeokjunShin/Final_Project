@@ -28,4 +28,34 @@ export interface AuditLog {
   target: string;
 }
 
+// 카드 신청 (관리자용)
+export interface CardApplication {
+  id: number;
+  fullName: string;
+  maskedSsn: string;
+  phone: string;
+  email: string;
+  address: string;
+  addressDetail?: string;
+  employmentType: string;
+  employerName?: string;
+  jobTitle?: string;
+  annualIncome?: string; // 관리자만 볼 수 있음
+  cardType: string;
+  cardProduct: string;
+  requestedCreditLimit?: number;
+  status: 'PENDING' | 'REVIEWING' | 'APPROVED' | 'REJECTED';
+  reviewedAt?: string;
+  rejectionReason?: string;
+  approvedCreditLimit?: number;
+  adminNotes?: string;
+  userName?: string;
+  userEmail?: string;
+  reviewerName?: string;
+  issuedCardId?: number;
+  issuedCardNumber?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type Paged<T> = PageResponse<T>;

@@ -1,4 +1,4 @@
-﻿import type { Role } from './types';
+import type { Role } from './types';
 
 export interface MenuItemDef {
   label: string;
@@ -28,6 +28,7 @@ export const adminMenu: MenuItemDef[] = [
   { label: '문서 검토', path: '/documents', roles: ['OPERATOR', 'ADMIN'] },
   { label: '메시지 발송', path: '/messages', roles: ['OPERATOR', 'ADMIN'] },
   { label: '카드 신청 관리', path: '/card-applications', roles: ['ADMIN'] },
+  { label: '대출 현황', path: '/loans', roles: ['ADMIN'] },
   { label: '사용자 관리', path: '/users', roles: ['ADMIN'] },
   { label: '가맹점 관리', path: '/merchants', roles: ['ADMIN'] },
   { label: '혜택 정책', path: '/benefits', roles: ['ADMIN'] },

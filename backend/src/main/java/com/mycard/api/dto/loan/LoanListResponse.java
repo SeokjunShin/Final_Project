@@ -16,4 +16,8 @@ public class LoanListResponse {
     private BigDecimal principalAmount;
     private Loan.LoanStatus status;
     private LocalDateTime requestedAt;
+    /** 관리자/상담원 목록에서만 채움: 대출 신청 회원 ID */
+    private Long userId;
+    /** 관리자/상담원 목록에서만 채움: 대출 신청 회원명 */
+    private String userName;
 }

@@ -15,6 +15,9 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
 
     Page<Loan> findByUser_IdOrderByRequestedAtDesc(Long userId, Pageable pageable);
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"user"})
+    Page<Loan> findAllByOrderByRequestedAtDesc(Pageable pageable);
+
     Optional<Loan> findByIdAndUser_Id(Long id, Long userId);
 
     @Query("SELECT l FROM Loan l JOIN FETCH l.user WHERE l.id = :id")

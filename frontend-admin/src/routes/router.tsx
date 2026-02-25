@@ -1,4 +1,4 @@
-﻿import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { PublicRoute, ProtectedRoute } from './guards';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { AdminLoginPage } from '@/pages/LoginPage';
@@ -13,6 +13,7 @@ import { EventsPage } from '@/pages/EventsPage';
 import { PointPolicyPage } from '@/pages/PointPolicyPage';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
 import { CardApplicationsPage } from '@/pages/CardApplicationsPage';
+import { LoansPage } from '@/pages/LoansPage';
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage';
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
           { path: '/policies/points', element: <PointPolicyPage /> },
           { path: '/audit-logs', element: <AuditLogsPage /> },
           { path: '/card-applications', element: <CardApplicationsPage /> },
+          { path: '/loans', element: <LoansPage /> },
         ],
       },
     ],

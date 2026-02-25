@@ -1,5 +1,5 @@
-﻿import { adminApiClient } from './client';
-import type { AuditLog, CardApplication, Paged, QueueItem } from '@/types';
+import { adminApiClient } from './client';
+import type { AuditLog, CardApplication, LoanDetail, LoanListItem, Paged, QueueItem } from '@/types';
 
 export const adminApi = {
   dashboard: () => adminApiClient.get('/admin/dashboard').then((r) => r.data),
@@ -39,4 +39,17 @@ export const adminApi = {
     adminApiClient.post<CardApplication>(`/admin/card-applications/${id}/start-review`).then((r) => r.data),
   pendingApplicationCount: () =>
     adminApiClient.get<{ count: number }>('/admin/card-applications/pending-count').then((r) => r.data),
+
+  // 대출 현황 (동일 백엔드 /loans - admin 토큰이면 전체 목록 반환)
+  loans: (params: Record<string, unknown>) =>
+    adminApiClient.get<Paged<LoanListItem>>('/loans', { params }).then((r) => r.data),
+  loanDetail: (id: number) => adminApiClient.get<LoanDetail>(`/loans/${id}`).then((r) => r.data),
+
+  // 대출 상태 조정 (ADMIN 전용)
+  approveLoan: (id: number) =>
+    adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/approve`).then((r) => r.data),
+  disburseLoan: (id: number) =>
+    adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/disburse`).then((r) => r.data),
+  cancelLoan: (id: number) =>
+    adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/cancel`).then((r) => r.data),
 };

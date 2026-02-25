@@ -1,4 +1,4 @@
-﻿import { Box, Button, Card, CardContent, Chip, Dialog, DialogContent, DialogTitle, FormControl, InputAdornment, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Card, CardContent, Chip, Dialog, DialogContent, DialogTitle, FormControl, InputAdornment, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TableSection } from '@/components/common/TableSection';
@@ -119,6 +119,12 @@ export const LoansPage = () => {
               loading={isLoading}
               rows={rows}
               columns={[
+                ...(rows.some((r: { userName?: string }) => r.userName != null) ? [{
+                  field: 'userName',
+                  headerName: '회원',
+                  flex: 1,
+                  valueGetter: (_: unknown, row: { userName?: string }) => row.userName ?? '-',
+                }] : []),
                 {
                   field: 'loanType',
                   headerName: '유형',

@@ -40,6 +40,7 @@ import java.util.*;
  * - 감사로그 조회
  */
 @Tag(name = "Admin", description = "관리자 전용 API")
+@Slf4j
 @RestController
 @RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
@@ -615,7 +616,8 @@ public class AdminController {
             response.put("number", auditLogs.getNumber());
             response.put("size", auditLogs.getSize());
         } catch (Exception e) {
-            // 에러 발생 시 빈 결과 반환
+            // 에러 로깅
+            log.error("Audit log query failed", e);
             response.put("content", content);
             response.put("totalElements", 0);
             response.put("totalPages", 0);

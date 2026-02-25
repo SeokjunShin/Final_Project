@@ -19,12 +19,14 @@ import { DocsPage } from '@/pages/DocsPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { EventsPage } from '@/pages/EventsPage';
 import { PublicEventsPage } from '@/pages/PublicEventsPage';
+import { CardProductsPage } from '@/pages/CardProductsPage';
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage';
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
   { path: '/events', element: <PublicEventsPage /> },
+  { path: '/cards/products', element: <CardProductsPage /> },
   {
     element: <PublicRoute />,
     children: [

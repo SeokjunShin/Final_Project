@@ -95,7 +95,7 @@ export const HomePage = () => {
               MyCard
             </Typography>
             <Stack direction="row" spacing={3} sx={{ display: { xs: 'none', md: 'flex' } }}>
-              <Typography component={RouterLink} to="/cards" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
+              <Typography component={RouterLink} to="/cards/products" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
                 카드
               </Typography>
               <Typography component={RouterLink} to="/points" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
@@ -151,7 +151,7 @@ export const HomePage = () => {
               <Button component={RouterLink} to={isAuthenticated ? '/dashboard' : '/register'} variant="contained" size="large" sx={{ bgcolor: '#d32f2f', px: 4, py: 1.5, fontSize: '1rem', '&:hover': { bgcolor: '#b71c1c' } }}>
                 {isAuthenticated ? '마이페이지' : '카드 신청하기'}
               </Button>
-              <Button component={RouterLink} to="/cards" variant="outlined" size="large" sx={{ borderColor: '#fff', color: '#fff', px: 4, py: 1.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+              <Button component={RouterLink} to="/cards/products" variant="outlined" size="large" sx={{ borderColor: '#fff', color: '#fff', px: 4, py: 1.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
                 카드 혜택 보기
               </Button>
             </Stack>
@@ -187,7 +187,7 @@ export const HomePage = () => {
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>인기 카드 상품</Typography>
             <Typography color="text.secondary">나에게 맞는 카드를 찾아보세요</Typography>
           </Box>
-          <Button component={RouterLink} to="/cards" endIcon={<ArrowForwardIcon />} sx={{ color: '#d32f2f' }}>전체보기</Button>
+          <Button component={RouterLink} to="/cards/products" endIcon={<ArrowForwardIcon />} sx={{ color: '#d32f2f' }}>전체보기</Button>
         </Box>
         <Grid container spacing={4}>
           {cardProducts.map((card) => (
@@ -206,7 +206,7 @@ export const HomePage = () => {
                       <Typography variant="body2">{card.annual}</Typography>
                     </Box>
                   </Stack>
-                  <Button component={RouterLink} to="/cards" variant="outlined" size="small" sx={{ mt: 3, borderColor: '#d32f2f', color: '#d32f2f', '&:hover': { bgcolor: '#fff5f5' } }}>자세히 보기</Button>
+                  <Button component={RouterLink} to="/cards/products" variant="outlined" size="small" sx={{ mt: 3, borderColor: '#d32f2f', color: '#d32f2f', '&:hover': { bgcolor: '#fff5f5' } }}>자세히 보기</Button>
                 </CardContent>
               </Card>
             </Grid>
@@ -292,7 +292,7 @@ export const HomePage = () => {
             <Grid item xs={6} md={2}>
               <Typography sx={{ color: '#fff', fontWeight: 600, mb: 2 }}>서비스</Typography>
               <Stack spacing={1}>
-                <Typography component={RouterLink} to="/cards" variant="body2" sx={{ color: '#999', textDecoration: 'none', '&:hover': { color: '#fff' } }}>카드 상품</Typography>
+                <Typography component={RouterLink} to="/cards/products" variant="body2" sx={{ color: '#999', textDecoration: 'none', '&:hover': { color: '#fff' } }}>카드 상품</Typography>
                 <Typography component={RouterLink} to="/points" variant="body2" sx={{ color: '#999', textDecoration: 'none', '&:hover': { color: '#fff' } }}>포인트</Typography>
                 <Typography component={RouterLink} to="/statements" variant="body2" sx={{ color: '#999', textDecoration: 'none', '&:hover': { color: '#fff' } }}>명세서</Typography>
               </Stack>

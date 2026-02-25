@@ -16,15 +16,6 @@ public class PointConversionRequest {
     @DecimalMin(value = "1000", message = "최소 1000 포인트부터 전환할 수 있습니다.")
     private BigDecimal points;
 
-    @NotBlank(message = "은행명은 필수입니다.")
-    @Size(max = 50, message = "은행명은 50자 이하여야 합니다.")
-    private String bankName;
-
-    @NotBlank(message = "계좌번호는 필수입니다.")
-    @Size(max = 30, message = "계좌번호는 30자 이하여야 합니다.")
-    private String accountNumber;
-
-    @NotBlank(message = "예금주는 필수입니다.")
-    @Size(max = 50, message = "예금주는 50자 이하여야 합니다.")
-    private String accountHolder;
+    // 등록된 계좌 ID (null이면 기본 계좌 사용)
+    private Long accountId;
 }

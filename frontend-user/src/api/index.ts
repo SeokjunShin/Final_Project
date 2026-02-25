@@ -45,8 +45,38 @@ export const pointsApi = {
   balance: () => apiClient.get<{ totalPoints: number; availablePoints: number; expiringPoints: number; expiringDate: string | null }>('/points/balance').then((r) => r.data),
   ledger: (params: Record<string, unknown>) =>
     apiClient.get<Paged<PointLedger>>('/points/ledger', { params }).then((r) => r.data),
-  convert: (amount: number) => apiClient.post('/points/convert', { amount }),
+  convert: (points: number, accountId?: number) => 
+    apiClient.post('/points/convert', { points, accountId }).then((r) => r.data),
+  withdrawals: (params: Record<string, unknown>) =>
+    apiClient.get('/points/withdrawals', { params }).then((r) => r.data),
 };
+
+// 은행 계좌 API
+export const bankAccountApi = {
+  getBankCodes: () => 
+    apiClient.get<{ code: string; name: string }[]>('/bank-accounts/banks').then((r) => r.data),
+  list: () => 
+    apiClient.get<BankAccount[]>('/bank-accounts').then((r) => r.data),
+  add: (payload: { bankCode: string; accountNumber: string; accountHolder: string; setAsDefault?: boolean }) =>
+    apiClient.post<BankAccount>('/bank-accounts', payload).then((r) => r.data),
+  delete: (accountId: number) => 
+    apiClient.delete(`/bank-accounts/${accountId}`),
+  setDefault: (accountId: number) =>
+    apiClient.put<BankAccount>(`/bank-accounts/${accountId}/default`).then((r) => r.data),
+};
+
+// 타입 정의
+export interface BankAccount {
+  id: number;
+  bankCode: string;
+  bankName: string;
+  accountNumberMasked: string;
+  accountHolder: string;
+  isVerified: boolean;
+  isDefault: boolean;
+  verifiedAt: string | null;
+  createdAt: string;
+}
 
 export const supportApi = {
   list: (params: Record<string, unknown>) => apiClient.get<Paged<Inquiry>>('/inquiries', { params }).then((r) => r.data),

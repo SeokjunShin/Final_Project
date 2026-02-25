@@ -26,6 +26,7 @@ public class PointService {
     private final PointWithdrawalRepository pointWithdrawalRepository;
     private final PointPolicyRepository pointPolicyRepository;
     private final UserRepository userRepository;
+    private final UserBankAccountRepository bankAccountRepository;
     private final AuditService auditService;
 
     @Transactional(readOnly = true)
@@ -59,9 +60,24 @@ public class PointService {
     public PointWithdrawalResponse convertToMoney(UserPrincipal currentUser, PointConversionRequest request) {
         Long userId = currentUser.getId();
 
+        // 출금 계좌 확인 (지정된 계좌 또는 기본 계좌)
+        UserBankAccount account;
+        if (request.getAccountId() != null) {
+            account = bankAccountRepository.findByIdAndUserId(request.getAccountId(), userId)
+                    .orElseThrow(() -> new BadRequestException("등록된 계좌를 찾을 수 없습니다."));
+        } else {
+            account = bankAccountRepository.findByUserIdAndIsDefaultTrue(userId)
+                    .orElseThrow(() -> new BadRequestException("기본 출금 계좌가 설정되지 않았습니다. 계좌를 먼저 등록해주세요."));
+        }
+
+        // 계좌 인증 확인
+        if (!account.getIsVerified()) {
+            throw new BadRequestException("인증되지 않은 계좌입니다.");
+        }
+
         // Get active policy
         PointPolicy policy = pointPolicyRepository.findFirstByEnabledTrueOrderByUpdatedAtDesc()
-                .orElseThrow(() -> new BadRequestException("No active point policy found."));
+                .orElseThrow(() -> new BadRequestException("포인트 정책을 찾을 수 없습니다."));
 
         BigDecimal feeRate = policy.getFeeRate();
         BigDecimal dailyLimit = BigDecimal.valueOf(policy.getDailyWithdrawalLimitPoints());
@@ -70,27 +86,27 @@ public class PointService {
 
         // Check minimum points
         if (request.getPoints().compareTo(minPoints) < 0) {
-            throw new BadRequestException("Minimum " + minPoints + " points required for conversion.");
+            throw new BadRequestException("최소 " + minPoints.intValue() + " 포인트부터 전환할 수 있습니다.");
         }
 
         // Check maximum points
         if (request.getPoints().compareTo(maxPoints) > 0) {
-            throw new BadRequestException("Maximum " + maxPoints + " points allowed per conversion.");
+            throw new BadRequestException("1회 최대 " + maxPoints.intValue() + " 포인트까지 전환할 수 있습니다.");
         }
 
         // Check daily limit
         BigDecimal todayTotal = getTodayWithdrawalAmount(userId);
         BigDecimal cashAmount = calculateCashAmount(request.getPoints(), feeRate);
         if (todayTotal.add(request.getPoints()).compareTo(dailyLimit) > 0) {
-            throw new BadRequestException("Daily withdrawal limit exceeded. (Limit: " + dailyLimit + " points)");
+            throw new BadRequestException("일일 전환 한도를 초과했습니다. (한도: " + dailyLimit.intValue() + "P)");
         }
 
         // Get point balance with lock (pessimistic)
         PointBalance balance = pointBalanceRepository.findByUserIdForUpdate(userId)
-                .orElseThrow(() -> new BadRequestException("Point balance not found."));
+                .orElseThrow(() -> new BadRequestException("포인트 잔액 정보를 찾을 수 없습니다."));
 
         if (balance.getAvailablePoints().compareTo(request.getPoints()) < 0) {
-            throw new BadRequestException("Insufficient points.");
+            throw new BadRequestException("포인트 잔액이 부족합니다.");
         }
 
         // Deduct points
@@ -104,21 +120,21 @@ public class PointService {
         User user = userRepository.getReferenceById(userId);
         PointWithdrawal withdrawal = new PointWithdrawal(user, request.getPoints(), cashAmount);
         withdrawal.setFeeAmount(fee);
-        withdrawal.setBankName(request.getBankName());
-        withdrawal.setAccountNumber(maskAccountNumber(request.getAccountNumber()));
+        withdrawal.setBankName(account.getBankName());
+        withdrawal.setAccountNumber(account.getAccountNumberMasked());
         withdrawal.setStatus(PointWithdrawal.WithdrawalStatus.REQUESTED);
         pointWithdrawalRepository.save(withdrawal);
 
         // Record point usage history
         PointLedger ledger = new PointLedger(user, PointLedger.TransactionType.CONVERT,
                 request.getPoints().negate(), balance.getAvailablePoints(),
-                "Point conversion (Withdrawal request #" + withdrawal.getId() + ")");
+                "포인트 전환 (" + account.getBankName() + " " + account.getAccountNumberMasked() + ")");
         ledger.setReferenceType("PointWithdrawal");
         ledger.setReferenceId(withdrawal.getId());
         pointLedgerRepository.save(ledger);
 
         auditService.log(AuditLog.ActionType.CREATE, "PointWithdrawal", withdrawal.getId(),
-                "Point conversion request: " + request.getPoints() + "P -> " + cashAmount + " won");
+                "포인트 전환 요청: " + request.getPoints() + "P -> " + cashAmount + "원 (" + account.getBankName() + ")");
 
         return toWithdrawalResponse(withdrawal);
     }
@@ -168,14 +184,5 @@ public class PointService {
                 .processedAt(withdrawal.getProcessedAt())
                 .createdAt(withdrawal.getCreatedAt())
                 .build();
-    }
-
-    private String maskAccountNumber(String accountNumber) {
-        if (accountNumber == null || accountNumber.length() < 5) {
-            return accountNumber;
-        }
-        return accountNumber.substring(0, accountNumber.length() - 4)
-                .replaceAll(".", "*")
-                + accountNumber.substring(accountNumber.length() - 4);
     }
 }

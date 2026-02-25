@@ -1,17 +1,20 @@
 ﻿import { Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
-import { AdminTable } from '@/components/common/AdminTable';
 import { useAdminSnackbar } from '@/contexts/SnackbarContext';
-
-const rows = [
-  { id: 1, policyName: '기본 적립률', value: '1.0%', status: 'ACTIVE' },
-  { id: 2, policyName: '캐시백 프로모션', value: '2.0%', status: 'ACTIVE' },
-];
 
 export const BenefitsPage = () => {
   const { show } = useAdminSnackbar();
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
+
+  const handleSave = () => {
+    if (!name || !value) {
+      show('정책명과 값을 입력해주세요.', 'error');
+      return;
+    }
+    // TODO: API 연동 필요 - /admin/policies/benefits
+    show('혜택 정책 저장 기능이 아직 구현되지 않았습니다.', 'info');
+  };
 
   return (
     <Box>
@@ -23,20 +26,17 @@ export const BenefitsPage = () => {
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField label="정책명" value={name} onChange={(e) => setName(e.target.value)} />
             <TextField label="정책값" value={value} onChange={(e) => setValue(e.target.value)} />
-            <Button variant="contained" onClick={() => show('혜택 정책이 저장되었습니다. (모의)', 'success')}>
+            <Button variant="contained" onClick={handleSave}>
               저장
             </Button>
           </Stack>
         </CardContent>
       </Card>
-      <AdminTable
-        rows={rows}
-        columns={[
-          { field: 'policyName', headerName: '정책명', flex: 2 },
-          { field: 'value', headerName: '값', flex: 1 },
-          { field: 'status', headerName: '상태', flex: 1 },
-        ]}
-      />
+      <Box sx={{ textAlign: 'center', py: 4 }}>
+        <Typography color="text.secondary">
+          혜택 정책 API가 아직 구현되지 않았습니다.
+        </Typography>
+      </Box>
     </Box>
   );
 };

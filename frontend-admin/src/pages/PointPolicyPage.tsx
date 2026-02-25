@@ -1,6 +1,6 @@
 ﻿import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { Box, Button, Card, CardContent, CircularProgress, Stack, TextField, Typography } from '@mui/material';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { adminApi } from '@/api';
@@ -15,14 +15,11 @@ type FormValues = z.infer<typeof schema>;
 
 export const PointPolicyPage = () => {
   const { show } = useAdminSnackbar();
-  const { data } = useQuery({
+  const queryClient = useQueryClient();
+  const { data, isLoading, error } = useQuery({
     queryKey: ['admin-point-policy'],
     queryFn: async () => {
-      try {
-        return await adminApi.pointPolicy();
-      } catch {
-        return { feeRate: 2.5, dailyLimit: 500000 };
-      }
+      return await adminApi.pointPolicy();
     },
   });
 
@@ -33,9 +30,30 @@ export const PointPolicyPage = () => {
   } = useForm<FormValues>({ resolver: zodResolver(schema), values: { feeRate: data?.feeRate ?? 0, dailyLimit: data?.dailyLimit ?? 0 } });
 
   const onSubmit = async (form: FormValues) => {
-    await adminApi.savePointPolicy(form).catch(() => null);
-    show('포인트 정책이 저장되었습니다.', 'success');
+    try {
+      await adminApi.savePointPolicy(form);
+      queryClient.invalidateQueries({ queryKey: ['admin-point-policy'] });
+      show('포인트 정책이 저장되었습니다.', 'success');
+    } catch {
+      show('포인트 정책 저장에 실패했습니다.', 'error');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 4 }}>
+        <Typography color="text.secondary">포인트 정책을 불러올 수 없습니다.</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>

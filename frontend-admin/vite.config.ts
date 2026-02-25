@@ -10,6 +10,15 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../packages/shared/src'),
     },
   },
+  server: {
+    port: 5174,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: 'dist',
   },

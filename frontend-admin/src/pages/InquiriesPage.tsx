@@ -5,6 +5,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -38,24 +39,10 @@ export const InquiriesPage = () => {
   const { show } = useAdminSnackbar();
   const queryClient = useQueryClient();
 
-  const { data } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['admin-inquiries', queue],
     queryFn: async () => {
-      try {
-        return await adminApi.inquiries({ queue, page: 0, size: 30 });
-      } catch {
-        return {
-          content: [
-            { id: 101, category: 'CARD', title: '카드 한도 문의', status: 'OPEN', assignee: '', createdAt: '2026-02-24' },
-            { id: 102, category: 'BILLING', title: '결제 오류 문의', status: 'ASSIGNED', assignee: '박상담', createdAt: '2026-02-23' },
-            { id: 103, category: 'POINT', title: '포인트 전환 실패', status: 'ASSIGNED', assignee: '최상담', createdAt: '2026-02-22' },
-          ],
-          totalElements: 3,
-          totalPages: 1,
-          number: 0,
-          size: 30,
-        };
-      }
+      return await adminApi.inquiries({ queue, page: 0, size: 30 });
     },
   });
 
@@ -80,6 +67,22 @@ export const InquiriesPage = () => {
     if (status === 'ANSWERED') return <Chip size="small" color="primary" label="답변완료" />;
     return <Chip size="small" label="미배정" />;
   };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 4 }}>
+        <Typography color="text.secondary">문의 데이터를 불러올 수 없습니다.</Typography>
+      </Box>
+    );
+  }
 
   const summary = data?.content ?? [];
   const unassigned = summary.filter((x: any) => x.status === 'OPEN').length;

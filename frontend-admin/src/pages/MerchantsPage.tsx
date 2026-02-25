@@ -1,6 +1,6 @@
 ﻿import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { Box, Button, Card, CardContent, CircularProgress, Stack, TextField, Typography } from '@mui/material';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { adminApi } from '@/api';
@@ -14,17 +14,11 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export const MerchantsPage = () => {
-  const { data } = useQuery({
+  const queryClient = useQueryClient();
+  const { data, isLoading, error } = useQuery({
     queryKey: ['admin-merchants'],
     queryFn: async () => {
-      try {
-        return await adminApi.merchants();
-      } catch {
-        return [
-          { id: 1, name: '가맹점A', businessNo: '123-45-67890', status: 'ACTIVE' },
-          { id: 2, name: '가맹점B', businessNo: '444-55-88888', status: 'ACTIVE' },
-        ];
-      }
+      return await adminApi.merchants();
     },
   });
 
@@ -38,6 +32,7 @@ export const MerchantsPage = () => {
   const onSubmit = async (value: FormValues) => {
     await adminApi.saveMerchant(value).catch(() => null);
     reset();
+    queryClient.invalidateQueries({ queryKey: ['admin-merchants'] });
   };
 
   return (
@@ -56,14 +51,28 @@ export const MerchantsPage = () => {
           </Stack>
         </CardContent>
       </Card>
-      <AdminTable
-        rows={data ?? []}
-        columns={[
-          { field: 'name', headerName: '가맹점명', flex: 2 },
-          { field: 'businessNo', headerName: '사업자번호', flex: 1 },
-          { field: 'status', headerName: '상태', flex: 1 },
-        ]}
-      />
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography color="text.secondary">가맹점 데이터를 불러올 수 없습니다.</Typography>
+        </Box>
+      ) : (!data || data.length === 0) ? (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography color="text.secondary">등록된 가맹점이 없습니다.</Typography>
+        </Box>
+      ) : (
+        <AdminTable
+          rows={data}
+          columns={[
+            { field: 'name', headerName: '가맹점명', flex: 2 },
+            { field: 'businessNo', headerName: '사업자번호', flex: 1 },
+            { field: 'status', headerName: '상태', flex: 1 },
+          ]}
+        />
+      )}
     </Box>
   );
 };

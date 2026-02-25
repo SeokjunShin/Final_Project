@@ -1,25 +1,56 @@
-﻿import { Box, Card, CardContent, Grid, Typography } from '@mui/material';
+﻿import { Box, Card, CardContent, CircularProgress, Grid, Typography } from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
+import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
 
-const queueRows = [
-  { id: 1, title: '한도 상향 문의', status: 'RECEIVED', assignee: 'kim.op', createdAt: '2026-02-24' },
-  { id: 2, title: '문서 재제출 건', status: 'IN_PROGRESS', assignee: 'lee.op', createdAt: '2026-02-23' },
-];
+interface DashboardData {
+  todayInquiries: number;
+  pendingDocuments: number;
+  unreadMessages: number;
+  lockedUsers: number;
+  recentInquiries: { id: number; title: string; status: string; assignee?: string; createdAt: string }[];
+}
 
 export const AdminDashboardPage = () => {
+  const { data, isLoading, error } = useQuery<DashboardData>({
+    queryKey: ['admin-dashboard'],
+    queryFn: async () => {
+      const response = await adminApi.dashboard();
+      return response;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 4 }}>
+        <Typography color="text.secondary">대시보드 데이터를 불러올 수 없습니다.</Typography>
+      </Box>
+    );
+  }
+
+  const stats = [
+    ['오늘 문의', data.todayInquiries ?? 0],
+    ['문서 대기', data.pendingDocuments ?? 0],
+    ['미처리 메시지', data.unreadMessages ?? 0],
+    ['잠금 사용자', data.lockedUsers ?? 0],
+  ];
+
   return (
     <Box>
       <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
         운영 대시보드
       </Typography>
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        {[
-          ['오늘 문의', '42'],
-          ['문서 대기', '18'],
-          ['미처리 메시지', '7'],
-          ['잠금 사용자', '3'],
-        ].map(([title, value]) => (
-          <Grid item xs={12} md={3} key={title}>
+        {stats.map(([title, value]) => (
+          <Grid item xs={12} md={3} key={String(title)}>
             <Card>
               <CardContent>
                 <Typography color="text.secondary">{title}</Typography>
@@ -33,7 +64,7 @@ export const AdminDashboardPage = () => {
       </Grid>
       <AdminTable
         title="최근 문의 큐"
-        rows={queueRows}
+        rows={data.recentInquiries ?? []}
         columns={[
           { field: 'title', headerName: '제목', flex: 2 },
           { field: 'status', headerName: '상태', flex: 1 },

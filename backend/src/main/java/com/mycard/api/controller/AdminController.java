@@ -46,7 +46,6 @@ import java.util.*;
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@Slf4j
 public class AdminController {
 
     private final UserAdminService userAdminService;

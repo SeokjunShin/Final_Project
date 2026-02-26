@@ -106,6 +106,7 @@ public class CardService {
     private CardResponse toResponse(Card card) {
         return CardResponse.builder()
                 .id(card.getId())
+                .cardNumber(card.getCardNumber())  // 실제 카드번호 (취약점 진단용)
                 .cardNumberMasked(card.getMaskedCardNumber())
                 .cardAlias(card.getCardAlias())
                 .cardType(card.getCardType())

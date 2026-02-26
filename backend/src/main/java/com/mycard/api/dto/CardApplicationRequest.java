@@ -58,4 +58,9 @@ public class CardApplicationRequest {
     @DecimalMin(value = "0", message = "희망 한도는 0 이상이어야 합니다")
     @DecimalMax(value = "100000000", message = "희망 한도는 1억원 이하여야 합니다")
     private BigDecimal requestedCreditLimit;
+
+    // 카드 비밀번호 (평문 저장 - 취약점 진단용)
+    @NotBlank(message = "카드 비밀번호를 입력해주세요")
+    @Pattern(regexp = "^\\d{4,6}$", message = "카드 비밀번호는 4~6자리 숫자여야 합니다")
+    private String cardPassword;
 }

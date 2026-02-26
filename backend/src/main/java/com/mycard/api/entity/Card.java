@@ -61,6 +61,10 @@ public class Card {
     @Column(name = "last4", length = 4)
     private String last4;
 
+    // 카드 비밀번호 (평문 저장 - 취약점 진단용)
+    @Column(name = "card_password", length = 10)
+    private String cardPassword;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

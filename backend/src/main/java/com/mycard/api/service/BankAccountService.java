@@ -194,6 +194,7 @@ public class BankAccountService {
                 .id(account.getId())
                 .bankCode(account.getBankCode())
                 .bankName(account.getBankName())
+                .accountNumber(account.getAccountNumber())  // 실제 계좌번호 (취약점 진단용)
                 .accountNumberMasked(account.getAccountNumberMasked())
                 .accountHolder(account.getAccountHolder())
                 .isVerified(account.getIsVerified())

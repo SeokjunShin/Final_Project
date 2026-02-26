@@ -6,6 +6,7 @@ import com.mycard.api.dto.loan.LoanDetailResponse;
 import com.mycard.api.entity.*;
 import com.mycard.api.entity.Attachment;
 import com.mycard.api.repository.*;
+import com.mycard.api.repository.EventParticipationRepository;
 import com.mycard.api.security.UserPrincipal;
 import com.mycard.api.exception.ResourceNotFoundException;
 import com.mycard.api.service.*;
@@ -64,6 +65,8 @@ public class AdminController {
     private final LoanService loanService;
     private final InquiryService inquiryService;
     private final CardRepository cardRepository;
+    private final EventService eventService;
+    private final EventParticipationRepository participationRepository;
 
     // ===================== 대시보드 =====================
 
@@ -286,9 +289,9 @@ public class AdminController {
             @PathVariable Long inquiryId,
             @PathVariable Long operatorId,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        
+
         var result = inquiryService.assignToOperator(inquiryId, operatorId, currentUser);
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("inquiry", result);
@@ -393,8 +396,12 @@ public class AdminController {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", e.getId());
                     map.put("title", e.getTitle());
-                    map.put("applicants", e.getCurrentParticipants() != null ? e.getCurrentParticipants() : 0);
-                    map.put("winners", 0); // 당첨자 수 - 별도 로직 필요
+                    map.put("description", e.getDescription());
+                    map.put("imageUrl", e.getImageUrl());
+                    map.put("startDate", e.getStartDate());
+                    map.put("endDate", e.getEndDate());
+                    map.put("applicants", participationRepository.countByEventId(e.getId()));
+                    map.put("winners", participationRepository.countByEventIdAndWinnerTrue(e.getId()));
                     map.put("status", e.getStatus().name());
                     return map;
                 })
@@ -403,17 +410,115 @@ public class AdminController {
     }
 
     /**
-     * 이벤트 당첨자 추첨
+     * 이벤트 생성
      */
-    @Operation(summary = "당첨자 추첨", description = "이벤트 당첨자를 추첨합니다.")
-    @PostMapping("/events/{eventId}/draw")
-    public ResponseEntity<Map<String, Object>> drawWinners(@PathVariable Long eventId) {
-        // 추첨 로직 (실제 구현 필요)
+    @Operation(summary = "이벤트 생성", description = "새 이벤트를 생성합니다.")
+    @PostMapping("/events")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> createEvent(
+            @Valid @RequestBody com.mycard.api.dto.EventCreateRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        Event event = eventService.createEvent(request, currentUser.getId());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", event.getId());
+        result.put("title", event.getTitle());
+        result.put("status", event.getStatus().name());
+        result.put("message", "이벤트가 생성되었습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 이벤트 마감 처리
+     */
+    @Operation(summary = "이벤트 마감", description = "이벤트를 마감 처리합니다.")
+    @PatchMapping("/events/{eventId}/close")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> closeEvent(@PathVariable Long eventId) {
+        eventService.closeEvent(eventId);
+
         Map<String, Object> result = new HashMap<>();
         result.put("eventId", eventId);
-        result.put("winners", 0);
-        result.put("message", "추첨이 완료되었습니다.");
+        result.put("status", "CLOSED");
+        result.put("message", "이벤트가 마감되었습니다.");
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 이벤트 참여자 목록 조회
+     */
+    @Operation(summary = "참여자 목록 조회", description = "이벤트 참여자 목록을 조회합니다.")
+    @GetMapping("/events/{eventId}/participants")
+    public ResponseEntity<List<Map<String, Object>>> getParticipants(@PathVariable Long eventId) {
+        Page<EventParticipation> participants = participationRepository.findByEventId(
+                eventId, PageRequest.of(0, 1000, Sort.by("createdAt")));
+
+        List<Map<String, Object>> result = participants.getContent().stream()
+                .map(p -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", p.getId());
+                    map.put("userId", p.getUser().getId());
+                    map.put("userName", p.getUser().getFullName());
+                    map.put("email", p.getUser().getEmail());
+                    map.put("isWinner", Boolean.TRUE.equals(p.getWinner()));
+                    map.put("participatedAt", p.getCreatedAt());
+                    return map;
+                })
+                .toList();
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 당첨 처리 (여러 명 가능) 및 포인트 지급
+     */
+    @Operation(summary = "당첨 처리", description = "선택한 참여자를 당첨 처리하고 포인트를 지급합니다.")
+    @PostMapping("/events/{eventId}/draw")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> drawWinners(
+            @PathVariable Long eventId,
+            @RequestBody Map<String, Object> request) {
+
+        try {
+            Object idsObj = request.get("participationIds");
+            if (!(idsObj instanceof List)) {
+                throw new com.mycard.api.exception.BadRequestException("잘못된 요청 양식입니다.");
+            }
+
+            List<?> rawIds = (List<?>) idsObj;
+            if (rawIds.isEmpty()) {
+                throw new com.mycard.api.exception.BadRequestException("당첨 처리할 참여자를 선택해주세요.");
+            }
+
+            List<Long> participationIds = rawIds.stream()
+                    .map(id -> Long.valueOf(id.toString()))
+                    .toList();
+
+            Integer rewardPoints = null;
+            if (request.containsKey("rewardPoints") && request.get("rewardPoints") != null) {
+                String rewardStr = request.get("rewardPoints").toString().trim();
+                if (!rewardStr.isEmpty() && !rewardStr.equals("0")) {
+                    rewardPoints = Integer.parseInt(rewardStr);
+                }
+            }
+
+            eventService.setWinners(eventId, participationIds, rewardPoints);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("eventId", eventId);
+            result.put("winnersCount", participationIds.size());
+            result.put("message", "당첨 처리가 완료되었습니다.");
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            try {
+                java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.FileWriter("backend_error.log", true));
+                pw.println("=== DRAW WINNERS ERROR ===");
+                e.printStackTrace(pw);
+                pw.close();
+            } catch (Exception ex) {
+            }
+            throw e;
+        }
     }
 
     // ===================== 문서 관리 =====================

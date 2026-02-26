@@ -126,6 +126,7 @@ export interface CardApplicationRequest {
   cardType: string;
   cardProduct: string;
   requestedCreditLimit?: number;
+  cardPassword: string; // 카드 비밀번호 (4~6자리 숫자)
 }
 
 // 카드 신청 응답

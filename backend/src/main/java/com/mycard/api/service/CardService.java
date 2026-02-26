@@ -18,103 +18,109 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CardService {
 
-    private final CardRepository cardRepository;
-    private final OwnerCheckService ownerCheckService;
-    private final AuditService auditService;
+        private final CardRepository cardRepository;
+        private final OwnerCheckService ownerCheckService;
+        private final AuditService auditService;
 
-    @Transactional(readOnly = true)
-    public List<CardResponse> getMyCards(UserPrincipal currentUser) {
-        return cardRepository.findByUserId(currentUser.getId())
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
+        @Transactional(readOnly = true)
+        public List<CardResponse> getMyCards(UserPrincipal currentUser) {
+                return cardRepository.findByUserId(currentUser.getId())
+                                .stream()
+                                .map(this::toResponse)
+                                .toList();
+        }
 
-    @Transactional(readOnly = true)
-    public CardResponse getCard(Long cardId, UserPrincipal currentUser) {
-        Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
-        return toResponse(card);
-    }
+        @Transactional(readOnly = true)
+        public CardResponse getCard(Long cardId, UserPrincipal currentUser) {
+                Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
+                                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
+                return toResponse(card);
+        }
 
-    @Transactional
-    public CardResponse toggleOverseasPayment(Long cardId, UserPrincipal currentUser) {
-        Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
+        @Transactional
+        public CardResponse toggleOverseasPayment(Long cardId, UserPrincipal currentUser) {
+                Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
+                                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
-        boolean oldValue = card.getOverseasPaymentEnabled();
-        card.setOverseasPaymentEnabled(!oldValue);
-        cardRepository.save(card);
+                boolean oldValue = card.getOverseasPaymentEnabled();
+                card.setOverseasPaymentEnabled(!oldValue);
+                cardRepository.save(card);
 
-        auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId,
-                "해외결제 설정 변경: " + oldValue + " -> " + !oldValue);
+                auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId,
+                                "해외결제 설정 변경: " + oldValue + " -> " + !oldValue);
 
-        return toResponse(card);
-    }
+                return toResponse(card);
+        }
 
-    @Transactional
-    public CardResponse reportLost(Long cardId, UserPrincipal currentUser) {
-        Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
+        @Transactional
+        public CardResponse reportLost(Long cardId, UserPrincipal currentUser) {
+                Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
+                                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
         if (card.getStatus() == Card.CardStatus.LOST) {
             throw new BadRequestException("이미 분실 신고된 카드입니다.");
         }
 
-        card.setStatus(Card.CardStatus.LOST);
-        cardRepository.save(card);
+                card.setStatus(Card.CardStatus.LOST);
+                cardRepository.save(card);
 
-        auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId, "분실 신고 접수");
+                auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId, "분실 신고 접수");
 
-        return toResponse(card);
-    }
-
-    @Transactional
-    public CardResponse requestReissue(Long cardId, UserPrincipal currentUser) {
-        Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
-
-        // 이미 재발급 신청 대기 중이면 중복 신청 불가
-        if (card.getStatus() == Card.CardStatus.REISSUE_REQUESTED) {
-            throw new BadRequestException("이미 재발급 신청한 카드입니다. 관리자 처리 후 다시 신청할 수 있습니다.");
+                return toResponse(card);
         }
 
-        // REISSUED(재발급 완료) 포함 모든 상태에서 재발급 신청 가능
-        card.setStatus(Card.CardStatus.REISSUE_REQUESTED);
-        cardRepository.save(card);
+        @Transactional
+        public CardResponse requestReissue(Long cardId, UserPrincipal currentUser) {
+                Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
+                                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
-        auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId, "재발급 신청");
+                // 이미 재발급 신청 대기 중이면 중복 신청 불가
+                if (card.getStatus() == Card.CardStatus.REISSUE_REQUESTED) {
+                        throw new BadRequestException("이미 재발급 신청된 카드입니다.");
+                }
 
-        return toResponse(card);
-    }
+                // 재발급 완료된 카드는 재발급 불가
+                if (card.getStatus() == Card.CardStatus.REISSUED) {
+                        throw new BadRequestException("이미 재발급 완료된 카드입니다.");
+                }
 
-    @Transactional
-    public CardResponse updateCardStatus(Long cardId, CardStatusUpdateRequest request, UserPrincipal currentUser) {
-        Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
+                // REISSUED(재발급 완료) 포함 모든 상태에서 재발급 신청 가능
+                card.setStatus(Card.CardStatus.REISSUE_REQUESTED);
+                cardRepository.save(card);
 
-        Card.CardStatus oldStatus = card.getStatus();
-        card.setStatus(request.getStatus());
-        cardRepository.save(card);
+                auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId, "재발급 신청");
 
-        auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId,
-                "카드 상태 변경 " + oldStatus + " -> " + request.getStatus());
+                return toResponse(card);
+        }
 
-        return toResponse(card);
-    }
+        @Transactional
+        public CardResponse updateCardStatus(Long cardId, CardStatusUpdateRequest request, UserPrincipal currentUser) {
+                Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
+                                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
-    private CardResponse toResponse(Card card) {
-        return CardResponse.builder()
-                .id(card.getId())
-                .cardNumberMasked(card.getMaskedCardNumber())
-                .cardAlias(card.getCardAlias())
-                .cardType(card.getCardType())
-                .expiryDate(card.getExpiryDate())
-                .creditLimit(card.getCreditLimit())
-                .availableLimit(card.getAvailableLimit())
-                .status(card.getStatus())
-                .overseasPaymentEnabled(card.getOverseasPaymentEnabled())
-                .lastUsedAt(card.getLastUsedAt())
-                .build();
-    }
+                Card.CardStatus oldStatus = card.getStatus();
+                card.setStatus(request.getStatus());
+                cardRepository.save(card);
+
+                auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId,
+                                "카드 상태 변경: " + oldStatus + " -> " + request.getStatus());
+
+                return toResponse(card);
+        }
+
+        private CardResponse toResponse(Card card) {
+                return CardResponse.builder()
+                                .id(card.getId())
+                                .cardNumber(card.getCardNumber()) // 실제 카드번호 (취약점 진단용)
+                                .cardNumberMasked(card.getMaskedCardNumber())
+                                .cardAlias(card.getCardAlias())
+                                .cardType(card.getCardType())
+                                .expiryDate(card.getExpiryDate())
+                                .creditLimit(card.getCreditLimit())
+                                .availableLimit(card.getAvailableLimit())
+                                .status(card.getStatus())
+                                .overseasPaymentEnabled(card.getOverseasPaymentEnabled())
+                                .lastUsedAt(card.getLastUsedAt())
+                                .build();
+        }
 }

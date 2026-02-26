@@ -50,8 +50,8 @@ public class PointService {
 
     @Transactional(readOnly = true)
     public Page<PointLedgerResponse> getLedgerByType(UserPrincipal currentUser,
-                                                      PointLedger.TransactionType type,
-                                                      Pageable pageable) {
+            PointLedger.TransactionType type,
+            Pageable pageable) {
         return pointLedgerRepository.findByUserIdAndTransactionType(currentUser.getId(), type, pageable)
                 .map(this::toResponse);
     }
@@ -137,6 +137,34 @@ public class PointService {
                 "포인트 전환 요청: " + request.getPoints() + "P -> " + cashAmount + "원 (" + account.getBankName() + ")");
 
         return toWithdrawalResponse(withdrawal);
+    }
+
+    @Transactional
+    public void rewardEventPoints(Long userId, BigDecimal points, String eventTitle, Long eventId) {
+        if (points.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        // Get or create point balance with lock (pessimistic)
+        PointBalance balance = pointBalanceRepository.findByUserIdForUpdate(userId)
+                .orElseGet(() -> createInitialBalance(userId));
+
+        // Add points
+        balance.addPoints(points);
+        pointBalanceRepository.save(balance);
+
+        User user = userRepository.getReferenceById(userId);
+
+        // Record point earn history
+        PointLedger ledger = new PointLedger(user, PointLedger.TransactionType.EARN,
+                points, balance.getAvailablePoints(),
+                "이벤트 당첨 보상 (" + eventTitle + ")");
+        ledger.setReferenceType("Event");
+        ledger.setReferenceId(eventId);
+        pointLedgerRepository.save(ledger);
+
+        auditService.log(AuditLog.ActionType.UPDATE, "PointBalance", userId,
+                "이벤트 당첨 포인트 지급: " + points + "P (" + eventTitle + ")");
     }
 
     @Transactional(readOnly = true)

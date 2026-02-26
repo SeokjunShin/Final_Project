@@ -48,7 +48,7 @@ public class Event {
     @Transient
     private Integer currentParticipants = 0;
 
-    @Transient
+    @Column(name = "image_url", length = 500)
     private String imageUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -79,8 +79,10 @@ public class Event {
     }
 
     public boolean canParticipate() {
-        if (!isActive()) return false;
-        if (maxParticipants == null) return true;
+        if (!isActive())
+            return false;
+        if (maxParticipants == null)
+            return true;
         return currentParticipants < maxParticipants;
     }
 

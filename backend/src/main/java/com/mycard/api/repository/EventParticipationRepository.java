@@ -25,6 +25,10 @@ public interface EventParticipationRepository extends JpaRepository<EventPartici
 
     boolean existsByEventIdAndUserId(Long eventId, Long userId);
 
+    long countByEventId(Long eventId);
+
+    long countByEventIdAndWinnerTrue(Long eventId);
+
     @Query("SELECT ep FROM EventParticipation ep WHERE ep.user.id = :userId ORDER BY ep.createdAt DESC")
     List<EventParticipation> findByUserIdOrderByParticipatedAtDesc(@Param("userId") Long userId);
 }

@@ -103,13 +103,13 @@ export const DashboardPage = () => {
                 <Card sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
                   <CreditCardVisual
                     cardName={cardName}
-                    cardNumber={card.cardNumberMasked}
+                    cardNumber={card.cardNumber}
                     size="small"
                   />
                   <Box sx={{ flex: 1 }}>
                     <Typography sx={{ fontWeight: 700, mb: 0.5, fontSize: '0.95rem' }}>{cardName}</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', mb: 1, fontSize: '0.8rem' }}>
-                      {card.cardNumberMasked || '****-****-****-****'}
+                      {card.cardNumber || '****-****-****-****'}
                     </Typography>
                     <Stack direction="row" spacing={2}>
                       <Box>

@@ -111,13 +111,13 @@ export const CardsPage = () => {
                   <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="caption" color="text.secondary">한도</Typography>
                     <Typography sx={{ fontWeight: 600 }}>
-                      {(card.creditLimit || 0).toLocaleString()}원
+                      {(card.creditLimit || 0).toLocaleString()}만원
                     </Typography>
                   </Box>
                   <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="caption" color="text.secondary">사용 가능</Typography>
                     <Typography sx={{ fontWeight: 600, color: '#d32f2f' }}>
-                      {(card.availableLimit || 0).toLocaleString()}원
+                      {(card.availableLimit || 0).toLocaleString()}만원
                     </Typography>
                   </Box>
                 </Stack>

@@ -52,4 +52,20 @@ export const adminApi = {
     adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/disburse`).then((r) => r.data),
   cancelLoan: (id: number) =>
     adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/cancel`).then((r) => r.data),
+
+  // 재발급 신청 관리
+  reissueRequests: () =>
+    adminApiClient.get<ReissueRequestItem[]>('/admin/reissue-requests').then((r) => r.data),
+  completeReissue: (cardId: number) =>
+    adminApiClient.patch<ReissueRequestItem>(`/admin/cards/${cardId}/reissue-complete`).then((r) => r.data),
 };
+
+export interface ReissueRequestItem {
+  cardId: number;
+  cardNumberMasked: string;
+  cardAlias: string;
+  userId: number | null;
+  userName: string | null;
+  userEmail: string | null;
+  requestedAt: string | null;
+}

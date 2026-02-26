@@ -14,6 +14,11 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
     List<Card> findByUserId(Long userId);
 
+    List<Card> findByStatusOrderByUpdatedAtDesc(Card.CardStatus status);
+
+    @Query("SELECT c FROM Card c LEFT JOIN FETCH c.user WHERE c.status = :status ORDER BY c.updatedAt DESC")
+    List<Card> findByStatusWithUserOrderByUpdatedAtDesc(@Param("status") Card.CardStatus status);
+
     @Query("SELECT c FROM Card c WHERE c.user.id = :userId AND c.status IN ('ACTIVE', 'SUSPENDED', 'REISSUE_REQUESTED')")
     List<Card> findActiveCardsByUserId(@Param("userId") Long userId);
 

@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AuthUser, Role } from '@shared/types';
 import { hasAnyRole } from '@shared/auth';
 import { adminAuthApi } from '@/api/auth';
@@ -24,7 +24,11 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
     const token = adminTokenStorage.getAccessToken();
     const cached = localStorage.getItem('admin_profile');
     if (cached) {
-      setUser(JSON.parse(cached));
+      try {
+        setUser(JSON.parse(cached));
+      } catch {
+        localStorage.removeItem('admin_profile');
+      }
     }
     if (!token) {
       setReady(true);

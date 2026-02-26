@@ -84,6 +84,8 @@ public class SecurityConfig {
                 .requestMatchers("/admin/events/**").hasRole("ADMIN")
                 .requestMatchers("/admin/point-policies/**").hasRole("ADMIN")
                 .requestMatchers("/admin/audit-logs/**").hasRole("ADMIN")
+                .requestMatchers("/admin/reissue-requests").hasRole("ADMIN")
+                .requestMatchers("/admin/cards/**").hasRole("ADMIN")
 
                 // Operator + Admin endpoints
                 .requestMatchers("/operator/**").hasAnyRole("OPERATOR", "ADMIN")

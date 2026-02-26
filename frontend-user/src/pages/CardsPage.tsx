@@ -1,4 +1,4 @@
-﻿import { Box, Button, Card, CardContent, FormControlLabel, Grid, Stack, Switch, Typography, Chip } from '@mui/material';
+import { Box, Button, Card, CardContent, FormControlLabel, Grid, Stack, Switch, Typography, Chip } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cardsApi } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';
@@ -23,18 +23,46 @@ const getStatusInfo = (status: string) => {
 export const CardsPage = () => {
   const { show } = useSnackbar();
   const queryClient = useQueryClient();
-  const { data } = useQuery({
+  const { data, isError, refetch, isLoading } = useQuery({
     queryKey: ['cards'],
-    queryFn: async () => {
-      try {
-        return await cardsApi.list();
-      } catch {
-        return [];
-      }
-    },
+    queryFn: () => cardsApi.list(),
   });
 
   const cards = data ?? [];
+
+  if (isError) {
+    return (
+      <Box>
+        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
+          <CreditCardIcon sx={{ color: '#d32f2f', fontSize: 28 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>카드관리</Typography>
+        </Stack>
+        <Card sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h6" sx={{ mb: 1, color: '#666' }}>카드 목록을 불러오지 못했습니다</Typography>
+          <Typography color="text.secondary" sx={{ mb: 3 }}>
+            로그인 상태를 확인하거나 잠시 후 다시 시도해 주세요.
+          </Typography>
+          <Button variant="contained" onClick={() => refetch()} sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}>
+            다시 불러오기
+          </Button>
+        </Card>
+      </Box>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Box>
+        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
+          <CreditCardIcon sx={{ color: '#d32f2f', fontSize: 28 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>카드관리</Typography>
+        </Stack>
+        <Card sx={{ textAlign: 'center', py: 8 }}>
+          <Typography color="text.secondary">카드 목록을 불러오는 중...</Typography>
+        </Card>
+      </Box>
+    );
+  }
 
   if (cards.length === 0) {
     return (
@@ -127,8 +155,8 @@ export const CardsPage = () => {
                     control={
                       <Switch
                         checked={card.overseasPaymentEnabled || false}
-                        onChange={async (_, checked) => {
-                          await cardsApi.toggleOverseas(card.id, checked).catch(() => null);
+                        onChange={async () => {
+                          await cardsApi.toggleOverseas(card.id).catch(() => null);
                           show('해외결제 설정이 변경되었습니다.', 'success');
                           queryClient.invalidateQueries({ queryKey: ['cards'] });
                         }}
@@ -148,9 +176,19 @@ export const CardsPage = () => {
                     size="small"
                     startIcon={<RefreshIcon sx={{ fontSize: 16 }} />}
                     onClick={async () => {
-                      await cardsApi.requestReissue(card.id).catch(() => null);
-                      show('재발급 신청이 접수되었습니다.', 'success');
-                      queryClient.invalidateQueries({ queryKey: ['cards'] });
+                      try {
+                        await cardsApi.requestReissue(card.id);
+                        show('재발급 신청이 접수되었습니다. 관리자 확인 후 처리됩니다.', 'success');
+                        queryClient.invalidateQueries({ queryKey: ['cards'] });
+                      } catch (e: any) {
+                        const data = e?.response?.data;
+                        const msg =
+                          (typeof data?.message === 'string' ? data.message : null) ??
+                          (typeof data === 'string' ? data : null) ??
+                          (typeof e?.message === 'string' ? e.message : null) ??
+                          '재발급 신청에 실패했습니다.';
+                        show(String(msg), 'error');
+                      }
                     }}
                     sx={{ color: '#666', fontSize: '0.75rem' }}
                   >

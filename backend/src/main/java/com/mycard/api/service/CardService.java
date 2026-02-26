@@ -33,21 +33,21 @@ public class CardService {
     @Transactional(readOnly = true)
     public CardResponse getCard(Long cardId, UserPrincipal currentUser) {
         Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("移대뱶瑜?李얠쓣 ???놁뒿?덈떎."));
+                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
         return toResponse(card);
     }
 
     @Transactional
     public CardResponse toggleOverseasPayment(Long cardId, UserPrincipal currentUser) {
         Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("移대뱶瑜?李얠쓣 ???놁뒿?덈떎."));
+                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
         boolean oldValue = card.getOverseasPaymentEnabled();
         card.setOverseasPaymentEnabled(!oldValue);
         cardRepository.save(card);
 
         auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId,
-                "?댁쇅寃곗젣 ?ㅼ젙 蹂寃? " + oldValue + " -> " + !oldValue);
+                "해외결제 설정 변경 " + oldValue + " -> " + !oldValue);
 
         return toResponse(card);
     }
@@ -55,16 +55,16 @@ public class CardService {
     @Transactional
     public CardResponse reportLost(Long cardId, UserPrincipal currentUser) {
         Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("移대뱶瑜?李얠쓣 ???놁뒿?덈떎."));
+                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
         if (card.getStatus() == Card.CardStatus.LOST) {
-            throw new BadRequestException("?대? 遺꾩떎 ?좉퀬??移대뱶?낅땲??");
+            throw new BadRequestException("이미 분실 신고한 카드입니다.");
         }
 
         card.setStatus(Card.CardStatus.LOST);
         cardRepository.save(card);
 
-        auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId, "遺꾩떎 ?좉퀬 ?묒닔");
+        auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId, "분실 신고 접수");
 
         return toResponse(card);
     }
@@ -72,20 +72,18 @@ public class CardService {
     @Transactional
     public CardResponse requestReissue(Long cardId, UserPrincipal currentUser) {
         Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("移대뱶瑜?李얠쓣 ???놁뒿?덈떎."));
+                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
+        // 이미 재발급 신청 대기 중이면 중복 신청 불가
         if (card.getStatus() == Card.CardStatus.REISSUE_REQUESTED) {
-            throw new BadRequestException("?대? ?щ컻湲??좎껌??移대뱶?낅땲??");
+            throw new BadRequestException("이미 재발급 신청한 카드입니다. 관리자 처리 후 다시 신청할 수 있습니다.");
         }
 
-        if (card.getStatus() != Card.CardStatus.LOST && card.getStatus() != Card.CardStatus.SUSPENDED) {
-            throw new BadRequestException("遺꾩떎 ?먮뒗 留뚮즺??移대뱶留??щ컻湲??좎껌?????덉뒿?덈떎.");
-        }
-
+        // REISSUED(재발급 완료) 포함 모든 상태에서 재발급 신청 가능
         card.setStatus(Card.CardStatus.REISSUE_REQUESTED);
         cardRepository.save(card);
 
-        auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId, "?щ컻湲??좎껌");
+        auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId, "재발급 신청");
 
         return toResponse(card);
     }
@@ -93,14 +91,14 @@ public class CardService {
     @Transactional
     public CardResponse updateCardStatus(Long cardId, CardStatusUpdateRequest request, UserPrincipal currentUser) {
         Card card = cardRepository.findByIdAndUserId(cardId, currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("移대뱶瑜?李얠쓣 ???놁뒿?덈떎."));
+                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
         Card.CardStatus oldStatus = card.getStatus();
         card.setStatus(request.getStatus());
         cardRepository.save(card);
 
         auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId,
-                "移대뱶 ?곹깭 蹂寃? " + oldStatus + " -> " + request.getStatus());
+                "카드 상태 변경 " + oldStatus + " -> " + request.getStatus());
 
         return toResponse(card);
     }

@@ -1,4 +1,4 @@
-﻿import { Box, Button, CircularProgress, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Typography } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
@@ -45,6 +45,7 @@ export const UsersPage = () => {
       ) : (
         <AdminTable
           rows={data}
+          getRowId={(row: { id: number }) => row.id}
           columns={[
             { field: 'name', headerName: '이름', flex: 1 },
             { field: 'email', headerName: '이메일', flex: 2 },

@@ -1,10 +1,12 @@
 package com.mycard.api.controller;
 
 import com.mycard.api.dto.*;
+import com.mycard.api.dto.card.ReissueRequestResponse;
 import com.mycard.api.dto.loan.LoanDetailResponse;
 import com.mycard.api.entity.*;
 import com.mycard.api.repository.*;
 import com.mycard.api.security.UserPrincipal;
+import com.mycard.api.exception.ResourceNotFoundException;
 import com.mycard.api.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -56,6 +58,7 @@ public class AdminController {
     private final EventRepository eventRepository;
     private final AuditLogRepository auditLogRepository;
     private final LoanService loanService;
+    private final CardRepository cardRepository;
 
     // ===================== 대시보드 =====================
 
@@ -681,5 +684,53 @@ public class AdminController {
     public ResponseEntity<Map<String, Long>> getPendingApplicationCount() {
         long count = cardApplicationService.getPendingCount();
         return ResponseEntity.ok(Map.of("count", count));
+    }
+
+    // ===================== 재발급 신청 관리 =====================
+
+    @Operation(summary = "재발급 신청 목록", description = "상태가 재발급 신청(REISSUE_REQUESTED)인 카드 목록을 조회합니다.")
+    @GetMapping("/reissue-requests")
+    public ResponseEntity<List<ReissueRequestResponse>> getReissueRequests() {
+        List<Card> cards = cardRepository.findByStatusWithUserOrderByUpdatedAtDesc(Card.CardStatus.REISSUE_REQUESTED);
+        List<ReissueRequestResponse> list = cards.stream()
+                .map(c -> {
+                    User u = c.getUser();
+                    return ReissueRequestResponse.builder()
+                            .cardId(c.getId())
+                            .cardNumberMasked(c.getMaskedCardNumber())
+                            .cardAlias(c.getCardAlias() != null ? c.getCardAlias() : c.getCardType())
+                            .userId(u != null ? u.getId() : null)
+                            .userName(u != null ? u.getFullName() : null)
+                            .userEmail(u != null ? u.getEmail() : null)
+                            .requestedAt(c.getUpdatedAt())
+                            .build();
+                })
+                .toList();
+        return ResponseEntity.ok(list);
+    }
+
+    @Operation(summary = "재발급 완료 처리", description = "재발급 신청 카드를 재발급 완료(REISSUED) 상태로 변경합니다.")
+    @PatchMapping("/cards/{cardId}/reissue-complete")
+    @Transactional
+    public ResponseEntity<ReissueRequestResponse> completeReissue(@PathVariable Long cardId) {
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
+        if (card.getStatus() != Card.CardStatus.REISSUE_REQUESTED) {
+            throw new com.mycard.api.exception.BadRequestException("재발급 신청 상태인 카드만 완료 처리할 수 있습니다.");
+        }
+        card.setStatus(Card.CardStatus.REISSUED);
+        cardRepository.save(card);
+
+        User u = card.getUser();
+        ReissueRequestResponse response = ReissueRequestResponse.builder()
+                .cardId(card.getId())
+                .cardNumberMasked(card.getMaskedCardNumber())
+                .cardAlias(card.getCardAlias() != null ? card.getCardAlias() : card.getCardType())
+                .userId(u != null ? u.getId() : null)
+                .userName(u != null ? u.getFullName() : null)
+                .userEmail(u != null ? u.getEmail() : null)
+                .requestedAt(card.getUpdatedAt())
+                .build();
+        return ResponseEntity.ok(response);
     }
 }

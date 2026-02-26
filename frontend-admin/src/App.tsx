@@ -1,10 +1,13 @@
-﻿import { Box, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { RouterProvider } from 'react-router-dom';
 import { router } from '@/routes/router';
 
 const isAllowedHost = () => {
   const host = window.location.hostname;
-  return host === 'admin.mycard.local' || host === 'localhost' || host === '127.0.0.1';
+  // 로컬/개발: localhost, 127.0.0.1, admin.mycard.local, 또는 개발서버(5174) 포트로 접속 시 허용
+  if (host === 'admin.mycard.local' || host === 'localhost' || host === '127.0.0.1') return true;
+  if (import.meta.env.DEV && window.location.port === '5174') return true; // Vite 개발 서버
+  return false;
 };
 
 export const App = () => {

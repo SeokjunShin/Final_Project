@@ -36,9 +36,10 @@ export const approvalsApi = {
 
 export const cardsApi = {
   list: () => apiClient.get<CardItem[]>('/cards').then((r) => r.data),
-  toggleOverseas: (cardId: number, enabled: boolean) =>
-    apiClient.patch(`/cards/${cardId}/overseas`, { enabled }),
-  requestReissue: (cardId: number) => apiClient.post(`/cards/${cardId}/reissue`),
+  toggleOverseas: (cardId: number) =>
+    apiClient.patch<CardItem>(`/cards/${cardId}/overseas-payment`).then((r) => r.data),
+  requestReissue: (cardId: number) =>
+    apiClient.post<CardItem>(`/cards/${cardId}/request-reissue`).then((r) => r.data),
 };
 
 export const pointsApi = {

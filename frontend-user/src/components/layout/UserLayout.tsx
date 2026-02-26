@@ -88,7 +88,10 @@ export const UserLayout = () => {
         }}
       >
         {userMenu.map((item) => {
-          const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+          const active =
+            location.pathname === item.path ||
+            // 하위 경로에서도 활성 표시 (단, '/cards'처럼 다른 메뉴의 상위 경로인 경우는 제외)
+            (item.path !== '/cards' && location.pathname.startsWith(`${item.path}/`));
           return (
             <ListItemButton
               key={item.path}

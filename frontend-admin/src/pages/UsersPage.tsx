@@ -28,8 +28,6 @@ const getStatusInfo = (status: string) => {
   }
 };
 
-const INACTIVE_DAYS = 90;
-
 export const UsersPage = () => {
   const queryClient = useQueryClient();
   const { show } = useAdminSnackbar();

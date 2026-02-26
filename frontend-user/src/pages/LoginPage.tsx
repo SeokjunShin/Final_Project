@@ -1,7 +1,9 @@
-﻿import { z } from 'zod';
+import { useState } from 'react';
+import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -25,23 +27,29 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export const LoginPage = () => {
-  const { login } = useAuth();
+  const { login, loginReactivate } = useAuth();
   const { show } = useSnackbar();
   const navigate = useNavigate();
 
+  const [loginError, setLoginError] = useState<{ code?: string; message?: string } | null>(null);
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    getValues,
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const onSubmit = async (value: FormValues) => {
+    setLoginError(null);
     try {
       await login(value);
       show('로그인되었습니다.', 'success');
       navigate('/dashboard');
-    } catch {
-      show('로그인에 실패했습니다.', 'error');
+    } catch (e: unknown) {
+      const data = (e as { response?: { data?: { code?: string; message?: string } } })?.response?.data;
+      const code = data?.code;
+      const message = data?.message;
+      setLoginError({ code, message: message ?? '로그인에 실패했습니다.' });
     }
   };
 
@@ -84,6 +92,45 @@ export const LoginPage = () => {
               사용자 포털(mycard.local)
             </Typography>
             <Stack spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
+              {loginError && (
+                <Alert severity="error" onClose={() => setLoginError(null)}>
+                  {loginError.message}
+                  {loginError.code === 'ACCOUNT_DISABLED' && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        비활성 상태인 계정입니다. 계속 사용하시려면 비밀번호를 다시 확인하고 비활성화를 해제해 주세요.
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={async () => {
+                          const values = getValues();
+                          try {
+                            await loginReactivate(values);
+                            show('비활성이 해제되고 로그인되었습니다.', 'success');
+                            navigate('/dashboard');
+                          } catch (e: unknown) {
+                            const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
+                            setLoginError({
+                              code: 'REACTIVATE_FAILED',
+                              message: data?.message ?? '비활성 해제에 실패했습니다. 이메일/비밀번호를 다시 확인해 주세요.',
+                            });
+                          }
+                        }}
+                      >
+                        비활성 해제 후 로그인
+                      </Button>
+                    </Box>
+                  )}
+                  {loginError.code === 'ACCOUNT_LOCKED' && (
+                    <Typography component="span" sx={{ display: 'block', mt: 0.5 }}>
+                      <Link component={RouterLink} to="/account/request-activation" underline="hover" sx={{ fontWeight: 600 }}>
+                        잠금 해제/문의 페이지로 이동
+                      </Link>
+                    </Typography>
+                  )}
+                </Alert>
+              )}
               <TextField label="이메일" autoComplete="username" {...register('email')} error={!!errors.email} helperText={errors.email?.message} />
               <TextField
                 label="비밀번호"

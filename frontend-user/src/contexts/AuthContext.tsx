@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { authApi } from '@/api/auth';
 import { tokenStorage } from '@/api/client';
 import type { AuthUser } from '@shared/types';
@@ -9,6 +9,7 @@ interface AuthContextValue {
   ready: boolean;
   isAuthenticated: boolean;
   login: (payload: LoginRequest) => Promise<void>;
+  loginReactivate: (payload: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -39,6 +40,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(result.user);
   };
 
+  const loginReactivate = async (payload: LoginRequest) => {
+    const result = await authApi.loginReactivate(payload);
+    setUser(result.user);
+  };
+
   const logout = async () => {
     await authApi.logout();
     setUser(null);
@@ -50,6 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       ready,
       isAuthenticated: Boolean(user && tokenStorage.getAccessToken()),
       login,
+      loginReactivate,
       logout,
     }),
     [ready, user],

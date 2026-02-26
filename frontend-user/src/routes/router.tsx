@@ -20,6 +20,7 @@ import { NotificationsPage } from '@/pages/NotificationsPage';
 import { EventsPage } from '@/pages/EventsPage';
 import { PublicEventsPage } from '@/pages/PublicEventsPage';
 import { CardProductsPage } from '@/pages/CardProductsPage';
+import { RequestActivationPage } from '@/pages/account/RequestActivationPage';
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage';
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/account/request-activation', element: <RequestActivationPage /> },
     ],
   },
   {

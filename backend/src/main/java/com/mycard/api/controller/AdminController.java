@@ -178,16 +178,22 @@ public class AdminController {
 
     /**
      * 사용자 상태 변경 (state 경로)
+     * ACTIVE=활성화, LOCKED=잠금, INACTIVE=비활성
      */
     @Operation(summary = "사용자 상태 변경 (state)", description = "사용자의 상태를 변경합니다.")
     @PatchMapping("/users/{userId}/state")
+    @Transactional
     public ResponseEntity<Map<String, Object>> updateUserState(
             @PathVariable Long userId,
             @RequestBody Map<String, String> request) {
 
-        String state = request.get("state");
+        String state = request != null ? request.get("state") : null;
+        if (state == null || state.isBlank()) {
+            throw new com.mycard.api.exception.BadRequestException("state 값이 필요합니다. (ACTIVE, LOCKED, INACTIVE)");
+        }
+
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
 
         if ("LOCKED".equals(state)) {
             user.lock();
@@ -196,6 +202,8 @@ public class AdminController {
         } else if ("ACTIVE".equals(state)) {
             user.enable();
             user.unlock();
+        } else {
+            throw new com.mycard.api.exception.BadRequestException("지원하지 않는 상태입니다. ACTIVE, LOCKED, INACTIVE 중 하나를 사용하세요.");
         }
 
         userRepository.save(user);

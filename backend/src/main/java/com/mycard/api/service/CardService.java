@@ -58,7 +58,7 @@ public class CardService {
                 .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
         if (card.getStatus() == Card.CardStatus.LOST) {
-            throw new BadRequestException("이미 분실 신고한 카드입니다.");
+            throw new BadRequestException("이미 분실 신고된 카드입니다.");
         }
 
         card.setStatus(Card.CardStatus.LOST);

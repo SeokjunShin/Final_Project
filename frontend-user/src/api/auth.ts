@@ -1,4 +1,4 @@
-﻿import { apiClient, tokenStorage } from './client';
+import { apiClient, tokenStorage } from './client';
 import type { LoginRequest, LoginResponse, RegisterRequest } from '@/types';
 import type { AuthUser } from '@shared/types';
 
@@ -8,6 +8,15 @@ export const authApi = {
   },
   login: async (payload: LoginRequest) => {
     const { data } = await apiClient.post<LoginResponse>('/auth/login', payload);
+    tokenStorage.setAccessToken(data.accessToken);
+    if (data.refreshToken) {
+      tokenStorage.setRefreshToken(data.refreshToken);
+    }
+    localStorage.setItem('user_profile', JSON.stringify(data.user));
+    return data;
+  },
+  loginReactivate: async (payload: LoginRequest) => {
+    const { data } = await apiClient.post<LoginResponse>('/auth/login/reactivate', payload);
     tokenStorage.setAccessToken(data.accessToken);
     if (data.refreshToken) {
       tokenStorage.setRefreshToken(data.refreshToken);

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -102,7 +103,20 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
                 "ACCOUNT_LOCKED",
-                "계정이 잠겨있습니다. 잠시 후 다시 시도해주세요.",
+                "계정이 잠금 처리되었습니다. 관리자에게 문의해 주세요.",
+                getPath(request)
+        );
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ErrorResponse> handleDisabledException(
+            DisabledException ex, WebRequest request) {
+        log.debug("Account disabled");
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                "ACCOUNT_DISABLED",
+                "계정이 비활성화되었습니다. 관리자에게 문의하시거나 활성화 요청 페이지에서 요청해 주세요.",
                 getPath(request)
         );
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);

@@ -39,6 +39,13 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "비활성 계정 로그인 및 활성화")
+    @PostMapping("/login/reactivate")
+    public ResponseEntity<LoginResponse> loginAndReactivate(@Valid @RequestBody LoginRequest request) {
+        LoginResponse response = authService.loginAndReactivate(request);
+        return ResponseEntity.ok(response);
+    }
+
     @Operation(summary = "현재 사용자 정보")
     @GetMapping("/me")
     public ResponseEntity<AuthUserResponse> me(@CurrentUser UserPrincipal user) {

@@ -134,6 +134,80 @@ public class AuthService {
         }
     }
 
+    /**
+     * 비활성(DISA BLED) 계정에 대해 비밀번호를 다시 확인한 뒤
+     * 활성화 + 로그인까지 한 번에 처리하는 전용 로그인 API.
+     */
+    @Transactional
+    public LoginResponse loginAndReactivate(LoginRequest request) {
+        String email = request.getEmail();
+        HttpServletRequest httpRequest = getCurrentHttpRequest();
+        String ipAddress = getClientIp(httpRequest);
+        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다."));
+
+        // 잠금 계정은 여기서도 동일하게 막기
+        if (user.getLocked() && user.getLockExpiryTime() != null) {
+            if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
+                logLoginAttempt(email, ipAddress, userAgent, false, "Account locked (reactivate)");
+                throw new LockedException("계정이 잠겨있습니다. " +
+                        user.getLockExpiryTime() + " 이후에 다시 시도해주세요.");
+            } else {
+                user.setLocked(false);
+                user.setLockExpiryTime(null);
+                user.setFailedLoginAttempts(0);
+                userRepository.save(user);
+            }
+        }
+
+        // 비밀번호 직접 검증
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            handleFailedLogin(email, ipAddress, userAgent);
+            throw new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다.");
+        }
+
+        // 비활성 -> 활성 전환
+        if (!user.getEnabled()) {
+            user.enable();
+        }
+        user.setFailedLoginAttempts(0);
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        UserPrincipal userPrincipal = UserPrincipal.create(user);
+
+        // 토큰 발급
+        String accessToken = tokenProvider.generateAccessToken(userPrincipal);
+        String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
+        saveRefreshToken(userPrincipal.getId(), refreshToken, ipAddress, userAgent);
+
+        // 로그인 성공 로깅
+        logLoginAttempt(email, ipAddress, userAgent, true, "Reactivated disabled account");
+        auditService.log(AuditLog.ActionType.LOGIN, "User", userPrincipal.getId(), "User reactivated and logged in");
+
+        List<String> roles = userPrincipal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
+
+        String primaryRole = roles.isEmpty() ? "USER" : roles.get(0).replace("ROLE_", "");
+
+        LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
+                .id(userPrincipal.getId())
+                .name(userPrincipal.getFullName())
+                .email(userPrincipal.getUsername())
+                .role(primaryRole)
+                .build();
+
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(userInfo)
+                .roles(roles)
+                .build();
+    }
+
     @Transactional
     public TokenResponse refreshToken(String refreshToken) {
         if (!tokenProvider.validateToken(refreshToken)) {

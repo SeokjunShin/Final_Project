@@ -1,4 +1,4 @@
-﻿import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { LoginResponse } from '@/types';
 
 const API_BASE_URL = '/api';
@@ -51,8 +51,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const isLoginRequest = original?.url?.includes('/auth/login');
 
-    if (error.response?.status === 401 && !original?._retry && !original?.url?.includes('/auth/login')) {
+    if (error.response?.status === 401 && !original?._retry && !isLoginRequest) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           queue.push({ resolve, reject });
@@ -92,7 +93,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isLoginRequest) {
       tokenStorage.clear();
       window.location.href = '/login';
     }

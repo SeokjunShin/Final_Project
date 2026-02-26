@@ -58,7 +58,7 @@ public class FileStorageService {
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             log.error("Failed to store file: {}", originalFilename, e);
-            throw new BadRequestException("ÆÄÀÏ ÀúÀå¿¡ ½ÇÆĞÇß½À´Ï´Ù.");
+            throw new BadRequestException("íŒŒì¼ ì €ì¥ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
         }
 
         User user = userRepository.getReferenceById(currentUser.getId());
@@ -84,25 +84,25 @@ public class FileStorageService {
             if (resource.exists() && resource.isReadable()) {
                 return resource;
             }
-            throw new ResourceNotFoundException("ÆÄÀÏ", attachmentId);
+            throw new ResourceNotFoundException("íŒŒì¼", attachmentId);
         } catch (MalformedURLException e) {
-            throw new ResourceNotFoundException("ÆÄÀÏ", attachmentId);
+            throw new ResourceNotFoundException("íŒŒì¼", attachmentId);
         }
     }
 
     @Transactional(readOnly = true)
     public Attachment getAttachment(Long attachmentId) {
         return attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ã·ºÎÆÄÀÏ", attachmentId));
+                .orElseThrow(() -> new ResourceNotFoundException("ì²¨ë¶€íŒŒì¼", attachmentId));
     }
 
     @Transactional
     public void deleteFile(Long attachmentId, UserPrincipal currentUser) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ã·ºÎÆÄÀÏ", attachmentId));
+                .orElseThrow(() -> new ResourceNotFoundException("ì²¨ë¶€íŒŒì¼", attachmentId));
 
         if (!attachment.getUploadedBy().getId().equals(currentUser.getId()) && !currentUser.isAdmin()) {
-            throw new com.mycard.api.exception.AccessDeniedException("Ã·ºÎÆÄÀÏ »èÁ¦ ±ÇÇÑÀÌ ¾ø½À´Ï´Ù.");
+            throw new com.mycard.api.exception.AccessDeniedException("ì²¨ë¶€íŒŒì¼ ì‚­ì œ ê¶Œí•œì´ ì—†ìŠµë‹ˆë‹¤.");
         }
 
         try {
@@ -117,27 +117,27 @@ public class FileStorageService {
 
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new BadRequestException("ÆÄÀÏÀÌ ºñ¾î ÀÖ½À´Ï´Ù.");
+            throw new BadRequestException("íŒŒì¼ì´ ë¹„ì–´ ìˆìŠµë‹ˆë‹¤.");
         }
 
         if (file.getSize() > maxFileSize) {
-            throw new BadRequestException("ÆÄÀÏ Å©±â°¡ Çã¿ë ¹üÀ§¸¦ ÃÊ°úÇß½À´Ï´Ù.");
+            throw new BadRequestException("íŒŒì¼ í¬ê¸°ê°€ í—ˆìš© ë²”ìœ„ë¥¼ ì´ˆê³¼í–ˆìŠµë‹ˆë‹¤.");
         }
 
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null || originalFilename.isBlank()) {
-            throw new BadRequestException("ÆÄÀÏ¸íÀÌ ¿Ã¹Ù¸£Áö ¾Ê½À´Ï´Ù.");
+            throw new BadRequestException("íŒŒì¼ëª…ì´ ì˜¬ë°”ë¥´ì§€ ì•ŠìŠµë‹ˆë‹¤.");
         }
 
         String extension = getFileExtension(originalFilename).toLowerCase();
         List<String> allowed = Arrays.asList(allowedExtensions.split(","));
         if (!allowed.contains(extension)) {
-            throw new BadRequestException("Çã¿ëµÇÁö ¾ÊÀº ÆÄÀÏ Çü½ÄÀÔ´Ï´Ù.");
+            throw new BadRequestException("í—ˆìš©ë˜ì§€ ì•Šì€ íŒŒì¼ í˜•ì‹ì…ë‹ˆë‹¤.");
         }
 
         String contentType = file.getContentType();
         if (contentType == null || contentType.isBlank()) {
-            throw new BadRequestException("ÆÄÀÏ Çü½ÄÀ» È®ÀÎÇÒ ¼ö ¾ø½À´Ï´Ù.");
+            throw new BadRequestException("íŒŒì¼ í˜•ì‹ì„ í™•ì¸í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
         }
     }
 

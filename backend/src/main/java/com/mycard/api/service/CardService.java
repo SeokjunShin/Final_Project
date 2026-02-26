@@ -123,13 +123,4 @@ public class CardService {
                                 .lastUsedAt(card.getLastUsedAt())
                                 .build();
         }
-
-        
-
-        
-
-        
-
-        
-
-      
+}

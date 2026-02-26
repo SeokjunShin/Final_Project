@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public class CardResponse {
 
     private Long id;
+    private String cardNumber;  // 실제 카드번호 (취약점 진단용)
     private String cardNumberMasked;
     private String cardAlias;
     private String cardType;

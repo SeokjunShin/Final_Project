@@ -90,6 +90,7 @@ export const CardApplicationsPage = () => {
     cardType: 'VISA',
     cardProduct: 'Gold',
     requestedCreditLimit: 0,
+    cardPassword: '',
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof CardApplicationRequest, string>>>({});
@@ -148,6 +149,9 @@ export const CardApplicationsPage = () => {
     if (step === 2) {
       if (!formData.cardType) newErrors.cardType = '카드 종류를 선택해주세요';
       if (!formData.cardProduct) newErrors.cardProduct = '카드 상품을 선택해주세요';
+      if (!formData.cardPassword) newErrors.cardPassword = '카드 비밀번호를 입력해주세요';
+      else if (!/^\d{4,6}$/.test(formData.cardPassword))
+        newErrors.cardPassword = '카드 비밀번호는 4~6자리 숫자여야 합니다';
     }
 
     setErrors(newErrors);
@@ -192,6 +196,7 @@ export const CardApplicationsPage = () => {
         cardType: 'VISA',
         cardProduct: 'Gold',
         requestedCreditLimit: 0,
+        cardPassword: '',
       });
       setActiveStep(0);
     } catch (e: unknown) {
@@ -391,6 +396,19 @@ export const CardApplicationsPage = () => {
             endAdornment: <InputAdornment position="end">만원</InputAdornment>,
           }}
           helperText="실제 한도는 심사 결과에 따라 달라질 수 있습니다"
+        />
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <TextField
+          fullWidth
+          required
+          label="카드 비밀번호"
+          type="password"
+          value={formData.cardPassword}
+          onChange={handleChange('cardPassword')}
+          error={!!errors.cardPassword}
+          helperText={errors.cardPassword || '4~6자리 숫자를 입력해주세요'}
+          inputProps={{ maxLength: 6 }}
         />
       </Grid>
       <Grid item xs={12}>

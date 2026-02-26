@@ -119,7 +119,7 @@ export const CardsPage = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3, position: 'relative' }}>
                   <CreditCardVisual
                     cardName={cardName}
-                    cardNumber={card.cardNumberMasked}
+                    cardNumber={card.cardNumber}
                     size="medium"
                   />
                   <Box sx={{ position: 'absolute', top: -8, right: -8 }}>
@@ -132,20 +132,20 @@ export const CardsPage = () => {
                   {cardName}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
-                  {card.cardNumberMasked || '****-****-****-****'}
+                  {card.cardNumber || '****-****-****-****'}
                 </Typography>
 
                 <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 2 }}>
                   <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="caption" color="text.secondary">한도</Typography>
                     <Typography sx={{ fontWeight: 600 }}>
-                      {(card.creditLimit || 0).toLocaleString()}만원
+                      {Math.floor((card.creditLimit || 0) / 10000).toLocaleString()}만원
                     </Typography>
                   </Box>
                   <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="caption" color="text.secondary">사용 가능</Typography>
                     <Typography sx={{ fontWeight: 600, color: '#d32f2f' }}>
-                      {(card.availableLimit || 0).toLocaleString()}만원
+                      {Math.floor((card.availableLimit || 0) / 10000).toLocaleString()}만원
                     </Typography>
                   </Box>
                 </Stack>

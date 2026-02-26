@@ -1,8 +1,11 @@
 import { Box, Button, Chip, CircularProgress, Stack, Typography } from '@mui/material';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
+import { useAdminSnackbar } from '@/contexts/SnackbarContext';
 import { formatDateTime } from '@/utils/dateUtils';
+
+const INACTIVE_DAYS = 90;
 
 interface User {
   id: number;
@@ -25,19 +28,34 @@ const getStatusInfo = (status: string) => {
   }
 };
 
+const INACTIVE_DAYS = 90;
+
 export const UsersPage = () => {
   const queryClient = useQueryClient();
+  const { show } = useAdminSnackbar();
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-users'],
-    queryFn: async () => {
-      return await adminApi.users();
-    },
+    queryFn: () => adminApi.users(),
   });
 
   const updateState = async (id: number, state: string) => {
-    await adminApi.updateUserState(id, state).catch(() => null);
-    queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    try {
+      await adminApi.updateUserState(id, state);
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      show(state === 'ACTIVE' ? '상태가 변경되었습니다.' : (state === 'LOCKED' ? '잠금 처리되었습니다.' : '비활성 처리되었습니다.'), 'success');
+    } catch {
+      show('상태 변경에 실패했습니다.', 'error');
+    }
   };
+
+  const bulkInactiveMutation = useMutation({
+    mutationFn: () => adminApi.bulkInactiveByLastLogin(INACTIVE_DAYS),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      show(res?.message ?? `${INACTIVE_DAYS}일 미접속 계정 ${res?.count ?? 0}건 비활성 처리되었습니다.`, 'success');
+    },
+    onError: () => show('일괄 비활성 처리에 실패했습니다.', 'error'),
+  });
 
   if (isLoading) {
     return (
@@ -57,9 +75,24 @@ export const UsersPage = () => {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
-        사용자 관리
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            사용자 관리
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            잠금: 비정상 계정 접근 제한 · 비활성: 장기 미접속 계정. 마지막 로그인 기준 {INACTIVE_DAYS}일 미접속 시 일괄 비활성 가능.
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          color="warning"
+          disabled={bulkInactiveMutation.isPending}
+          onClick={() => bulkInactiveMutation.mutate()}
+        >
+          {INACTIVE_DAYS}일 미접속 비활성 처리
+        </Button>
+      </Stack>
       {(!data || data.length === 0) ? (
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography color="text.secondary">등록된 사용자가 없습니다.</Typography>

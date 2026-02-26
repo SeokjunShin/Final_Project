@@ -33,6 +33,9 @@ export const adminApi = {
   messages: () => adminApiClient.get('/admin/messages').then((r) => r.data),
   users: () => adminApiClient.get('/admin/users').then((r) => r.data),
   updateUserState: (userId: number, state: string) => adminApiClient.patch(`/admin/users/${userId}/state`, { state }),
+  /** N일 이상 미접속 활성 계정 일괄 비활성 처리 */
+  bulkInactiveByLastLogin: (days: number = 90) =>
+    adminApiClient.post<{ count: number; message: string }>('/admin/users/bulk-inactive-by-last-login', null, { params: { days } }).then((r) => r.data),
   merchants: () => adminApiClient.get('/admin/merchants').then((r) => r.data),
   saveMerchant: (payload: Record<string, unknown>) => adminApiClient.post('/admin/merchants', payload),
   events: () => adminApiClient.get('/admin/events').then((r) => r.data),

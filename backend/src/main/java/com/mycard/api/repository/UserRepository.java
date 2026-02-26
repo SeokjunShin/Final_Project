@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -42,4 +44,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
         String keyword = (email != null && !email.isBlank()) ? email : username;
         return findByEmailContainingOrFullNameContaining(keyword, fullName, pageable);
     }
+
+    /** 일정 기간 미접속인 활성(ACTIVE) 사용자 조회 (비활성 처리 대상) */
+    @Query("SELECT u FROM User u WHERE u.status = 'ACTIVE' AND (u.lastLoginAt IS NULL OR u.lastLoginAt < :cutoff)")
+    List<User> findActiveUsersWithLastLoginBeforeOrNull(@Param("cutoff") LocalDateTime cutoff);
 }

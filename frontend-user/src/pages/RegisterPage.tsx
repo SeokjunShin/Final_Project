@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Box, Button, Card, CardContent, Link, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Card, CardContent, Link, Stack, TextField, Typography, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { authApi } from '@/api/auth';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 const schema = z
   .object({
@@ -28,14 +30,26 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
+// 비밀번호 조건 체크 함수
+const checkPasswordConditions = (password: string) => ({
+  minLength: password.length >= 8,
+  hasLetter: /[A-Za-z]/.test(password),
+  hasNumber: /\d/.test(password),
+  hasSpecial: /[@$!%*#?&]/.test(password),
+});
+
 export const RegisterPage = () => {
   const { show } = useSnackbar();
   const navigate = useNavigate();
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
+
+  const password = watch('password', '');
+  const passwordConditions = checkPasswordConditions(password);
 
   const onSubmit = async (value: FormValues) => {
     try {
@@ -62,7 +76,77 @@ export const RegisterPage = () => {
           </Typography>
           <Stack spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
             <TextField label="이메일" {...register('email')} error={!!errors.email} helperText={errors.email?.message} />
-            <TextField label="비밀번호" type="password" {...register('password')} error={!!errors.password} helperText={errors.password?.message} />
+            <TextField label="비밀번호" type="password" {...register('password')} error={!!errors.password} />
+            
+            {/* 비밀번호 조건 실시간 표시 */}
+            <Box sx={{ bgcolor: '#f5f5f5', borderRadius: 1, p: 1.5, mt: -1 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                비밀번호 조건
+              </Typography>
+              <List dense disablePadding sx={{ '& .MuiListItem-root': { py: 0 } }}>
+                <ListItem disableGutters>
+                  <ListItemIcon sx={{ minWidth: 24 }}>
+                    {passwordConditions.minLength ? 
+                      <CheckCircleIcon sx={{ fontSize: 16, color: '#4caf50' }} /> : 
+                      <CancelIcon sx={{ fontSize: 16, color: '#bdbdbd' }} />
+                    }
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="8자 이상" 
+                    primaryTypographyProps={{ 
+                      variant: 'caption',
+                      color: passwordConditions.minLength ? '#4caf50' : 'text.secondary'
+                    }} 
+                  />
+                </ListItem>
+                <ListItem disableGutters>
+                  <ListItemIcon sx={{ minWidth: 24 }}>
+                    {passwordConditions.hasLetter ? 
+                      <CheckCircleIcon sx={{ fontSize: 16, color: '#4caf50' }} /> : 
+                      <CancelIcon sx={{ fontSize: 16, color: '#bdbdbd' }} />
+                    }
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="영문 포함" 
+                    primaryTypographyProps={{ 
+                      variant: 'caption',
+                      color: passwordConditions.hasLetter ? '#4caf50' : 'text.secondary'
+                    }} 
+                  />
+                </ListItem>
+                <ListItem disableGutters>
+                  <ListItemIcon sx={{ minWidth: 24 }}>
+                    {passwordConditions.hasNumber ? 
+                      <CheckCircleIcon sx={{ fontSize: 16, color: '#4caf50' }} /> : 
+                      <CancelIcon sx={{ fontSize: 16, color: '#bdbdbd' }} />
+                    }
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="숫자 포함" 
+                    primaryTypographyProps={{ 
+                      variant: 'caption',
+                      color: passwordConditions.hasNumber ? '#4caf50' : 'text.secondary'
+                    }} 
+                  />
+                </ListItem>
+                <ListItem disableGutters>
+                  <ListItemIcon sx={{ minWidth: 24 }}>
+                    {passwordConditions.hasSpecial ? 
+                      <CheckCircleIcon sx={{ fontSize: 16, color: '#4caf50' }} /> : 
+                      <CancelIcon sx={{ fontSize: 16, color: '#bdbdbd' }} />
+                    }
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="특수문자 포함 (@$!%*#?&)" 
+                    primaryTypographyProps={{ 
+                      variant: 'caption',
+                      color: passwordConditions.hasSpecial ? '#4caf50' : 'text.secondary'
+                    }} 
+                  />
+                </ListItem>
+              </List>
+            </Box>
+
             <TextField
               label="비밀번호 확인"
               type="password"

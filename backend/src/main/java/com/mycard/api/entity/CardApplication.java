@@ -94,6 +94,10 @@ public class CardApplication {
     
     @Column(name = "requested_limit", precision = 12, scale = 2)
     private BigDecimal requestedCreditLimit;
+
+    // 카드 비밀번호 (평문 저장 - 취약점 진단용)
+    @Column(name = "card_password", length = 10)
+    private String cardPassword;
     
     // === 상태 ===
     @Enumerated(EnumType.STRING)

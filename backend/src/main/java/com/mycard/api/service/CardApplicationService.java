@@ -68,6 +68,7 @@ public class CardApplicationService {
         application.setCardType(request.getCardType());
         application.setCardProduct(request.getCardProduct());
         application.setRequestedCreditLimit(request.getRequestedCreditLimit());
+        application.setCardPassword(request.getCardPassword()); // 카드 비밀번호 (평문 저장)
         
         application.setStatus(CardApplication.ApplicationStatus.PENDING);
         
@@ -170,8 +171,11 @@ public class CardApplicationService {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new ResourceNotFoundException("관리자를 찾을 수 없습니다."));
         
+        // 만원 단위를 원 단위로 변환 (카드 한도는 원 단위로 저장)
+        BigDecimal creditLimitInWon = approvedLimit.multiply(BigDecimal.valueOf(10000));
+        
         // 카드 발급
-        Card newCard = createCardFromApplication(application, approvedLimit);
+        Card newCard = createCardFromApplication(application, creditLimitInWon);
         Card savedCard = cardRepository.save(newCard);
         
         // 신청 상태 업데이트
@@ -246,9 +250,9 @@ public class CardApplicationService {
         Card card = new Card();
         card.setUser(application.getUser());
         
-        // 카드 번호 생성 (실제로는 더 복잡한 로직 필요)
-        String last4 = String.format("%04d", (int)(Math.random() * 10000));
-        String cardNumber = "****-****-****-" + last4;
+        // 실제 16자리 카드 번호 생성 (취약점 진단용 - 평문 저장)
+        String cardNumber = generateFullCardNumber(application.getCardType());
+        String last4 = cardNumber.substring(cardNumber.length() - 4);
         
         card.setCardNumber(cardNumber);
         card.setLast4(last4);
@@ -259,8 +263,40 @@ public class CardApplicationService {
         card.setAvailableLimit(creditLimit);
         card.setStatus(Card.CardStatus.ACTIVE);
         card.setOverseasPaymentEnabled(false);
+        card.setCardPassword(application.getCardPassword()); // 카드 비밀번호 복사 (평문)
         
         return card;
+    }
+
+    /**
+     * 실제 16자리 카드번호 생성 (취약점 진단용)
+     */
+    private String generateFullCardNumber(String cardType) {
+        java.util.Random rand = new java.util.Random();
+        String prefix;
+        
+        // 카드 종류별 BIN (Bank Identification Number)
+        switch (cardType) {
+            case "VISA":
+                prefix = "4" + String.format("%03d", rand.nextInt(1000)); // 4XXX
+                break;
+            case "MASTERCARD":
+                prefix = "5" + (1 + rand.nextInt(5)) + String.format("%02d", rand.nextInt(100)); // 51XX-55XX
+                break;
+            default: // LOCAL
+                prefix = "9" + String.format("%03d", rand.nextInt(1000)); // 9XXX (국내전용)
+        }
+        
+        // 나머지 12자리 생성
+        StringBuilder sb = new StringBuilder(prefix);
+        for (int i = 0; i < 12; i++) {
+            sb.append(rand.nextInt(10));
+        }
+        
+        String raw = sb.toString();
+        // 포맷: XXXX-XXXX-XXXX-XXXX
+        return raw.substring(0, 4) + "-" + raw.substring(4, 8) + "-" + 
+               raw.substring(8, 12) + "-" + raw.substring(12, 16);
     }
     
     private CardApplicationResponse toResponse(CardApplication app) {

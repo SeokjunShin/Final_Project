@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { pointsApi, bankAccountApi, type BankAccount } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDateTime } from '@/utils/dateUtils';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -411,7 +412,7 @@ export const PointsPage = () => {
                               />
                             </Stack>
                             <Typography variant="caption" color="text.secondary">
-                              {item.createdAt}
+                              {formatDateTime(item.createdAt)}
                             </Typography>
                           </Box>
                         </Stack>

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
+import { formatDateTime } from '@/utils/dateUtils';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
@@ -59,7 +60,7 @@ export const AuditLogsPage = () => {
           <AdminTable
             rows={data.content}
             columns={[
-              { field: 'occurredAt', headerName: '시간', flex: 1 },
+              { field: 'occurredAt', headerName: '시간', flex: 1, valueFormatter: (v: string) => formatDateTime(v) },
               { field: 'actor', headerName: 'Actor', flex: 1 },
               { field: 'action', headerName: '행위', flex: 1 },
               { field: 'target', headerName: '대상', flex: 2 },

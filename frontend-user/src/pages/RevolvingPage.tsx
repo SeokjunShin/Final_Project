@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { TableSection } from '@/components/common/TableSection';
 import { useSnackbar } from '@/contexts/SnackbarContext';
+import { formatDateTime } from '@/utils/dateUtils';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 
 const installmentRows: { id: number; approvalId: number; months: number; status: string; createdAt: string }[] = [];
@@ -40,7 +41,7 @@ export const RevolvingPage = () => {
             { field: 'approvalId', headerName: '거래 ID', flex: 1 },
             { field: 'months', headerName: '개월수', flex: 1 },
             { field: 'status', headerName: '상태', flex: 1 },
-            { field: 'createdAt', headerName: '등록일', flex: 1 },
+            { field: 'createdAt', headerName: '등록일', flex: 1, valueFormatter: (value: string) => formatDateTime(value) },
           ]}
         />
       ) : (

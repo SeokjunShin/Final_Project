@@ -30,6 +30,7 @@ import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
 import { useAdminSnackbar } from '@/contexts/SnackbarContext';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { formatDateTime } from '@/utils/dateUtils';
 
 const schema = z.object({
   answer: z.string().min(5, '답변을 5자 이상 입력하세요.'),
@@ -196,7 +197,7 @@ export const InquiriesPage = () => {
                 renderCell: (params: any) => renderStatus(params.row.status),
               },
               { field: 'assignee', headerName: '담당자', width: 130 },
-              { field: 'createdAt', headerName: '접수일', width: 130 },
+              { field: 'createdAt', headerName: '접수일', width: 130, valueFormatter: (v: string) => formatDateTime(v) },
               {
                 field: 'action',
                 headerName: '처리',
@@ -313,7 +314,7 @@ export const InquiriesPage = () => {
               </Stack>
               <Stack direction="row" spacing={2}>
                 <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>접수일</Typography>
-                <Typography variant="body2">{detail.createdAt}</Typography>
+                <Typography variant="body2">{formatDateTime(detail.createdAt)}</Typography>
               </Stack>
               <Divider />
               <Typography variant="subtitle1" fontWeight={700}>{detail.title}</Typography>
@@ -329,7 +330,7 @@ export const InquiriesPage = () => {
                         <Typography variant="caption" fontWeight={700}>
                           {reply.authorName} {reply.isStaffReply && <Chip size="small" label="상담원" color="info" sx={{ ml: 0.5 }} />}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">{reply.createdAt}</Typography>
+                        <Typography variant="caption" color="text.secondary">{formatDateTime(reply.createdAt)}</Typography>
                       </Stack>
                       <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{reply.content}</Typography>
                     </Card>

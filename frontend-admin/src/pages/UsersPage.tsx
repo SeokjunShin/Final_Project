@@ -2,6 +2,7 @@ import { Box, Button, Chip, CircularProgress, Stack, Typography } from '@mui/mat
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
+import { formatDateTime } from '@/utils/dateUtils';
 
 interface User {
   id: number;
@@ -22,11 +23,6 @@ const getStatusInfo = (status: string) => {
     default:
       return { label: status, color: 'default' as const };
   }
-};
-
-const formatDateTime = (dateStr?: string) => {
-  if (!dateStr) return '-';
-  return dateStr.replace('T', ' ').substring(0, 19);
 };
 
 export const UsersPage = () => {

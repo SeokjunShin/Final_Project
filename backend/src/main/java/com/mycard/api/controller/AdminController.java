@@ -515,6 +515,7 @@ public class AdminController {
      */
     @Operation(summary = "메시지 발송", description = "사용자에게 메시지를 발송합니다.")
     @PostMapping("/messages")
+    @Transactional
     public ResponseEntity<Map<String, Object>> sendMessage(
             @RequestBody Map<String, String> request) {
 

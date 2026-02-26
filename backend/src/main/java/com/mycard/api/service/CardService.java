@@ -47,11 +47,7 @@ public class CardService {
         cardRepository.save(card);
 
         auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId,
-<<<<<<< HEAD
-                "해외결제 설정 변경 " + oldValue + " -> " + !oldValue);
-=======
                 "해외결제 설정 변경: " + oldValue + " -> " + !oldValue);
->>>>>>> b0afa82c20371719e7aa796e8a05b0020afd5da3
 
         return toResponse(card);
     }
@@ -62,11 +58,7 @@ public class CardService {
                 .orElseThrow(() -> new ResourceNotFoundException("카드를 찾을 수 없습니다."));
 
         if (card.getStatus() == Card.CardStatus.LOST) {
-<<<<<<< HEAD
-            throw new BadRequestException("이미 분실 신고한 카드입니다.");
-=======
             throw new BadRequestException("이미 분실 신고된 카드입니다.");
->>>>>>> b0afa82c20371719e7aa796e8a05b0020afd5da3
         }
 
         card.setStatus(Card.CardStatus.LOST);
@@ -84,16 +76,12 @@ public class CardService {
 
         // 이미 재발급 신청 대기 중이면 중복 신청 불가
         if (card.getStatus() == Card.CardStatus.REISSUE_REQUESTED) {
-<<<<<<< HEAD
-            throw new BadRequestException("이미 재발급 신청한 카드입니다. 관리자 처리 후 다시 신청할 수 있습니다.");
-=======
             throw new BadRequestException("이미 재발급 신청된 카드입니다.");
         }
 
         // 재발급 완료된 카드는 재발급 불가
         if (card.getStatus() == Card.CardStatus.REISSUED) {
             throw new BadRequestException("이미 재발급 완료된 카드입니다.");
->>>>>>> b0afa82c20371719e7aa796e8a05b0020afd5da3
         }
 
         // REISSUED(재발급 완료) 포함 모든 상태에서 재발급 신청 가능
@@ -115,11 +103,7 @@ public class CardService {
         cardRepository.save(card);
 
         auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId,
-<<<<<<< HEAD
-                "카드 상태 변경 " + oldStatus + " -> " + request.getStatus());
-=======
                 "카드 상태 변경: " + oldStatus + " -> " + request.getStatus());
->>>>>>> b0afa82c20371719e7aa796e8a05b0020afd5da3
 
         return toResponse(card);
     }

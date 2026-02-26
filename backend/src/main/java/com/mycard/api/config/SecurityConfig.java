@@ -63,38 +63,36 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .exceptionHandling(exception -> exception
-                .authenticationEntryPoint(authenticationEntryPoint)
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(authenticationEntryPoint))
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
 
-                // Admin only endpoints
-                .requestMatchers("/admin/users/**").hasRole("ADMIN")
-                .requestMatchers("/admin/merchants/**").hasRole("ADMIN")
-                .requestMatchers("/admin/events/**").hasRole("ADMIN")
-                .requestMatchers("/admin/point-policies/**").hasRole("ADMIN")
-                .requestMatchers("/admin/audit-logs/**").hasRole("ADMIN")
-                .requestMatchers("/admin/reissue-requests").hasRole("ADMIN")
-                .requestMatchers("/admin/cards/**").hasRole("ADMIN")
+                        // Admin only endpoints
+                        .requestMatchers("/admin/users/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/merchants/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/events/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/point-policies/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/audit-logs/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/reissue-requests").hasRole("ADMIN")
+                        .requestMatchers("/admin/cards/**").hasRole("ADMIN")
 
-                // Operator + Admin endpoints
-                .requestMatchers("/operator/**").hasAnyRole("OPERATOR", "ADMIN")
+                        // Operator + Admin endpoints
+                        .requestMatchers("/operator/**").hasAnyRole("OPERATOR", "ADMIN")
 
-                // User endpoints (authenticated users)
-                .anyRequest().authenticated()
-            )
-            .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+                        // User endpoints (authenticated users)
+                        .anyRequest().authenticated())
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -103,13 +101,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:5175",
-            "http://localhost:5176",
-            "http://mycard.local",
-            "http://admin.mycard.local"
-        ));
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175",
+                "http://localhost:5176",
+                "http://mycard.local",
+                "http://admin.mycard.local"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

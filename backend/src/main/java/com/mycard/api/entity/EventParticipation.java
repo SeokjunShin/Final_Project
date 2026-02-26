@@ -11,7 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "event_entries", uniqueConstraints = @UniqueConstraint(columnNames = {"event_id", "user_id"}))
+@Table(name = "event_entries", uniqueConstraints = @UniqueConstraint(columnNames = { "event_id", "user_id" }))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -35,6 +35,7 @@ public class EventParticipation {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Builder.Default
     @Column(name = "is_winner", nullable = false)
     private Boolean winner = false;
 

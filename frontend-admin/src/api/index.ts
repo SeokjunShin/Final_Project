@@ -8,7 +8,7 @@ export const adminApi = {
     adminApiClient.get<Paged<QueueItem>>('/operator/inquiries', { params }).then((r) => r.data),
   inquiryDetail: (id: number) => adminApiClient.get(`/operator/inquiries/${id}`).then((r) => r.data),
   inquiryAssign: (id: number) => adminApiClient.post(`/operator/inquiries/${id}/assign`),
-  inquiryAssignToOperator: (inquiryId: number, operatorId: number) => 
+  inquiryAssignToOperator: (inquiryId: number, operatorId: number) =>
     adminApiClient.post(`/admin/inquiries/${inquiryId}/assign/${operatorId}`),
   getOperators: () => adminApiClient.get('/admin/operators').then((r) => r.data),
   inquiryAnswer: (id: number, answer: string) => adminApiClient.post(`/operator/inquiries/${id}/replies`, { content: answer }),
@@ -36,7 +36,21 @@ export const adminApi = {
   merchants: () => adminApiClient.get('/admin/merchants').then((r) => r.data),
   saveMerchant: (payload: Record<string, unknown>) => adminApiClient.post('/admin/merchants', payload),
   events: () => adminApiClient.get('/admin/events').then((r) => r.data),
-  drawWinners: (eventId: number) => adminApiClient.post(`/admin/events/${eventId}/draw`),
+  createEvent: (payload: { title: string; description: string; imageUrl?: string; startDate: string; endDate: string }) =>
+    adminApiClient.post('/admin/events', payload).then((r) => r.data),
+  closeEvent: (eventId: number) =>
+    adminApiClient.patch(`/admin/events/${eventId}/close`).then((r) => r.data),
+  getParticipants: (eventId: number) =>
+    adminApiClient.get(`/admin/events/${eventId}/participants`).then((r) => r.data),
+  drawWinners: (eventId: number, participationIds: number[], rewardPoints?: number) =>
+    adminApiClient.post(`/admin/events/${eventId}/draw`, { participationIds, rewardPoints }).then((r) => r.data),
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return adminApiClient.post('/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data);
+  },
   pointPolicy: () => adminApiClient.get('/admin/policies/points').then((r) => r.data),
   savePointPolicy: (payload: Record<string, unknown>) => adminApiClient.put('/admin/policies/points', payload),
   auditLogs: (params: Record<string, unknown>) =>

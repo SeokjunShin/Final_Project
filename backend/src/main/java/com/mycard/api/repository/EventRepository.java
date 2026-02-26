@@ -24,4 +24,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("SELECT e FROM Event e WHERE e.status = :status ORDER BY e.startDate DESC")
     Page<Event> findByStatusOrderByStartDateDesc(@Param("status") Event.EventStatus status, Pageable pageable);
+
+    @Query("SELECT e FROM Event e WHERE e.status IN :statuses ORDER BY e.startDate DESC")
+    Page<Event> findByStatusIn(@Param("statuses") java.util.List<Event.EventStatus> statuses, Pageable pageable);
 }

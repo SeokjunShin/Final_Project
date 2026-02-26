@@ -25,5 +25,6 @@ public class EventResponse {
     private Integer currentParticipants;
     private String imageUrl;
     private Boolean isParticipated;
+    private Boolean isWinner;
     private LocalDateTime createdAt;
 }

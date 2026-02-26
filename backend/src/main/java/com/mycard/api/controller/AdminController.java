@@ -46,7 +46,7 @@ import java.util.*;
 @Slf4j
 @RestController
 @RequestMapping("/admin")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_OPERATOR')")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AdminController {
@@ -170,6 +170,7 @@ public class AdminController {
      * 사용자 상태 변경
      */
     @Operation(summary = "사용자 상태 변경", description = "사용자의 활성화/잠금 상태를 변경합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/users/{userId}/status")
     public ResponseEntity<UserAdminResponse> updateUserStatus(
             @PathVariable Long userId,
@@ -184,6 +185,7 @@ public class AdminController {
      * ACTIVE=활성화, LOCKED=잠금, INACTIVE=비활성
      */
     @Operation(summary = "사용자 상태 변경 (state)", description = "사용자의 상태를 변경합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/users/{userId}/state")
     @Transactional
     public ResponseEntity<Map<String, Object>> updateUserState(
@@ -221,6 +223,7 @@ public class AdminController {
      * 사용자 계정 잠금 해제
      */
     @Operation(summary = "계정 잠금 해제", description = "잠긴 사용자 계정을 해제합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/users/{userId}/unlock")
     public ResponseEntity<Void> unlockUser(@PathVariable Long userId) {
         userAdminService.unlockUser(userId);
@@ -232,6 +235,7 @@ public class AdminController {
      * @param days 미접속 일수 (기본 90일). 이 기간 동안 로그인 이력이 없거나 마지막 로그인이 이전인 계정을 비활성 처리
      */
     @Operation(summary = "미접속 계정 비활성 처리", description = "지정 일수 이상 로그인하지 않은 활성 계정을 비활성 처리합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/users/bulk-inactive-by-last-login")
     @Transactional
     public ResponseEntity<Map<String, Object>> bulkInactiveByLastLogin(
@@ -527,6 +531,7 @@ public class AdminController {
      * 문서 목록 조회
      */
     @Operation(summary = "문서 목록 조회", description = "문서 목록을 조회합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     @GetMapping("/documents")
     public ResponseEntity<Map<String, Object>> getDocuments(
             @RequestParam(required = false) String status,
@@ -594,6 +599,7 @@ public class AdminController {
      * 문서 상태 변경
      */
     @Operation(summary = "문서 상태 변경", description = "문서의 상태를 변경합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     @PatchMapping("/documents/{documentId}/status")
     @Transactional
     public ResponseEntity<Map<String, Object>> updateDocumentStatus(
@@ -632,6 +638,7 @@ public class AdminController {
      * 메시지 목록 조회
      */
     @Operation(summary = "메시지 목록 조회", description = "발송된 메시지 목록을 조회합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     @GetMapping("/messages")
     public ResponseEntity<List<Map<String, Object>>> getMessages() {
         List<Message> messages = messageRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -655,6 +662,7 @@ public class AdminController {
      * 메시지 발송
      */
     @Operation(summary = "메시지 발송", description = "사용자에게 메시지를 발송합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     @PostMapping("/messages")
     @Transactional
     public ResponseEntity<Map<String, Object>> sendMessage(

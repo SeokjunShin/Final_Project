@@ -92,9 +92,13 @@ adminApiClient.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401) {
-      adminTokenStorage.clear();
-      window.location.href = '/login';
+    // 로그인 요청 자체의 401은 무시 (로그인 실패)
+    if (error.response?.status === 401 && !original?.url?.includes('/auth/login') && !original?.url?.includes('/auth/refresh')) {
+      // 이미 retry 했거나 다른 이유로 401인 경우에만 로그아웃
+      if (original?._retry) {
+        adminTokenStorage.clear();
+        window.location.href = '/login';
+      }
     }
 
     return Promise.reject(error);

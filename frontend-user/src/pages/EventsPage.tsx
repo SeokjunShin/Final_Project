@@ -33,49 +33,49 @@ const EVENT_IMAGES = [
 interface Event {
   id: number;
   title: string;
-  content: string;
+  description: string;
   startDate: string;
   endDate: string;
   status: string;
-  participated?: boolean;
+  isParticipated?: boolean;
 }
 
 const fallbackEvents: Event[] = [
   {
     id: 1,
     title: '봄맞이 캐시백 이벤트',
-    content: '기간 내 응모하시면 추첨을 통해 최대 10만원 캐시백을 드립니다. 3월 한 달간 MyCard로 50만원 이상 결제 시 자동 응모됩니다.',
+    description: '기간 내 응모하시면 추첨을 통해 최대 10만원 캐시백을 드립니다. 3월 한 달간 MyCard로 50만원 이상 결제 시 자동 응모됩니다.',
     startDate: '2026-03-01',
     endDate: '2026-04-30',
     status: 'ACTIVE',
-    participated: false,
+    isParticipated: false,
   },
   {
     id: 2,
     title: '해외 결제 수수료 면제',
-    content: '해외 가맹점에서 MyCard Platinum 결제 시 결제 수수료가 면제됩니다. 월 5회까지 적용됩니다.',
+    description: '해외 가맹점에서 MyCard Platinum 결제 시 결제 수수료가 면제됩니다. 월 5회까지 적용됩니다.',
     startDate: '2026-02-01',
     endDate: '2026-03-31',
     status: 'ACTIVE',
-    participated: true,
+    isParticipated: true,
   },
   {
     id: 3,
     title: '신규 가입 웰컴 포인트',
-    content: '신규 가입 후 첫 결제 시 5,000 포인트를 드립니다. 회원가입 후 30일 이내 사용해주세요.',
+    description: '신규 가입 후 첫 결제 시 5,000 포인트를 드립니다. 회원가입 후 30일 이내 사용해주세요.',
     startDate: '2026-01-01',
     endDate: '2026-12-31',
     status: 'ACTIVE',
-    participated: false,
+    isParticipated: false,
   },
   {
     id: 4,
     title: '주유 할인 프로모션',
-    content: 'SK주유소에서 MyCard로 결제 시 리터당 100원 할인! 월 최대 5만원까지 할인 가능합니다.',
+    description: 'SK주유소에서 MyCard로 결제 시 리터당 100원 할인! 월 최대 5만원까지 할인 가능합니다.',
     startDate: '2026-02-15',
     endDate: '2026-03-15',
     status: 'ACTIVE',
-    participated: false,
+    isParticipated: false,
   },
 ];
 
@@ -153,7 +153,7 @@ export const EventsPage = () => {
                       {event.title}
                     </Typography>
                     <Stack direction="row" spacing={1}>
-                      {event.participated && (
+                      {event.isParticipated && (
                         <Chip
                           icon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
                           label="참여완료"
@@ -175,7 +175,7 @@ export const EventsPage = () => {
                       overflow: 'hidden',
                     }}
                   >
-                    {event.content}
+                    {event.description}
                   </Typography>
                   <Stack direction="row" alignItems="center" spacing={0.5}>
                     <CalendarTodayIcon sx={{ fontSize: 16, color: '#999' }} />
@@ -203,7 +203,7 @@ export const EventsPage = () => {
                 sx={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 1, mb: 2 }}
               />
               <Typography sx={{ mb: 2, lineHeight: 1.8, color: '#333' }}>
-                {selectedEvent.content}
+                {selectedEvent.description}
               </Typography>
               <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
                 <CalendarTodayIcon sx={{ fontSize: 18, color: '#666' }} />
@@ -211,7 +211,7 @@ export const EventsPage = () => {
                   이벤트 기간: {selectedEvent.startDate} ~ {selectedEvent.endDate}
                 </Typography>
               </Stack>
-              {selectedEvent.participated && (
+              {selectedEvent.isParticipated && (
                 <Chip
                   icon={<CheckCircleIcon />}
                   label="이미 참여한 이벤트입니다"
@@ -221,7 +221,7 @@ export const EventsPage = () => {
             </DialogContent>
             <DialogActions sx={{ p: 2 }}>
               <Button onClick={() => setDialogOpen(false)}>닫기</Button>
-              {selectedEvent.status === 'ACTIVE' && !selectedEvent.participated && (
+              {selectedEvent.status === 'ACTIVE' && !selectedEvent.isParticipated && (
                 <Button
                   variant="contained"
                   onClick={() => handleParticipate(selectedEvent.id)}

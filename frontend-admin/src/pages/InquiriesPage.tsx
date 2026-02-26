@@ -11,7 +11,10 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
+  InputLabel,
   MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -26,6 +29,7 @@ import { z } from 'zod';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
 import { useAdminSnackbar } from '@/contexts/SnackbarContext';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
 const schema = z.object({
   answer: z.string().min(5, '답변을 5자 이상 입력하세요.'),
@@ -38,14 +42,26 @@ export const InquiriesPage = () => {
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignInquiryId, setAssignInquiryId] = useState<number | null>(null);
+  const [selectedOperatorId, setSelectedOperatorId] = useState<number | ''>('');
   const { show } = useAdminSnackbar();
   const queryClient = useQueryClient();
+  const { user } = useAdminAuth();
+  const isAdmin = user?.role === 'ADMIN';
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-inquiries', queue],
     queryFn: async () => {
       return await adminApi.inquiries({ queue, page: 0, size: 30 });
     },
+  });
+
+  // 상담원 목록 조회 (관리자만)
+  const operatorsQuery = useQuery({
+    queryKey: ['admin-operators'],
+    enabled: isAdmin,
+    queryFn: () => adminApi.getOperators(),
   });
 
   const detailQuery = useQuery({
@@ -74,6 +90,8 @@ export const InquiriesPage = () => {
   const renderStatus = (status: string) => {
     if (status === 'ASSIGNED') return <Chip size="small" color="warning" label="배정됨" />;
     if (status === 'ANSWERED') return <Chip size="small" color="primary" label="답변완료" />;
+    if (status === 'RESOLVED' || status === 'CLOSED') return <Chip size="small" color="success" label="완료" />;
+    if (status === 'IN_PROGRESS') return <Chip size="small" color="info" label="진행중" />;
     return <Chip size="small" label="미배정" />;
   };
 
@@ -112,6 +130,7 @@ export const InquiriesPage = () => {
         >
           <MenuItem value="unassigned">미배정</MenuItem>
           <MenuItem value="assigned">배정됨</MenuItem>
+          <MenuItem value="all">전체 (완료 포함)</MenuItem>
         </TextField>
       </Stack>
 
@@ -188,18 +207,34 @@ export const InquiriesPage = () => {
                   return (
                     <Stack direction="row" spacing={0.5}>
                       {status === 'OPEN' && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() =>
-                            adminApi.inquiryAssign(params.row.id).then(() => {
-                              show('문의가 배정되었습니다.', 'success');
-                              queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
-                            })
-                          }
-                        >
-                          배정
-                        </Button>
+                        <>
+                          {isAdmin ? (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => {
+                                setAssignInquiryId(params.row.id);
+                                setSelectedOperatorId('');
+                                setAssignDialogOpen(true);
+                              }}
+                            >
+                              배정
+                            </Button>
+                          ) : (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() =>
+                                adminApi.inquiryAssign(params.row.id).then(() => {
+                                  show('문의가 배정되었습니다.', 'success');
+                                  queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
+                                })
+                              }
+                            >
+                              배정받기
+                            </Button>
+                          )}
+                        </>
                       )}
                       {status === 'ASSIGNED' && (
                         <Button
@@ -306,6 +341,53 @@ export const InquiriesPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => { setDetailOpen(false); setSelectedId(null); }}>닫기</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 상담원 배정 다이얼로그 (관리자용) */}
+      <Dialog
+        open={assignDialogOpen}
+        onClose={() => setAssignDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>문의 배정</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>상담원 선택</InputLabel>
+            <Select
+              value={selectedOperatorId}
+              label="상담원 선택"
+              onChange={(e) => setSelectedOperatorId(e.target.value as number | '')}
+            >
+              {(operatorsQuery.data || []).map((op: any) => (
+                <MenuItem key={op.id} value={op.id}>
+                  {op.name} ({op.role === 'ADMIN' ? '관리자' : '상담원'})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAssignDialogOpen(false)}>취소</Button>
+          <Button
+            variant="contained"
+            disabled={!selectedOperatorId}
+            onClick={async () => {
+              if (assignInquiryId && selectedOperatorId) {
+                try {
+                  await adminApi.inquiryAssignToOperator(assignInquiryId, selectedOperatorId as number);
+                  show('문의가 배정되었습니다.', 'success');
+                  queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
+                  setAssignDialogOpen(false);
+                } catch {
+                  show('배정에 실패했습니다.', 'error');
+                }
+              }
+            }}
+          >
+            배정
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

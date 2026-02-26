@@ -29,4 +29,21 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
 
     @Query("SELECT i FROM Inquiry i WHERE i.assignedOperator IS NULL AND i.status = 'OPEN' ORDER BY i.createdAt ASC")
     Page<Inquiry> findUnassignedInquiries(Pageable pageable);
+
+    // 대시보드용 count 쿼리
+    @Query("SELECT COUNT(i) FROM Inquiry i WHERE i.assignedOperator IS NULL AND i.status = 'OPEN'")
+    long countUnassigned();
+
+    @Query("SELECT COUNT(i) FROM Inquiry i WHERE i.assignedOperator.id = :operatorId AND i.status != 'RESOLVED'")
+    long countByAssignedOperatorIdAndNotResolved(@Param("operatorId") Long operatorId);
+
+    @Query("SELECT COUNT(i) FROM Inquiry i WHERE i.status = 'OPEN'")
+    long countByStatusOpen();
+
+    @Query("SELECT COUNT(i) FROM Inquiry i WHERE i.status = 'IN_PROGRESS'")
+    long countByStatusInProgress();
+
+    // 문의 큐 - 전체 조회 (완료 포함)
+    @Query("SELECT i FROM Inquiry i ORDER BY i.createdAt DESC")
+    Page<Inquiry> findAllInquiries(Pageable pageable);
 }

@@ -3,10 +3,14 @@ import type { AuditLog, CardApplication, LoanDetail, LoanListItem, Paged, QueueI
 
 export const adminApi = {
   dashboard: () => adminApiClient.get('/admin/dashboard').then((r) => r.data),
+  operatorDashboard: () => adminApiClient.get('/operator/dashboard').then((r) => r.data),
   inquiries: (params: Record<string, unknown>) =>
     adminApiClient.get<Paged<QueueItem>>('/operator/inquiries', { params }).then((r) => r.data),
   inquiryDetail: (id: number) => adminApiClient.get(`/operator/inquiries/${id}`).then((r) => r.data),
   inquiryAssign: (id: number) => adminApiClient.post(`/operator/inquiries/${id}/assign`),
+  inquiryAssignToOperator: (inquiryId: number, operatorId: number) => 
+    adminApiClient.post(`/admin/inquiries/${inquiryId}/assign/${operatorId}`),
+  getOperators: () => adminApiClient.get('/admin/operators').then((r) => r.data),
   inquiryAnswer: (id: number, answer: string) => adminApiClient.post(`/operator/inquiries/${id}/replies`, { content: answer }),
   inquiryResolve: (id: number) => adminApiClient.post(`/operator/inquiries/${id}/resolve`),
   documents: (params: Record<string, unknown>) =>

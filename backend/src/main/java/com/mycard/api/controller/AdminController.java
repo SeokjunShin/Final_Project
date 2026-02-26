@@ -60,6 +60,7 @@ public class AdminController {
     private final EventRepository eventRepository;
     private final AuditLogRepository auditLogRepository;
     private final LoanService loanService;
+    private final InquiryService inquiryService;
 
     // ===================== 대시보드 =====================
 
@@ -208,6 +209,51 @@ public class AdminController {
     public ResponseEntity<Void> unlockUser(@PathVariable Long userId) {
         userAdminService.unlockUser(userId);
         return ResponseEntity.ok().build();
+    }
+
+    // ===================== 상담원/문의 배정 관리 =====================
+
+    /**
+     * 상담원 목록 조회 (OPERATOR, ADMIN 역할)
+     */
+    @Operation(summary = "상담원 목록 조회", description = "문의 배정 가능한 상담원/관리자 목록을 조회합니다.")
+    @GetMapping("/operators")
+    public ResponseEntity<List<Map<String, Object>>> getOperators() {
+        List<User> operators = userRepository.findAll().stream()
+                .filter(u -> "OPERATOR".equals(u.getRole()) || "ADMIN".equals(u.getRole()))
+                .filter(u -> Boolean.TRUE.equals(u.getEnabled()) && !Boolean.TRUE.equals(u.getLocked()))
+                .toList();
+
+        List<Map<String, Object>> result = operators.stream()
+                .map(u -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", u.getId());
+                    map.put("name", u.getFullName() != null ? u.getFullName() : u.getEmail());
+                    map.put("email", u.getEmail());
+                    map.put("role", u.getRole());
+                    return map;
+                })
+                .toList();
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 문의를 특정 상담원에게 배정
+     */
+    @Operation(summary = "문의 배정", description = "특정 문의를 지정된 상담원에게 배정합니다.")
+    @Transactional
+    @PostMapping("/inquiries/{inquiryId}/assign/{operatorId}")
+    public ResponseEntity<Map<String, Object>> assignInquiryToOperator(
+            @PathVariable Long inquiryId,
+            @PathVariable Long operatorId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        
+        var result = inquiryService.assignToOperator(inquiryId, operatorId, currentUser);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("inquiry", result);
+        return ResponseEntity.ok(response);
     }
 
     // ===================== 대출 관리 =====================

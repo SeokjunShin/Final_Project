@@ -37,8 +37,8 @@ export const approvalsApi = {
 export const cardsApi = {
   list: () => apiClient.get<CardItem[]>('/cards').then((r) => r.data),
   toggleOverseas: (cardId: number, enabled: boolean) =>
-    apiClient.patch(`/cards/${cardId}/overseas`, { enabled }),
-  requestReissue: (cardId: number) => apiClient.post(`/cards/${cardId}/reissue`),
+    apiClient.patch(`/cards/${cardId}/overseas-payment`),
+  requestReissue: (cardId: number) => apiClient.post(`/cards/${cardId}/request-reissue`),
 };
 
 export const pointsApi = {
@@ -87,7 +87,10 @@ export const supportApi = {
 
 export const docsApi = {
   list: () => apiClient.get<DocumentItem[]>('/docs').then((r) => r.data),
-  upload: (form: FormData) => apiClient.post('/docs', form),
+  upload: (form: FormData) =>
+    apiClient.post('/docs', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   download: (documentId: number, fileName: string) => {
     return apiClient.get(`/documents/${documentId}/download`, { responseType: 'blob' }).then((r) => {
       const url = window.URL.createObjectURL(new Blob([r.data]));
@@ -103,8 +106,14 @@ export const docsApi = {
 };
 
 export const notificationsApi = {
-  list: () => apiClient.get<NotificationItem[]>('/notifications').then((r) => r.data),
-  read: (id: number) => apiClient.patch(`/notifications/${id}/read`),
+  list: () => apiClient.get<NotificationItem[]>('/messages').then((r) => {
+    // API가 Page 객체를 반환하면 content를 추출
+    const data = r.data as any;
+    return data.content || data || [];
+  }),
+  read: (id: number) => apiClient.get(`/messages/${id}`), // 상세 조회 시 읽음 처리됨
+  markAllRead: () => apiClient.post('/messages/mark-all-read'),
+  unreadCount: () => apiClient.get<{ count: number }>('/messages/unread-count').then((r) => r.data),
 };
 
 // 카드 신청 API

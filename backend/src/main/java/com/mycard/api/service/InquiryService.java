@@ -109,6 +109,12 @@ public class InquiryService {
     }
 
     @Transactional(readOnly = true)
+    public Page<InquiryListResponse> getAllInquiries(Pageable pageable) {
+        return inquiryRepository.findAllInquiries(pageable)
+                .map(this::toListResponse);
+    }
+
+    @Transactional(readOnly = true)
     public Page<InquiryListResponse> getMyAssignedInquiries(UserPrincipal currentUser, Pageable pageable) {
         return inquiryRepository.findByAssignedOperatorId(currentUser.getId(), pageable)
                 .map(this::toListResponse);
@@ -129,6 +135,32 @@ public class InquiryService {
         inquiryRepository.save(inquiry);
 
         auditService.log(AuditLog.ActionType.UPDATE, "Inquiry", inquiry.getId(), "문의 배정");
+
+        return toDetailResponse(inquiry);
+    }
+
+    /**
+     * 관리자가 특정 상담원에게 문의를 배정
+     */
+    @Transactional
+    public InquiryDetailResponse assignToOperator(Long inquiryId, Long operatorId, UserPrincipal currentUser) {
+        Inquiry inquiry = inquiryRepository.findById(inquiryId)
+                .orElseThrow(() -> new ResourceNotFoundException("문의", inquiryId));
+
+        User operator = userRepository.findById(operatorId)
+                .orElseThrow(() -> new ResourceNotFoundException("상담원", operatorId));
+
+        // 상담원 또는 관리자 권한 확인
+        if (!"OPERATOR".equals(operator.getRole()) && !"ADMIN".equals(operator.getRole())) {
+            throw new BadRequestException("상담원 또는 관리자만 배정받을 수 있습니다.");
+        }
+
+        inquiry.setAssignedOperator(operator);
+        inquiry.setStatus(Inquiry.InquiryStatus.ASSIGNED);
+        inquiryRepository.save(inquiry);
+
+        auditService.log(AuditLog.ActionType.UPDATE, "Inquiry", inquiry.getId(), 
+                "문의 배정: " + operator.getName() + "에게 배정");
 
         return toDetailResponse(inquiry);
     }

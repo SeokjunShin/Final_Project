@@ -102,9 +102,12 @@ export interface DocumentItem {
 
 export interface NotificationItem {
   id: number;
-  category: 'NOTICE' | 'MESSAGE';
+  category: string;
   title: string;
-  read: boolean;
+  content?: string;
+  isRead?: boolean;
+  read?: boolean;
+  readAt?: string;
   createdAt: string;
 }
 

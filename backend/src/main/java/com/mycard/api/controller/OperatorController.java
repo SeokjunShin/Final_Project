@@ -36,7 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Tag(name = "Operator", description = "��� ���� API")
+@Tag(name = "Operator", description = "운영자 전용 API")
 @RestController
 @RequestMapping("/operator")
 @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN')")
@@ -96,7 +96,8 @@ public class OperatorController {
         // 내 최근 배정 문의 목록
         List<Map<String, Object>> myRecentInquiries = new ArrayList<>();
         try {
-            Page<Inquiry> myAssigned = inquiryRepository.findByAssignedOperatorId(currentUser.getId(), PageRequest.of(0, 5));
+            Page<Inquiry> myAssigned = inquiryRepository.findByAssignedOperatorId(currentUser.getId(),
+                    PageRequest.of(0, 5));
             for (Inquiry inquiry : myAssigned.getContent()) {
                 Map<String, Object> item = new HashMap<>();
                 item.put("id", inquiry.getId());
@@ -117,7 +118,7 @@ public class OperatorController {
         return ResponseEntity.ok(dashboard);
     }
 
-    @Operation(summary = "����� ��� ��ȸ")
+    @Operation(summary = "사용자 목록 조회")
     @GetMapping("/users")
     public ResponseEntity<Page<UserAdminResponse>> getUsers(
             @RequestParam(required = false) String keyword,
@@ -132,14 +133,14 @@ public class OperatorController {
         return ResponseEntity.ok(users);
     }
 
-    @Operation(summary = "����� �� ��ȸ")
+    @Operation(summary = "사용자 상세 조회")
     @GetMapping("/users/{userId}")
     public ResponseEntity<UserAdminResponse> getUser(@PathVariable Long userId) {
         UserAdminResponse user = userAdminService.getUser(userId);
         return ResponseEntity.ok(user);
     }
 
-    @Operation(summary = "���� ť ��ȸ")
+    @Operation(summary = "문의 큐 조회")
     @GetMapping("/inquiries")
     public ResponseEntity<Page<InquiryListResponse>> getInquiries(
             @RequestParam(defaultValue = "unassigned") String queue,
@@ -157,7 +158,7 @@ public class OperatorController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "���� �� ��ȸ")
+    @Operation(summary = "문의 상세 조회")
     @GetMapping("/inquiries/{inquiryId}")
     public ResponseEntity<InquiryDetailResponse> getInquiry(
             @PathVariable Long inquiryId,
@@ -165,7 +166,7 @@ public class OperatorController {
         return ResponseEntity.ok(inquiryService.getInquiry(inquiryId, currentUser));
     }
 
-    @Operation(summary = "���� ����")
+    @Operation(summary = "문의 배정")
     @PostMapping("/inquiries/{inquiryId}/assign")
     public ResponseEntity<InquiryDetailResponse> assignInquiry(
             @PathVariable Long inquiryId,
@@ -173,7 +174,7 @@ public class OperatorController {
         return ResponseEntity.ok(inquiryService.assignInquiry(inquiryId, currentUser));
     }
 
-    @Operation(summary = "���� �亯 ���")
+    @Operation(summary = "문의 답변 등록")
     @PostMapping("/inquiries/{inquiryId}/replies")
     public ResponseEntity<InquiryDetailResponse> addReply(
             @PathVariable Long inquiryId,
@@ -182,7 +183,7 @@ public class OperatorController {
         return ResponseEntity.ok(inquiryService.addReply(inquiryId, currentUser, request));
     }
 
-    @Operation(summary = "���� ����")
+    @Operation(summary = "문의 종료")
     @PostMapping("/inquiries/{inquiryId}/resolve")
     public ResponseEntity<InquiryDetailResponse> resolveInquiry(
             @PathVariable Long inquiryId,
@@ -190,7 +191,7 @@ public class OperatorController {
         return ResponseEntity.ok(inquiryService.resolveInquiry(inquiryId, currentUser));
     }
 
-    @Operation(summary = "����α� ��ȸ")
+    @Operation(summary = "감사로그 조회")
     @GetMapping("/audit-logs")
     public ResponseEntity<Page<AuditLogResponse>> getAuditLogs(
             @RequestParam(required = false) Long userId,

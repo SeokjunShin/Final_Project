@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
 import { useAdminSnackbar } from '@/contexts/SnackbarContext';
+import { formatDateTime } from '@/utils/dateUtils';
+
+const INACTIVE_DAYS = 90;
 
 interface User {
   id: number;
@@ -23,11 +26,6 @@ const getStatusInfo = (status: string) => {
     default:
       return { label: status, color: 'default' as const };
   }
-};
-
-const formatDateTime = (dateStr?: string) => {
-  if (!dateStr) return '-';
-  return dateStr.replace('T', ' ').substring(0, 19);
 };
 
 const INACTIVE_DAYS = 90;

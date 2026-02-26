@@ -2,8 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
-import { useAdminAuth } from '@/contexts/AdminAuthContext';
-
+import { useAdminAuth } from '@/contexts/AdminAuthContext';import { formatDateTime } from '@/utils/dateUtils';
 interface DashboardData {
   todayInquiries?: number;
   pendingDocuments?: number;
@@ -87,7 +86,7 @@ export const AdminDashboardPage = () => {
                 { field: 'title', headerName: '제목', flex: 2 },
                 { field: 'userName', headerName: '작성자', flex: 1 },
                 { field: 'status', headerName: '상태', flex: 1 },
-                { field: 'createdAt', headerName: '접수일', flex: 1 },
+                { field: 'createdAt', headerName: '접수일', flex: 1, valueFormatter: (v: string) => formatDateTime(v) },
               ]}
             />
           </Grid>
@@ -99,7 +98,7 @@ export const AdminDashboardPage = () => {
                 { field: 'title', headerName: '제목', flex: 2 },
                 { field: 'userName', headerName: '작성자', flex: 1 },
                 { field: 'status', headerName: '상태', flex: 1 },
-                { field: 'createdAt', headerName: '접수일', flex: 1 },
+                { field: 'createdAt', headerName: '접수일', flex: 1, valueFormatter: (v: string) => formatDateTime(v) },
               ]}
             />
           </Grid>
@@ -142,7 +141,7 @@ export const AdminDashboardPage = () => {
           { field: 'title', headerName: '제목', flex: 2 },
           { field: 'status', headerName: '상태', flex: 1 },
           { field: 'assignee', headerName: '담당자', flex: 1 },
-          { field: 'createdAt', headerName: '접수일', flex: 1 },
+          { field: 'createdAt', headerName: '접수일', flex: 1, valueFormatter: (v: string) => formatDateTime(v) },
         ]}
       />
     </Box>

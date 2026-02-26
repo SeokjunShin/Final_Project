@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
 import { useAdminSnackbar } from '@/contexts/SnackbarContext';
+import { formatDateTime } from '@/utils/dateUtils';
 
 export const DocumentsPage = () => {
   const [status, setStatus] = useState('');
@@ -149,7 +150,7 @@ export const DocumentsPage = () => {
               renderCell: (params) => statusChip(params.row.status),
             },
             { field: 'submitterName', headerName: '신청자', flex: 1 },
-            { field: 'createdAt', headerName: '제출일', flex: 1 },
+            { field: 'createdAt', headerName: '제출일', flex: 1, valueFormatter: (v: string) => formatDateTime(v) },
             {
               field: 'action',
               headerName: '상태 전이',

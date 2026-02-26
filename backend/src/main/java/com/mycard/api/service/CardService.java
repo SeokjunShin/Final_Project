@@ -47,7 +47,7 @@ public class CardService {
         cardRepository.save(card);
 
         auditService.log(AuditLog.ActionType.UPDATE, "Card", cardId,
-                "해외결제 설정 변경 " + oldValue + " -> " + !oldValue);
+                "해외결제 설정 변경: " + oldValue + " -> " + !oldValue);
 
         return toResponse(card);
     }

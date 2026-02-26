@@ -4,6 +4,7 @@ import com.mycard.api.dto.*;
 import com.mycard.api.dto.card.ReissueRequestResponse;
 import com.mycard.api.dto.loan.LoanDetailResponse;
 import com.mycard.api.entity.*;
+import com.mycard.api.entity.Attachment;
 import com.mycard.api.repository.*;
 import com.mycard.api.security.UserPrincipal;
 import com.mycard.api.exception.ResourceNotFoundException;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -41,10 +42,12 @@ import java.util.*;
  * - 감사로그 조회
  */
 @Tag(name = "Admin", description = "관리자 전용 API")
+@Slf4j
 @RestController
 @RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AdminController {
 
     private final UserAdminService userAdminService;
@@ -54,10 +57,12 @@ public class AdminController {
     private final UserRepository userRepository;
     private final InquiryRepository inquiryRepository;
     private final DocumentRepository documentRepository;
+    private final AttachmentRepository attachmentRepository;
     private final MessageRepository messageRepository;
     private final EventRepository eventRepository;
     private final AuditLogRepository auditLogRepository;
     private final LoanService loanService;
+    private final InquiryService inquiryService;
     private final CardRepository cardRepository;
 
     // ===================== 대시보드 =====================
@@ -114,8 +119,9 @@ public class AdminController {
                     // LazyInitializationException 방지
                 }
                 map.put("assignee", assignee);
-                map.put("createdAt", i.getCreatedAt() != null ?
-                        i.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "");
+                map.put("createdAt",
+                        i.getCreatedAt() != null ? i.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                                : "");
                 recentInquiries.add(map);
             }
         } catch (Exception e) {
@@ -147,8 +153,8 @@ public class AdminController {
                     map.put("id", u.getId());
                     map.put("name", u.getFullName() != null ? u.getFullName() : u.getEmail());
                     map.put("email", u.getEmail());
-                    map.put("status", Boolean.TRUE.equals(u.getLocked()) ? "LOCKED" :
-                            (Boolean.TRUE.equals(u.getEnabled()) ? "ACTIVE" : "INACTIVE"));
+                    map.put("status", Boolean.TRUE.equals(u.getLocked()) ? "LOCKED"
+                            : (Boolean.TRUE.equals(u.getEnabled()) ? "ACTIVE" : "INACTIVE"));
                     return map;
                 })
                 .toList();
@@ -206,6 +212,51 @@ public class AdminController {
     public ResponseEntity<Void> unlockUser(@PathVariable Long userId) {
         userAdminService.unlockUser(userId);
         return ResponseEntity.ok().build();
+    }
+
+    // ===================== 상담원/문의 배정 관리 =====================
+
+    /**
+     * 상담원 목록 조회 (OPERATOR, ADMIN 역할)
+     */
+    @Operation(summary = "상담원 목록 조회", description = "문의 배정 가능한 상담원/관리자 목록을 조회합니다.")
+    @GetMapping("/operators")
+    public ResponseEntity<List<Map<String, Object>>> getOperators() {
+        List<User> operators = userRepository.findAll().stream()
+                .filter(u -> "OPERATOR".equals(u.getRole()) || "ADMIN".equals(u.getRole()))
+                .filter(u -> Boolean.TRUE.equals(u.getEnabled()) && !Boolean.TRUE.equals(u.getLocked()))
+                .toList();
+
+        List<Map<String, Object>> result = operators.stream()
+                .map(u -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", u.getId());
+                    map.put("name", u.getFullName() != null ? u.getFullName() : u.getEmail());
+                    map.put("email", u.getEmail());
+                    map.put("role", u.getRole());
+                    return map;
+                })
+                .toList();
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 문의를 특정 상담원에게 배정
+     */
+    @Operation(summary = "문의 배정", description = "특정 문의를 지정된 상담원에게 배정합니다.")
+    @Transactional
+    @PostMapping("/inquiries/{inquiryId}/assign/{operatorId}")
+    public ResponseEntity<Map<String, Object>> assignInquiryToOperator(
+            @PathVariable Long inquiryId,
+            @PathVariable Long operatorId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        
+        var result = inquiryService.assignToOperator(inquiryId, operatorId, currentUser);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("inquiry", result);
+        return ResponseEntity.ok(response);
     }
 
     // ===================== 대출 관리 =====================
@@ -340,27 +391,50 @@ public class AdminController {
             @RequestParam(required = false) String status,
             @PageableDefault(size = 20) Pageable pageable) {
 
+        log.info("관리자 문서 목록 조회: status={}, page={}", status, pageable.getPageNumber());
         Page<Document> documents;
         if (status != null && !status.isEmpty()) {
             try {
                 Document.DocumentStatus docStatus = Document.DocumentStatus.valueOf(status);
                 documents = documentRepository.findByStatus(docStatus, pageable);
             } catch (IllegalArgumentException e) {
-                documents = documentRepository.findPendingDocuments(pageable);
+                documents = documentRepository.findAllByOrderByCreatedAtDesc(pageable);
             }
         } else {
-            documents = documentRepository.findPendingDocuments(pageable);
+            documents = documentRepository.findAllByOrderByCreatedAtDesc(pageable);
         }
 
         List<Map<String, Object>> content = documents.getContent().stream()
                 .map(d -> {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", d.getId());
-                    map.put("title", d.getTitle());
+
+                    // 첨부파일에서 원본 파일명 가져오기
+                    List<Attachment> attachments = attachmentRepository.findByDocumentId(d.getId());
+                    String fileName = attachments.isEmpty() ? "(파일 없음)" : attachments.get(0).getOriginalFilename();
+                    Long attachmentId = attachments.isEmpty() ? null : attachments.get(0).getId();
+                    map.put("title", fileName);
+                    map.put("attachmentId", attachmentId);
+
+                    map.put("docType", d.getDocumentType() != null ? d.getDocumentType().name() : "OTHER");
                     map.put("status", d.getStatus().name());
-                    map.put("assignee", ""); // 담당자 정보
-                    map.put("createdAt", d.getCreatedAt() != null ?
-                            d.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "");
+
+                    // 신청자 이름
+                    String submitterName = "";
+                    try {
+                        if (d.getUser() != null) {
+                            submitterName = d.getUser().getFullName();
+                        }
+                    } catch (Exception e) {
+                        // LazyInitializationException 방지
+                    }
+                    map.put("submitterName", submitterName);
+
+                    map.put("rejectionReason", d.getReviewComment());
+                    map.put("createdAt",
+                            d.getCreatedAt() != null
+                                    ? d.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                                    : "");
                     return map;
                 })
                 .toList();
@@ -380,20 +454,27 @@ public class AdminController {
      */
     @Operation(summary = "문서 상태 변경", description = "문서의 상태를 변경합니다.")
     @PatchMapping("/documents/{documentId}/status")
+    @Transactional
     public ResponseEntity<Map<String, Object>> updateDocumentStatus(
             @PathVariable Long documentId,
             @RequestBody Map<String, String> request) {
 
         String status = request.get("status");
+        log.info("문서 상태 변경 요청: id={}, status={}", documentId, status);
+        String rejectionReason = request.get("rejectionReason");
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("문서를 찾을 수 없습니다."));
 
         if ("APPROVED".equals(status)) {
             document.setStatus(Document.DocumentStatus.APPROVED);
             document.setReviewComment("관리자 승인");
+            document.setReviewedAt(LocalDateTime.now());
         } else if ("REJECTED".equals(status)) {
             document.setStatus(Document.DocumentStatus.REJECTED);
-            document.setReviewComment("관리자 반려");
+            document.setReviewComment(rejectionReason != null && !rejectionReason.isBlank()
+                    ? rejectionReason
+                    : "관리자 반려");
+            document.setReviewedAt(LocalDateTime.now());
         }
 
         documentRepository.save(document);
@@ -419,8 +500,10 @@ public class AdminController {
                     map.put("id", m.getId());
                     map.put("userId", m.getRecipient() != null ? m.getRecipient().getId().toString() : "");
                     map.put("content", m.getContent());
-                    map.put("sentAt", m.getCreatedAt() != null ?
-                            m.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
+                    map.put("sentAt",
+                            m.getCreatedAt() != null
+                                    ? m.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                                    : "");
                     return map;
                 })
                 .toList();
@@ -564,8 +647,10 @@ public class AdminController {
             for (AuditLog log : auditLogs.getContent()) {
                 Map<String, Object> map = new HashMap<>();
                 map.put("id", log.getId());
-                map.put("occurredAt", log.getCreatedAt() != null ?
-                        log.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
+                map.put("occurredAt",
+                        log.getCreatedAt() != null
+                                ? log.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                                : "");
                 map.put("actor", log.getActorRole() != null ? log.getActorRole() : "system");
                 map.put("action", log.getActionType() != null ? log.getActionType().name() : "");
                 map.put("target", (log.getResourceType() != null ? log.getResourceType() : "") +
@@ -579,7 +664,8 @@ public class AdminController {
             response.put("number", auditLogs.getNumber());
             response.put("size", auditLogs.getSize());
         } catch (Exception e) {
-            // 에러 발생 시 빈 결과 반환
+            // 에러 로깅
+            log.error("Audit log query failed", e);
             response.put("content", content);
             response.put("totalElements", 0);
             response.put("totalPages", 0);
@@ -601,23 +687,23 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status) {
-        
+
         Pageable pageable = PageRequest.of(page, size);
         Page<CardApplicationResponse> applications;
-        
+
         if (status != null && !status.isEmpty()) {
             applications = cardApplicationService.getApplicationsByStatus(status, pageable);
         } else {
             applications = cardApplicationService.getAllApplications(pageable);
         }
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("content", applications.getContent());
         response.put("totalElements", applications.getTotalElements());
         response.put("totalPages", applications.getTotalPages());
         response.put("number", applications.getNumber());
         response.put("size", applications.getSize());
-        
+
         return ResponseEntity.ok(response);
     }
 

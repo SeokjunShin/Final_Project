@@ -88,12 +88,33 @@ export const supportApi = {
 
 export const docsApi = {
   list: () => apiClient.get<DocumentItem[]>('/docs').then((r) => r.data),
-  upload: (form: FormData) => apiClient.post('/docs', form),
+  upload: (form: FormData) =>
+    apiClient.post('/docs', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  download: (documentId: number, fileName: string) => {
+    return apiClient.get(`/documents/${documentId}/download`, { responseType: 'blob' }).then((r) => {
+      const url = window.URL.createObjectURL(new Blob([r.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName || 'document');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    });
+  },
 };
 
 export const notificationsApi = {
-  list: () => apiClient.get<NotificationItem[]>('/notifications').then((r) => r.data),
-  read: (id: number) => apiClient.patch(`/notifications/${id}/read`),
+  list: () => apiClient.get<NotificationItem[]>('/messages').then((r) => {
+    // API가 Page 객체를 반환하면 content를 추출
+    const data = r.data as any;
+    return data.content || data || [];
+  }),
+  read: (id: number) => apiClient.get(`/messages/${id}`), // 상세 조회 시 읽음 처리됨
+  markAllRead: () => apiClient.post('/messages/mark-all-read'),
+  unreadCount: () => apiClient.get<{ count: number }>('/messages/unread-count').then((r) => r.data),
 };
 
 // 카드 신청 API

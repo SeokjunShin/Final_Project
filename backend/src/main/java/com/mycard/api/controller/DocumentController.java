@@ -9,6 +9,7 @@ import com.mycard.api.service.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/documents")
 @RequiredArgsConstructor
+@Slf4j
 public class DocumentController {
 
     private final DocumentService documentService;
@@ -67,6 +69,7 @@ public class DocumentController {
             @PathVariable Long documentId,
             @AuthenticationPrincipal UserPrincipal currentUser) {
 
+        log.info("문서 다운로드 요청: id={}, user={}", documentId, currentUser.getUsername());
         Attachment attachment = documentService.getDocumentAttachmentForDownload(documentId, currentUser);
         Resource resource = fileStorageService.loadFileAsResource(attachment.getId(), currentUser);
 

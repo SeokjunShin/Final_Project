@@ -18,7 +18,10 @@ import java.time.LocalDateTime;
 public class AuditLog {
 
     public enum ActionType {
-        CREATE, UPDATE, DELETE, LOGIN, LOGOUT, ACCESS, EXPORT
+        CREATE, UPDATE, DELETE, LOGIN, LOGOUT, ACCESS, EXPORT,
+        // 추가 액션 타입
+        NOTICE_CREATE, INQUIRY_ANSWER, POINT_POLICY_UPD,
+        USER_UPDATE, CARD_APPLICATION, DOCUMENT_REVIEW, MESSAGE_SEND
     }
 
     @Id

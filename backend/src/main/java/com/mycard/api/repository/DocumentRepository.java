@@ -30,6 +30,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     @Query("SELECT d FROM Document d ORDER BY d.createdAt DESC")
     Page<Document> findByIsPublicTrue(Pageable pageable);
 
+    @Query("SELECT d FROM Document d ORDER BY d.createdAt DESC")
+    Page<Document> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
     default Page<Document> findByIsPublicTrueAndCategory(Document.DocumentCategory category, Pageable pageable) {
         return findByIsPublicTrue(pageable);
     }

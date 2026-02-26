@@ -118,6 +118,23 @@ public class User {
         return roles.stream().anyMatch(role -> role.getName().equals(roleName));
     }
 
+    /**
+     * 호환성을 위한 getName() 메서드 - fullName 반환
+     */
+    public String getName() {
+        return this.fullName;
+    }
+
+    /**
+     * 호환성을 위한 getRole() 메서드 - 첫 번째 역할 이름 반환
+     */
+    public String getRole() {
+        return roles.stream()
+                .map(Role::getName)
+                .findFirst()
+                .orElse(null);
+    }
+
     public void enable() {
         this.status = "ACTIVE";
     }

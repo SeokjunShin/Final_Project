@@ -68,10 +68,17 @@ public class StatementController {
 
         String csv = statementService.exportStatementCsv(statementId, userPrincipal);
 
+        // UTF-8 BOM 추가 (엑셀에서 한글 정상 표시를 위해)
+        byte[] bom = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+        byte[] csvBytes = csv.getBytes(StandardCharsets.UTF_8);
+        byte[] result = new byte[bom.length + csvBytes.length];
+        System.arraycopy(bom, 0, result, 0, bom.length);
+        System.arraycopy(csvBytes, 0, result, bom.length, csvBytes.length);
+
         return ResponseEntity.ok()
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=statement-" + statementId + ".csv")
-                .body(csv.getBytes(StandardCharsets.UTF_8));
+                .body(result);
     }
 }

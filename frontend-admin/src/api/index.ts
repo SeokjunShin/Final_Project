@@ -3,16 +3,32 @@ import type { AuditLog, CardApplication, LoanDetail, LoanListItem, Paged, QueueI
 
 export const adminApi = {
   dashboard: () => adminApiClient.get('/admin/dashboard').then((r) => r.data),
+  operatorDashboard: () => adminApiClient.get('/operator/dashboard').then((r) => r.data),
   inquiries: (params: Record<string, unknown>) =>
     adminApiClient.get<Paged<QueueItem>>('/operator/inquiries', { params }).then((r) => r.data),
   inquiryDetail: (id: number) => adminApiClient.get(`/operator/inquiries/${id}`).then((r) => r.data),
   inquiryAssign: (id: number) => adminApiClient.post(`/operator/inquiries/${id}/assign`),
+  inquiryAssignToOperator: (inquiryId: number, operatorId: number) => 
+    adminApiClient.post(`/admin/inquiries/${inquiryId}/assign/${operatorId}`),
+  getOperators: () => adminApiClient.get('/admin/operators').then((r) => r.data),
   inquiryAnswer: (id: number, answer: string) => adminApiClient.post(`/operator/inquiries/${id}/replies`, { content: answer }),
   inquiryResolve: (id: number) => adminApiClient.post(`/operator/inquiries/${id}/resolve`),
   documents: (params: Record<string, unknown>) =>
     adminApiClient.get<Paged<QueueItem>>('/admin/documents', { params }).then((r) => r.data),
-  documentTransition: (id: number, status: 'APPROVED' | 'REJECTED') =>
-    adminApiClient.patch(`/admin/documents/${id}/status`, { status }),
+  documentTransition: (id: number, status: 'APPROVED' | 'REJECTED', rejectionReason?: string) =>
+    adminApiClient.patch(`/admin/documents/${id}/status`, { status, rejectionReason }),
+  documentDownload: (documentId: number, fileName: string) => {
+    return adminApiClient.get(`/documents/${documentId}/download`, { responseType: 'blob' }).then((r) => {
+      const url = window.URL.createObjectURL(new Blob([r.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName || 'document');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    });
+  },
   sendMessage: (payload: { userId: string; content: string }) => adminApiClient.post('/admin/messages', payload),
   messages: () => adminApiClient.get('/admin/messages').then((r) => r.data),
   users: () => adminApiClient.get('/admin/users').then((r) => r.data),

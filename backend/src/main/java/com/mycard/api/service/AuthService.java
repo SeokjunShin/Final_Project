@@ -89,9 +89,10 @@ public class AuthService {
 
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
-            // 로그인 성공 시 실패 횟수 초기화
+            // 로그인 성공 시 실패 횟수 초기화 + 마지막 로그인 일시 갱신
             if (user != null) {
                 user.setFailedLoginAttempts(0);
+                user.setLastLoginAt(LocalDateTime.now());
                 userRepository.save(user);
             }
 

@@ -153,8 +153,10 @@ public class AdminController {
                     map.put("id", u.getId());
                     map.put("name", u.getFullName() != null ? u.getFullName() : u.getEmail());
                     map.put("email", u.getEmail());
+                    // 잠금(비정상 계정) > 비활성(장기 미접속) > 활성
                     map.put("status", Boolean.TRUE.equals(u.getLocked()) ? "LOCKED"
                             : (Boolean.TRUE.equals(u.getEnabled()) ? "ACTIVE" : "INACTIVE"));
+                    map.put("lastLoginAt", u.getLastLoginAt() != null ? u.getLastLoginAt().toString() : null);
                     return map;
                 })
                 .toList();
@@ -212,6 +214,32 @@ public class AdminController {
     public ResponseEntity<Void> unlockUser(@PathVariable Long userId) {
         userAdminService.unlockUser(userId);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * N일 이상 미접속 활성 계정 일괄 비활성 처리 (장기 미접속 계정 정리)
+     * @param days 미접속 일수 (기본 90일). 이 기간 동안 로그인 이력이 없거나 마지막 로그인이 이전인 계정을 비활성 처리
+     */
+    @Operation(summary = "미접속 계정 비활성 처리", description = "지정 일수 이상 로그인하지 않은 활성 계정을 비활성 처리합니다.")
+    @PostMapping("/users/bulk-inactive-by-last-login")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> bulkInactiveByLastLogin(
+            @RequestParam(defaultValue = "90") int days) {
+
+        if (days < 1 || days > 365) {
+            throw new com.mycard.api.exception.BadRequestException("일수는 1~365 사이로 지정해 주세요.");
+        }
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(days);
+        List<User> targets = userRepository.findActiveUsersWithLastLoginBeforeOrNull(cutoff);
+        for (User u : targets) {
+            u.disable();
+        }
+        userRepository.saveAll(targets);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("count", targets.size());
+        result.put("message", days + "일 이상 미접속 계정 " + targets.size() + "건을 비활성 처리했습니다.");
+        return ResponseEntity.ok(result);
     }
 
     // ===================== 상담원/문의 배정 관리 =====================

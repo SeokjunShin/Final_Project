@@ -18,8 +18,27 @@ MyCard는 카드 발급, 관리, 포인트 시스템을 제공하는 웹 애플�
 - **React Hook Form** + **Zod** (폼 검증)
 
 ### Infrastructure
-- **Docker** (MySQL 컨테이너)
+- **Ubuntu 24.04** (VMware 3-Tier Architecture)
+- **MySQL 8.0** (DB Server)
 - **Nginx** (리버스 프록시)
+
+---
+
+## 아키텍처
+
+### 3-Tier Architecture (운영 환경)
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Frontend       │     │  Backend        │     │  Database       │
+│  Server         │────▶│  Server         │────▶│  Server         │
+│                 │     │                 │     │                 │
+│  - Nginx        │     │  - Java 21      │     │  - MySQL 8.0    │
+│  - Node.js      │     │  - Spring Boot  │     │                 │
+│                 │     │                 │     │                 │
+│  :80            │     │  :8080          │     │  :3306          │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+   192.168.x.100           192.168.x.101           192.168.x.102
+```
 
 ---
 
@@ -43,6 +62,9 @@ Final_project/
 ├── frontend-admin/          # 관리자 포털 (React)
 ├── infra/                   # Nginx, systemd 설정
 └── scripts/                 # 배포 스크립트
+    ├── setup_db_server.sh       # DB 서버 설정
+    ├── setup_backend_server.sh  # 백엔드 서버 설정
+    └── setup_frontend_server.sh # 프론트엔드 서버 설정
 ```
 
 ---
@@ -52,9 +74,13 @@ Final_project/
 ### 1. 사전 요구사항
 - Java 21
 - Node.js 18+
-- Docker Desktop
+- Docker Desktop (로컬 개발용 MySQL)
 
-### 2. MySQL 컨테이너 실행
+### 2. MySQL 컨테이너 실행 (로컬 개발용)
+```bash
+docker compose up -d
+```
+또는
 ```bash
 docker run -d --name mycard-mysql \
   -e MYSQL_ROOT_PASSWORD=root \
@@ -85,6 +111,129 @@ cd frontend-admin
 npm install
 npm run dev
 # -> http://localhost:5174
+```
+
+---
+
+## VMware Ubuntu 24.04 서버 배포 (3-Tier)
+
+### 서버 구성 예시
+| 서버 | 역할 | IP (예시) | 설치 항목 |
+|------|------|-----------|-----------|
+| VM1 | Frontend | 192.168.1.100 | Nginx, Node.js |
+| VM2 | Backend | 192.168.1.101 | Java 21, Spring Boot |
+| VM3 | Database | 192.168.1.102 | MySQL 8.0 |
+
+### Step 1: DB 서버 설정 (VM3)
+
+```bash
+# 1. 스크립트 복사
+scp scripts/setup_db_server.sh user@192.168.1.102:/tmp/
+
+# 2. DB 서버에서 실행 (백엔드 서버 IP를 인자로 전달)
+ssh user@192.168.1.102
+sudo bash /tmp/setup_db_server.sh "192.168.1.101"
+```
+
+**출력 예시:**
+```
+MySQL 정보:
+  - Host: 192.168.1.102
+  - Port: 3306
+  - Database: mycard
+  - User: mycard
+  - Password: mycard_password
+```
+
+### Step 2: Backend 서버 설정 (VM2)
+
+```bash
+# 1. 스크립트 복사
+scp scripts/setup_backend_server.sh user@192.168.1.101:/tmp/
+
+# 2. 백엔드 서버에서 실행 (DB 서버 정보 전달)
+ssh user@192.168.1.101
+sudo bash /tmp/setup_backend_server.sh "192.168.1.102" "3306" "mycard" "mycard" "mycard_password"
+
+# 3. 백엔드 소스 복사
+scp -r backend/* user@192.168.1.101:/opt/mycard/backend/
+
+# 4. 권한 설정 및 서비스 시작
+ssh user@192.168.1.101
+sudo chmod +x /opt/mycard/backend/gradlew
+sudo chown -R mycard:mycard /opt/mycard/backend
+sudo systemctl start mycard-backend
+sudo systemctl enable mycard-backend
+```
+
+### Step 3: Frontend 서버 설정 (VM1)
+
+```bash
+# 1. 스크립트 복사
+scp scripts/setup_frontend_server.sh user@192.168.1.100:/tmp/
+
+# 2. 프론트엔드 서버에서 실행 (백엔드 서버 정보 전달)
+ssh user@192.168.1.100
+sudo bash /tmp/setup_frontend_server.sh "192.168.1.101" "8080" "mycard.local" "admin.mycard.local"
+
+# 3. 프론트엔드 소스 복사 및 빌드 (사용자 포털)
+scp -r frontend-user/* user@192.168.1.100:/opt/mycard/frontend-user/
+ssh user@192.168.1.100
+cd /opt/mycard/frontend-user
+sudo -u mycard npm install
+sudo -u mycard npm run build
+
+# 4. 프론트엔드 소스 복사 및 빌드 (관리자 포털)
+scp -r frontend-admin/* user@192.168.1.100:/opt/mycard/frontend-admin/
+ssh user@192.168.1.100
+cd /opt/mycard/frontend-admin
+sudo -u mycard npm install
+sudo -u mycard npm run build
+
+# 5. Nginx 재시작
+sudo systemctl restart nginx
+```
+
+### Step 4: 클라이언트 hosts 파일 설정
+
+**Windows** (관리자 권한 메모장):
+```
+C:\Windows\System32\drivers\etc\hosts
+```
+
+**추가할 내용:**
+```
+192.168.1.100 mycard.local admin.mycard.local
+```
+
+### Step 5: 접속 확인
+- 사용자 포털: http://mycard.local
+- 관리자 포털: http://admin.mycard.local
+
+---
+
+## 서비스 관리 명령어
+
+### Backend (VM2)
+```bash
+sudo systemctl start mycard-backend    # 시작
+sudo systemctl stop mycard-backend     # 중지
+sudo systemctl restart mycard-backend  # 재시작
+sudo systemctl status mycard-backend   # 상태 확인
+sudo journalctl -u mycard-backend -f   # 로그 확인
+```
+
+### Frontend (VM1)
+```bash
+sudo systemctl restart nginx           # Nginx 재시작
+sudo nginx -t                          # 설정 검사
+sudo tail -f /var/log/nginx/error.log  # 에러 로그
+```
+
+### Database (VM3)
+```bash
+sudo systemctl status mysql            # MySQL 상태
+sudo mysql -u mycard -p mycard         # DB 접속
 ```
 
 ---

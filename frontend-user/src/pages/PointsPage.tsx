@@ -210,7 +210,7 @@ export const PointsPage = () => {
                     >
                       {accounts.map((account: BankAccount) => (
                         <MenuItem key={account.id} value={account.id}>
-                          {account.bankName} {account.accountNumber}
+                          {account.bankName} {account.accountNumberMasked}
                           {account.isDefault && ' (기본)'}
                         </MenuItem>
                       ))}
@@ -316,7 +316,7 @@ export const PointsPage = () => {
                             )}
                           </Stack>
                           <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                            {account.accountNumber} · {account.accountHolder}
+                            {account.accountNumberMasked} · {account.accountHolder}
                           </Typography>
                         </Box>
                       </Stack>

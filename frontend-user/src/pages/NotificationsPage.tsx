@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   Chip,
   Dialog,
   DialogActions,
@@ -49,7 +48,7 @@ export const NotificationsPage = () => {
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
       const result = await notificationsApi.list();

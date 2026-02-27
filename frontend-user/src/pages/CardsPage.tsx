@@ -1,4 +1,4 @@
-import { Box, Button, Card, CardContent, FormControlLabel, Grid, Stack, Switch, Typography, Chip } from '@mui/material';
+import { Box, Button, Card, FormControlLabel, Grid, Stack, Switch, Typography, Chip } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cardsApi } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';

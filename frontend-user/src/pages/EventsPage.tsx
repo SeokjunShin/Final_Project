@@ -65,7 +65,7 @@ export const EventsPage = () => {
   const totalPages = Math.ceil(events.length / ITEMS_PER_PAGE);
   const currentEvents = events.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

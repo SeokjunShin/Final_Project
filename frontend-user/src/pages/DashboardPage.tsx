@@ -18,7 +18,7 @@ export const DashboardPage = () => {
   const { user } = useAuth();
 
   // 대시보드 요약 데이터
-  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+  const { data: dashboardData } = useQuery({
     queryKey: ['user-dashboard'],
     queryFn: async () => {
       try {

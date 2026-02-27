@@ -113,7 +113,9 @@ public class SecurityConfig {
                 "http://localhost:5175",
                 "http://localhost:5176",
                 "http://mycard.local",
-                "http://admin.mycard.local"));
+                "http://admin.mycard.local",
+                "http://192.168.10.137",
+                "http://192.168.10.137:8081"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

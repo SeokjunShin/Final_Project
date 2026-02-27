@@ -35,14 +35,14 @@ INSERT INTO merchants (id, name, category) VALUES
 
 -- Cards
 INSERT INTO cards (id, user_id, card_name, network, masked_pan, last4, status, limit_amount, available_limit, overseas_enabled, issued_at) VALUES
-  (1001, 1, 'MyCard Platinum', 'VISA',   '****-****-****-1234', '1234', 'ACTIVE', 5000000, 4200000, 1, '2025-12-10'),
-  (1002, 1, 'MyCard Check',    'MASTER', '****-****-****-5678', '5678', 'ACTIVE', 1500000, 1500000, 0, '2025-11-01'),
+  (1001, 1, 'MyCard Platinum', 'VISA',   '4532-1234-5678-1234', '1234', 'ACTIVE', 5000000, 4200000, 1, '2025-12-10'),
+  (1002, 1, 'MyCard Check',    'MASTER', '5425-9876-5432-5678', '5678', 'ACTIVE', 1500000, 1500000, 0, '2025-11-01'),
 
-  (2001, 2, 'MyCard Gold',      'VISA',   '****-****-****-2345', '2345', 'ACTIVE', 3000000, 2800000, 1, '2025-10-15'),
-  (2002, 2, 'MyCard Classic',   'MASTER', '****-****-****-6789', '6789', 'ACTIVE', 2000000, 1900000, 0, '2025-09-20'),
+  (2001, 2, 'MyCard Gold',      'VISA',   '4716-2345-6789-2345', '2345', 'ACTIVE', 3000000, 2800000, 1, '2025-10-15'),
+  (2002, 2, 'MyCard Classic',   'MASTER', '5312-8765-4321-6789', '6789', 'ACTIVE', 2000000, 1900000, 0, '2025-09-20'),
 
-  (3001, 3, 'MyCard Blue',      'VISA',   '****-****-****-3456', '3456', 'ACTIVE', 2500000, 2100000, 1, '2025-08-05'),
-  (3002, 3, 'MyCard Junior',    'MASTER', '****-****-****-7890', '7890', 'ACTIVE', 1200000, 1200000, 0, '2025-07-12');
+  (3001, 3, 'MyCard Blue',      'VISA',   '4929-3456-7890-3456', '3456', 'ACTIVE', 2500000, 2100000, 1, '2025-08-05'),
+  (3002, 3, 'MyCard Junior',    'MASTER', '5198-6543-2109-7890', '7890', 'ACTIVE', 1200000, 1200000, 0, '2025-07-12');
 
 -- Approvals (승인내역)
 INSERT INTO approvals (id, card_id, merchant_id, amount, currency, status, auth_code, approved_at) VALUES

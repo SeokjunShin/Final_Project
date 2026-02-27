@@ -5,6 +5,7 @@ import com.mycard.api.security.JwtAuthenticationEntryPoint;
 import com.mycard.api.security.JwtAuthenticationFilter;
 import com.mycard.api.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,6 +25,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -36,6 +38,9 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final JwtTokenProvider tokenProvider;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+
+    @Value("${app.cors.allowed-origins:}")
+    private String additionalOrigins;
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
@@ -103,7 +108,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
+        
+        // 기본 허용 origins (개발용)
+        List<String> origins = new ArrayList<>(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:3001",
                 "http://127.0.0.1:3000",
@@ -113,9 +120,18 @@ public class SecurityConfig {
                 "http://localhost:5175",
                 "http://localhost:5176",
                 "http://mycard.local",
-                "http://admin.mycard.local",
-                "http://192.168.10.137",
-                "http://192.168.10.137:8081"));
+                "http://admin.mycard.local"));
+        
+        // 환경변수로 추가 origins 설정 (쉼표로 구분)
+        // 예: CORS_ALLOWED_ORIGINS=http://192.168.10.137,http://192.168.10.137:8081
+        if (additionalOrigins != null && !additionalOrigins.isBlank()) {
+            Arrays.stream(additionalOrigins.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .forEach(origins::add);
+        }
+        
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

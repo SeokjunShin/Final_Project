@@ -225,8 +225,11 @@ sudo -u mycard DB_URL='jdbc:mysql://192.168.10.135:3306/mycard?useSSL=false&allo
   DB_USERNAME=mycard \
   DB_PASSWORD=mycard_password \
   JWT_SECRET='your-256-bit-secret-key-for-jwt-signing-must-be-at-least-32-chars' \
+  CORS_ALLOWED_ORIGINS='http://192.168.10.137,http://192.168.10.137:8081' \
   ./gradlew bootRun --no-daemon
 ```
+
+> **⚠️ 중요**: `CORS_ALLOWED_ORIGINS`에 본인의 프론트엔드 서버 IP를 입력하세요!
 
 ---
 

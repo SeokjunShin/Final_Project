@@ -14,7 +14,8 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
-import type { LoanListItem, LoanType } from '@/types';
+import { useAdminSnackbar } from '@/contexts/SnackbarContext';
+import type { LoanDetail, LoanListItem, LoanType } from '@/types';
 
 const LOAN_TYPE_LABELS: Record<LoanType, string> = {
   CASH_ADVANCE: '현금서비스',
@@ -40,6 +41,7 @@ export const LoansPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [detailLoanId, setDetailLoanId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const { show } = useAdminSnackbar();
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-loans', page, pageSize],
@@ -57,31 +59,85 @@ export const LoansPage = () => {
 
   const approveMutation = useMutation({
     mutationFn: (id: number) => adminApi.approveLoan(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-loans'] });
-      if (detailLoanId != null) {
-        queryClient.invalidateQueries({ queryKey: ['admin-loan-detail', detailLoanId] });
+    onSuccess: async (data: LoanDetail) => {
+      show('대출이 승인되었습니다.', 'success');
+      queryClient.setQueryData(['admin-loan-detail', data.id], data);
+      // 목록 캐시에 승인 결과 반영(테이블이 즉시 갱신되도록)
+      queryClient.setQueryData(
+        ['admin-loans', page, pageSize],
+        (old: { content?: LoanListItem[]; totalElements?: number } | undefined) => {
+          if (!old?.content) return old;
+          return {
+            ...old,
+            content: old.content.map((row) =>
+              row.id === data.id ? { ...row, status: data.status } : row,
+            ),
+          };
+        },
+      );
+      await queryClient.invalidateQueries({ queryKey: ['admin-loans'] });
+    },
+    onError: (e: unknown) => {
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
+      const status = err.response?.status;
+      const msg = err.response?.data?.message;
+      if (status === 403) {
+        show('권한이 없습니다. 관리자 또는 운영자 계정으로 로그인해 주세요.', 'error');
+      } else {
+        show(msg ?? '대출 승인에 실패했습니다.', 'error');
       }
     },
   });
 
   const disburseMutation = useMutation({
     mutationFn: (id: number) => adminApi.disburseLoan(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-loans'] });
-      if (detailLoanId != null) {
-        queryClient.invalidateQueries({ queryKey: ['admin-loan-detail', detailLoanId] });
-      }
+    onSuccess: async (data: LoanDetail) => {
+      show('출금 완료 처리되었습니다.', 'success');
+      queryClient.setQueryData(['admin-loan-detail', data.id], data);
+      queryClient.setQueryData(
+        ['admin-loans', page, pageSize],
+        (old: { content?: LoanListItem[]; totalElements?: number } | undefined) => {
+          if (!old?.content) return old;
+          return {
+            ...old,
+            content: old.content.map((row) =>
+              row.id === data.id ? { ...row, status: data.status } : row,
+            ),
+          };
+        },
+      );
+      await queryClient.invalidateQueries({ queryKey: ['admin-loans'] });
+    },
+    onError: (e: unknown) => {
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
+      const msg = err.response?.data?.message;
+      show(err.response?.status === 403 ? '권한이 없습니다.' : (msg ?? '출금 처리에 실패했습니다.'), 'error');
     },
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: number) => adminApi.cancelLoan(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-loans'] });
-      if (detailLoanId != null) {
-        queryClient.invalidateQueries({ queryKey: ['admin-loan-detail', detailLoanId] });
-      }
+    onSuccess: async (data: LoanDetail) => {
+      show('대출이 취소되었습니다.', 'success');
+      queryClient.setQueryData(['admin-loan-detail', data.id], data);
+      queryClient.setQueryData(
+        ['admin-loans', page, pageSize],
+        (old: { content?: LoanListItem[]; totalElements?: number } | undefined) => {
+          if (!old?.content) return old;
+          return {
+            ...old,
+            content: old.content.map((row) =>
+              row.id === data.id ? { ...row, status: data.status } : row,
+            ),
+          };
+        },
+      );
+      await queryClient.invalidateQueries({ queryKey: ['admin-loans'] });
+    },
+    onError: (e: unknown) => {
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
+      const msg = err.response?.data?.message;
+      show(err.response?.status === 403 ? '권한이 없습니다.' : (msg ?? '대출 취소에 실패했습니다.'), 'error');
     },
   });
 

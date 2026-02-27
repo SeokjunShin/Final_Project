@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -69,59 +70,57 @@ public class LoanService {
     }
 
     /**
-     * 관리자용 대출 승인
+     * 관리자용 대출 승인 (DB에 직접 UPDATE 후 재조회하여 반영 보장)
+     * REQUIRES_NEW: AdminController가 readOnly 트랜잭션이므로 쓰기용 새 트랜잭션에서 실행
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public LoanDetailResponse approveLoanAsAdmin(Long loanId) {
+        LocalDateTime now = LocalDateTime.now();
+        int updated = loanRepository.approveById(loanId, now);
+        if (updated == 0) {
+            Loan loan = loanRepository.findByIdWithUser(loanId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Loan", loanId));
+            throw new BadRequestException("REQUESTED 상태의 대출만 승인할 수 있습니다. 현재: " + loan.getStatus());
+        }
         Loan loan = loanRepository.findByIdWithUser(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan", loanId));
-
-        if (loan.getStatus() != Loan.LoanStatus.REQUESTED) {
-            throw new BadRequestException("REQUESTED 상태의 대출만 승인할 수 있습니다.");
-        }
-
-        loan.setStatus(Loan.LoanStatus.APPROVED);
-        loan.setApprovedAt(LocalDateTime.now());
-        loanRepository.save(loan);
-
         return toDetailResponse(loan);
     }
 
     /**
-     * 관리자용 대출 출금 처리
+     * 관리자용 대출 출금 처리 (DB에 직접 UPDATE 후 재조회)
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public LoanDetailResponse disburseLoanAsAdmin(Long loanId) {
+        LocalDateTime now = LocalDateTime.now();
+        int updated = loanRepository.disburseById(loanId, now);
+        if (updated == 0) {
+            Loan loan = loanRepository.findByIdWithUser(loanId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Loan", loanId));
+            throw new BadRequestException("APPROVED 상태의 대출만 출금 처리할 수 있습니다. 현재: " + loan.getStatus());
+        }
         Loan loan = loanRepository.findByIdWithUser(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan", loanId));
-
-        if (loan.getStatus() != Loan.LoanStatus.APPROVED) {
-            throw new BadRequestException("APPROVED 상태의 대출만 출금 처리할 수 있습니다.");
-        }
-
-        loan.setStatus(Loan.LoanStatus.DISBURSED);
-        loan.setDisbursedAt(LocalDateTime.now());
-        loanRepository.save(loan);
-
         return toDetailResponse(loan);
     }
 
     /**
-     * 관리자용 대출 취소(거절) 처리
+     * 관리자용 대출 취소(거절) 처리 (DB에 직접 UPDATE 후 재조회)
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public LoanDetailResponse cancelLoanAsAdmin(Long loanId) {
+        LocalDateTime now = LocalDateTime.now();
+        int updated = loanRepository.cancelById(loanId, now);
+        if (updated == 0) {
+            Loan loan = loanRepository.findByIdWithUser(loanId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Loan", loanId));
+            if (loan.getStatus() == Loan.LoanStatus.REPAID || loan.getStatus() == Loan.LoanStatus.CANCELED) {
+                throw new BadRequestException("이미 종료된 대출입니다.");
+            }
+            throw new BadRequestException("취소할 수 없는 상태입니다. 현재: " + loan.getStatus());
+        }
         Loan loan = loanRepository.findByIdWithUser(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan", loanId));
-
-        if (loan.getStatus() == Loan.LoanStatus.REPAID || loan.getStatus() == Loan.LoanStatus.CANCELED) {
-            throw new BadRequestException("이미 종료된 대출입니다.");
-        }
-
-        loan.setStatus(Loan.LoanStatus.CANCELED);
-        loan.setCanceledAt(LocalDateTime.now());
-        loanRepository.save(loan);
-
         return toDetailResponse(loan);
     }
 

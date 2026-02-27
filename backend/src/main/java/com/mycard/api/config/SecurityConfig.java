@@ -70,6 +70,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // CORS preflight (OPTIONS) - 인증 없이 허용하여 PATCH/POST 등이 차단되지 않도록
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public endpoints
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
@@ -85,6 +87,7 @@ public class SecurityConfig {
                         .requestMatchers("/admin/audit-logs/**").hasRole("ADMIN")
                         .requestMatchers("/admin/reissue-requests").hasRole("ADMIN")
                         .requestMatchers("/admin/cards/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/loans/**").hasAnyRole("ADMIN", "OPERATOR")
 
                         // Operator + Admin endpoints
                         .requestMatchers("/operator/**").hasAnyRole("OPERATOR", "ADMIN")

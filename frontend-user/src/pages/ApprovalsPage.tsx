@@ -27,8 +27,8 @@ export const ApprovalsPage = () => {
       } catch {
         return {
           content: [
-            { id: 1, approvedAt: '2026-02-23 10:11', merchantName: '편의점', cardMaskedNumber: '****-9012', amount: 6900, status: 'APPROVED' },
-            { id: 2, approvedAt: '2026-02-22 18:40', merchantName: '온라인쇼핑', cardMaskedNumber: '****-9012', amount: 85000, status: 'CANCELED' },
+            { id: 1, approvedAt: '2026-02-23 10:11', merchantName: '편의점', cardMasked: '****-9012', amount: 6900, status: 'APPROVED' },
+            { id: 2, approvedAt: '2026-02-22 18:40', merchantName: '온라인쇼핑', cardMasked: '****-9012', amount: 85000, status: 'CANCELED' },
           ],
           totalElements: 2,
           totalPages: 1,
@@ -70,7 +70,7 @@ export const ApprovalsPage = () => {
             valueFormatter: (v: string) => formatDateTime(v),
           },
           { field: 'merchantName', headerName: '가맹점', flex: 1 },
-          { field: 'cardMaskedNumber', headerName: '카드번호', flex: 1 },
+          { field: 'cardMasked', headerName: '카드번호', flex: 1 },
           {
             field: 'amount',
             headerName: '금액',

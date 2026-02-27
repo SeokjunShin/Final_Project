@@ -21,11 +21,10 @@ export const StatementListPage = () => {
   const [size, setSize] = useState(10);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [cardId, setCardId] = useState('');
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['statements', page, size, fromDate, toDate, cardId],
+    queryKey: ['statements', page, size, fromDate, toDate],
     queryFn: async () => {
       try {
         return await statementApi.list({
@@ -33,7 +32,6 @@ export const StatementListPage = () => {
           size,
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
-          cardId: cardId ? Number(cardId) : undefined,
         });
       } catch {
         return {
@@ -115,7 +113,6 @@ export const StatementListPage = () => {
               onChange={(e) => setToDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
             />
-            <TextField label="카드 ID" value={cardId} onChange={(e) => setCardId(e.target.value)} />
             <Button variant="outlined" onClick={() => setPage(0)}>
               조회
             </Button>

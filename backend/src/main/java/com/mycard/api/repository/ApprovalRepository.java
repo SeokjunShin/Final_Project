@@ -15,13 +15,13 @@ import java.util.Optional;
 @Repository
 public interface ApprovalRepository extends JpaRepository<Approval, Long> {
 
-    @Query("SELECT a FROM Approval a WHERE a.card.user.id = :userId ORDER BY a.approvedAt DESC")
+    @Query("SELECT a FROM Approval a JOIN FETCH a.card JOIN FETCH a.merchant WHERE a.card.user.id = :userId ORDER BY a.approvedAt DESC")
     Page<Approval> findByUserId(@Param("userId") Long userId, Pageable pageable);
 
-    @Query("SELECT a FROM Approval a WHERE a.card.user.id = :userId ORDER BY a.approvedAt DESC")
+    @Query("SELECT a FROM Approval a JOIN FETCH a.card JOIN FETCH a.merchant WHERE a.card.user.id = :userId ORDER BY a.approvedAt DESC")
     List<Approval> findTop5ByUserIdOrderByApprovedAtDesc(@Param("userId") Long userId, Pageable pageable);
 
-    @Query("SELECT a FROM Approval a WHERE a.card.user.id = :userId AND a.card.id = :cardId AND a.approvedAt BETWEEN :start AND :end")
+    @Query("SELECT a FROM Approval a JOIN FETCH a.card JOIN FETCH a.merchant WHERE a.card.user.id = :userId AND a.card.id = :cardId AND a.approvedAt BETWEEN :start AND :end")
     Page<Approval> findByUserIdAndCardIdAndDateRange(
             @Param("userId") Long userId,
             @Param("cardId") Long cardId,
@@ -29,7 +29,7 @@ public interface ApprovalRepository extends JpaRepository<Approval, Long> {
             @Param("end") LocalDateTime end,
             Pageable pageable);
 
-    @Query("SELECT a FROM Approval a WHERE a.card.user.id = :userId AND a.approvedAt BETWEEN :start AND :end")
+    @Query("SELECT a FROM Approval a JOIN FETCH a.card JOIN FETCH a.merchant WHERE a.card.user.id = :userId AND a.approvedAt BETWEEN :start AND :end")
     Page<Approval> findByUserIdAndDateRange(
             @Param("userId") Long userId,
             @Param("start") LocalDateTime start,

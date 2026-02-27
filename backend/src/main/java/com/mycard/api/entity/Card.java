@@ -81,15 +81,7 @@ public class Card {
     }
 
     public String getMaskedCardNumber() {
-        if (cardNumber == null) {
-            return null;
-        }
-        if (cardNumber.startsWith("****")) {
-            return cardNumber;
-        }
-        if (cardNumber.length() >= 4) {
-            return "****-****-****-" + cardNumber.substring(cardNumber.length() - 4);
-        }
+        // 카드번호 그대로 반환 (DB에 저장된 형식 그대로)
         return cardNumber;
     }
 

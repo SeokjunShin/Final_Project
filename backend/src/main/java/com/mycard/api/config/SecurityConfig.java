@@ -84,18 +84,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
 
-                        // Admin only endpoints
-                        .requestMatchers("/admin/users/**").hasRole("ADMIN")
-                        .requestMatchers("/admin/merchants/**").hasRole("ADMIN")
-                        .requestMatchers("/admin/events/**").hasRole("ADMIN")
-                        .requestMatchers("/admin/point-policies/**").hasRole("ADMIN")
-                        .requestMatchers("/admin/audit-logs/**").hasRole("ADMIN")
-                        .requestMatchers("/admin/reissue-requests").hasRole("ADMIN")
-                        .requestMatchers("/admin/cards/**").hasRole("ADMIN")
-                        .requestMatchers("/admin/loans/**").hasAnyRole("ADMIN", "OPERATOR")
+                        // Admin endpoints (separated roles)
+                        .requestMatchers("/admin/users/**").hasRole("MASTER_ADMIN")
+                        .requestMatchers("/admin/merchants/**").hasRole("MASTER_ADMIN")
+                        .requestMatchers("/admin/point-policies/**").hasRole("MASTER_ADMIN")
+                        .requestMatchers("/admin/audit-logs/**").hasRole("MASTER_ADMIN")
+                        .requestMatchers("/admin/events/**").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN")
+                        .requestMatchers("/admin/reissue-requests").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN")
+                        .requestMatchers("/admin/cards/**").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN")
+                        .requestMatchers("/admin/loans/**").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN", "OPERATOR")
 
                         // Operator + Admin endpoints
-                        .requestMatchers("/operator/**").hasAnyRole("OPERATOR", "ADMIN")
+                        .requestMatchers("/operator/**").hasAnyRole("OPERATOR", "MASTER_ADMIN", "REVIEW_ADMIN")
 
                         // User endpoints (authenticated users)
                         .anyRequest().authenticated())
@@ -108,7 +108,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
+
         // 기본 허용 origins (개발용)
         List<String> origins = new ArrayList<>(Arrays.asList(
                 "http://localhost:3000",
@@ -121,7 +121,7 @@ public class SecurityConfig {
                 "http://localhost:5176",
                 "http://mycard.local",
                 "http://admin.mycard.local"));
-        
+
         // 환경변수로 추가 origins 설정 (쉼표로 구분)
         // 예: CORS_ALLOWED_ORIGINS=http://192.168.10.137,http://192.168.10.137:8081
         if (additionalOrigins != null && !additionalOrigins.isBlank()) {
@@ -130,7 +130,7 @@ public class SecurityConfig {
                     .filter(s -> !s.isEmpty())
                     .forEach(origins::add);
         }
-        
+
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));

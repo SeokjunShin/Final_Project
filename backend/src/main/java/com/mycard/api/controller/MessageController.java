@@ -33,7 +33,7 @@ public class MessageController {
      */
     @Operation(summary = "알림 목록 조회", description = "로그인한 사용자의 알림 목록을 조회합니다.")
     @GetMapping
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<Page<MessageResponse>> getMessages(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -47,7 +47,7 @@ public class MessageController {
      */
     @Operation(summary = "읽지 않은 알림 개수 조회", description = "읽지 않은 알림의 개수를 반환합니다.")
     @GetMapping("/unread-count")
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<Map<String, Long>> getUnreadCount(
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
 
@@ -60,7 +60,7 @@ public class MessageController {
      */
     @Operation(summary = "알림 상세 조회", description = "특정 알림의 상세 내용을 조회하고 읽음 처리합니다.")
     @GetMapping("/{messageId}")
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<MessageResponse> getMessage(
             @PathVariable Long messageId,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -74,7 +74,7 @@ public class MessageController {
      */
     @Operation(summary = "모든 알림 읽음 처리", description = "사용자의 모든 알림을 읽음 처리합니다.")
     @PostMapping("/mark-all-read")
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal UserPrincipal userPrincipal) {
         messageService.markAllAsRead(userPrincipal.getId());
         return ResponseEntity.ok().build();
@@ -85,7 +85,7 @@ public class MessageController {
      */
     @Operation(summary = "알림 삭제", description = "특정 알림을 삭제합니다.")
     @DeleteMapping("/{messageId}")
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<Void> deleteMessage(
             @PathVariable Long messageId,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {

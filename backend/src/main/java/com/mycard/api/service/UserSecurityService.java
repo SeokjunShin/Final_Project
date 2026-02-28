@@ -62,10 +62,12 @@ public class UserSecurityService {
         User user = loadUser(principal.getId());
         verifyCurrentPassword(user, request.getCurrentPassword());
 
-        user.setTwoFactorEnabled(request.getTwoFactorEnabled());
+        if (request.getNewSecondaryPassword() != null && !request.getNewSecondaryPassword().isBlank()) {
+            user.setSecondaryPassword(passwordEncoder.encode(request.getNewSecondaryPassword()));
+        }
         userRepository.save(user);
 
-        auditService.log(AuditLog.ActionType.UPDATE, "USER_SECURITY", user.getId(), "2FA 설정 변경");
+        auditService.log(AuditLog.ActionType.UPDATE, "USER_SECURITY", user.getId(), "2차 비밀번호 설정 변경");
         return toResponse(user);
     }
 
@@ -87,7 +89,7 @@ public class UserSecurityService {
                 .name(user.getFullName())
                 .phone(user.getPhoneNumber())
                 .address(user.getAddress())
-                .twoFactorEnabled(Boolean.TRUE.equals(user.getTwoFactorEnabled()))
+                .hasSecondaryPassword(user.getSecondaryPassword() != null && !user.getSecondaryPassword().isEmpty())
                 .build();
     }
 }

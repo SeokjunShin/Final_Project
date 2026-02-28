@@ -61,7 +61,7 @@ public class EventController {
      */
     @Operation(summary = "이벤트 참여", description = "이벤트에 참여합니다.")
     @PostMapping("/{eventId}/participate")
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<Void> participateEvent(
             @PathVariable Long eventId,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -75,7 +75,7 @@ public class EventController {
      */
     @Operation(summary = "내 참여 이벤트 조회", description = "내가 참여한 이벤트 목록을 조회합니다.")
     @GetMapping("/my-participations")
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<List<EventResponse>> getMyParticipations(
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
 

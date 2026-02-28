@@ -36,10 +36,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Tag(name = "Operator", description = "운영자 전용 API")
+@Tag(name = "OPERATOR", description = "운영자 전용 API")
 @RestController
 @RequestMapping("/operator")
-@PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN')")
+@PreAuthorize("hasAnyRole('OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
 @RequiredArgsConstructor
 public class OperatorController {
 

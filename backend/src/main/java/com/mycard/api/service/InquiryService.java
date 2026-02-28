@@ -151,7 +151,7 @@ public class InquiryService {
                 .orElseThrow(() -> new ResourceNotFoundException("상담원", operatorId));
 
         // 상담원 또는 관리자 권한 확인
-        if (!"OPERATOR".equals(operator.getRole()) && !"ADMIN".equals(operator.getRole())) {
+        if (!"OPERATOR".equals(operator.getRole()) && !"MASTER_ADMIN".equals(operator.getRole())) {
             throw new BadRequestException("상담원 또는 관리자만 배정받을 수 있습니다.");
         }
 

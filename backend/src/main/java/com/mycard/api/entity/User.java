@@ -28,6 +28,9 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String password;
 
+    @Column(name = "secondary_password", length = 100)
+    private String secondaryPassword;
+
     @Column(name = "name", nullable = false, length = 80)
     private String fullName;
 
@@ -39,9 +42,6 @@ public class User {
 
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE";
-
-    @Column(name = "two_factor_enabled", nullable = false)
-    private Boolean twoFactorEnabled = false;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
@@ -55,11 +55,7 @@ public class User {
     private LocalDateTime updatedAt;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
+    @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
 
     @Transient

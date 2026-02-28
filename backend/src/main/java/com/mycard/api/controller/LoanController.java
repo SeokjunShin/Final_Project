@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "대출", description = "대출 API")
 @RestController
 @RequestMapping("/loans")
-@PreAuthorize("hasAnyRole('USER','OPERATOR','ADMIN')")
+@PreAuthorize("hasAnyRole('USER','OPERATOR','REVIEW_ADMIN','MASTER_ADMIN')")
 @RequiredArgsConstructor
 public class LoanController {
 

@@ -14,7 +14,8 @@ public class Role {
 
     public static final String USER = "USER";
     public static final String OPERATOR = "OPERATOR";
-    public static final String ADMIN = "ADMIN";
+    public static final String REVIEW_ADMIN = "REVIEW_ADMIN";
+    public static final String MASTER_ADMIN = "MASTER_ADMIN";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

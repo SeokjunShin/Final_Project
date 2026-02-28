@@ -93,7 +93,7 @@ public class UserPrincipal implements UserDetails {
     }
 
     public boolean isAdmin() {
-        return hasRole("ADMIN");
+        return hasRole("MASTER_ADMIN");
     }
 
     public boolean isOperator() {

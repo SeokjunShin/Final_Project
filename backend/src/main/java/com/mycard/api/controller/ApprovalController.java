@@ -30,7 +30,7 @@ public class ApprovalController {
 
     @Operation(summary = "승인/취소 목록 조회", description = "USER/OPERATOR/ADMIN 접근 가능")
     @GetMapping
-    @PreAuthorize("hasAnyRole('USER','OPERATOR','ADMIN')")
+    @PreAuthorize("hasAnyRole('USER','OPERATOR','REVIEW_ADMIN','MASTER_ADMIN')")
     public ResponseEntity<Page<ApprovalResponse>> getApprovals(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) LocalDate fromDate,

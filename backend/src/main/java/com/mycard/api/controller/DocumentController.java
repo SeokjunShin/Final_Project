@@ -64,7 +64,7 @@ public class DocumentController {
 
     @Operation(summary = "문서 다운로드", description = "Owner/Staff 권한 검증 후 다운로드")
     @GetMapping("/{documentId}/download")
-    @PreAuthorize("hasAnyRole('USER','OPERATOR','ADMIN')")
+    @PreAuthorize("hasAnyRole('USER','OPERATOR','REVIEW_ADMIN','MASTER_ADMIN')")
     public ResponseEntity<Resource> downloadDocument(
             @PathVariable Long documentId,
             @AuthenticationPrincipal UserPrincipal currentUser) {

@@ -5,20 +5,21 @@ SET FOREIGN_KEY_CHECKS = 0;
 INSERT INTO roles (id, name, description) VALUES
   (1, 'USER', '일반 사용자'),
   (2, 'OPERATOR', '상담원'),
-  (3, 'ADMIN', '관리자');
+  (3, 'MASTER_ADMIN', '관리자'),
+  (4, 'REVIEW_ADMIN', '리뷰 관리자');
 
 -- Users (password: MyCard!234)
 INSERT INTO users (id, email, password_hash, name, phone, status) VALUES
   (1,   'user1@mycard.local', '$2a$12$PqcXBVTaFDti5bPDa2k5IOxs0zN9cUTeoN9ZxFocsXmyIaWgx0Yvu', '홍길동', '010-1111-1111', 'ACTIVE'),
   (2,   'user2@mycard.local', '$2a$12$OjbgXXmP6FE.r7FevQhFPOrsxQYlWqNRWOXnIrcA/Qma8.G42eO.y', '김민수', '010-2222-2222', 'ACTIVE'),
-  (3,   'user3@mycard.local', '$2a$12$R85yQRcEWzjqz6f6wyxbLu45tP7BdVvaRsL2m06WcY5h3yBTwQhiq', '이지은', '010-3333-3333', 'ACTIVE'),
+  (3,   'reviewadmin@mycard.local', '$2a$12$R85yQRcEWzjqz6f6wyxbLu45tP7BdVvaRsL2m06WcY5h3yBTwQhiq', '리뷰관리자', '010-3333-3333', 'ACTIVE'),
   (101, 'op1@mycard.local',   '$2a$12$KTNCtgdgsjcARphzh5bu1eRPfOm4zsHObCjPWm7xwGzSFmUl7S/Kq', '박상담', '010-9000-0101', 'ACTIVE'),
   (102, 'op2@mycard.local',   '$2a$12$abBrL9VdR2WFzBgTzntzpuQ.A2T/.TnG.RWPo3.3S0QFdwGV4qa/K', '최상담', '010-9000-0102', 'ACTIVE'),
-  (201, 'admin@mycard.local', '$2a$12$tTR6GAS4iiEHZa0q8O054.nlJuosmt8albvhAqQm8Hrr0VGXwNT/G', '관리자', '010-9999-0201', 'ACTIVE');
+  (201, 'masteradmin@mycard.local', '$2a$12$tTR6GAS4iiEHZa0q8O054.nlJuosmt8albvhAqQm8Hrr0VGXwNT/G', '마스터관리자', '010-9999-0201', 'ACTIVE');
 
 -- User Roles
 INSERT INTO user_roles (user_id, role_id) VALUES
-  (1, 1), (2, 1), (3, 1),
+  (1, 1), (2, 1), (3, 4),
   (101, 2), (102, 2),
   (201, 3);
 

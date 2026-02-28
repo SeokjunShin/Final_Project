@@ -84,8 +84,7 @@ public class AuthService {
 
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, request.getPassword())
-            );
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword()));
 
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
@@ -252,7 +251,8 @@ public class AuthService {
                     .ifPresent(token -> {
                         token.revoke();
                         refreshTokenRepository.save(token);
-                        auditService.log(AuditLog.ActionType.LOGOUT, "User", token.getUser().getId(), "User logged out");
+                        auditService.log(AuditLog.ActionType.LOGOUT, "User", token.getUser().getId(),
+                                "User logged out");
                     });
         }
     }
@@ -287,15 +287,14 @@ public class AuthService {
         String tokenHash = hashToken(refreshToken);
         LocalDateTime expiresAt = LocalDateTime.ofInstant(
                 tokenProvider.getExpirationFromRefreshToken(refreshToken).toInstant(),
-                ZoneId.systemDefault()
-        );
+                ZoneId.systemDefault());
 
         RefreshToken token = new RefreshToken(user, tokenHash, expiresAt, userAgent, ipAddress);
         refreshTokenRepository.save(token);
     }
 
     private void logLoginAttempt(String email, String ipAddress, String userAgent,
-                                  boolean success, String failureReason) {
+            boolean success, String failureReason) {
         LoginAttempt attempt = new LoginAttempt(email, ipAddress, userAgent, success, failureReason);
         userRepository.findByEmail(email).ifPresent(attempt::setUser);
         loginAttemptRepository.save(attempt);
@@ -316,13 +315,13 @@ public class AuthService {
     }
 
     private HttpServletRequest getCurrentHttpRequest() {
-        ServletRequestAttributes attributes =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         return attributes != null ? attributes.getRequest() : null;
     }
 
     private String getClientIp(HttpServletRequest request) {
-        if (request == null) return "unknown";
+        if (request == null)
+            return "unknown";
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
             return xForwardedFor.split(",")[0].trim();
@@ -341,8 +340,8 @@ public class AuthService {
         User user = new User(
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword()),
-                request.getName()
-        );
+                request.getName());
+        user.setSecondaryPassword(passwordEncoder.encode(request.getSecondaryPassword()));
         user.setPhoneNumber(request.getPhone());
         user.setStatus("ACTIVE");
 

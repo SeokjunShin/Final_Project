@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 @Tag(name = "파일", description = "파일 업로드/다운로드 API")
 @RestController
 @RequestMapping("/files")
-@PreAuthorize("hasAnyRole('USER','OPERATOR','ADMIN')")
+@PreAuthorize("hasAnyRole('USER','OPERATOR','REVIEW_ADMIN','MASTER_ADMIN')")
 @RequiredArgsConstructor
 public class FileController {
 

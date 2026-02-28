@@ -39,7 +39,7 @@ import java.util.*;
 @Tag(name = "User Documents", description = "사용자 문서함 API")
 @RestController
 @RequestMapping("/docs")
-@PreAuthorize("hasAnyRole('USER','OPERATOR','ADMIN')")
+@PreAuthorize("hasAnyRole('USER','OPERATOR','REVIEW_ADMIN','MASTER_ADMIN')")
 @RequiredArgsConstructor
 @Slf4j
 public class UserDocumentController {

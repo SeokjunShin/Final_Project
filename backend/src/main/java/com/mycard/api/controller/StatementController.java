@@ -35,7 +35,7 @@ public class StatementController {
 
     @Operation(summary = "명세서 목록 조회", description = "USER/OPERATOR/ADMIN 접근 가능")
     @GetMapping
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<Page<StatementListResponse>> getStatements(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestParam(required = false) LocalDate fromDate,
@@ -50,7 +50,7 @@ public class StatementController {
 
     @Operation(summary = "명세서 상세 조회", description = "Owner check는 서비스에서 강제")
     @GetMapping("/{statementId}")
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<StatementDetailResponse> getStatementDetail(
             @PathVariable Long statementId,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -61,7 +61,7 @@ public class StatementController {
 
     @Operation(summary = "명세서 CSV 다운로드", description = "Owner check 후 스트리밍")
     @GetMapping("/{statementId}/export.csv")
-    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
     public ResponseEntity<byte[]> exportStatementCsv(
             @PathVariable Long statementId,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {

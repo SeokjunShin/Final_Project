@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "고객문의", description = "1:1 문의 API")
 @RestController
 @RequestMapping("/inquiries")
-@PreAuthorize("hasAnyRole('USER','OPERATOR','ADMIN')")
+@PreAuthorize("hasAnyRole('USER','OPERATOR','REVIEW_ADMIN','MASTER_ADMIN')")
 @RequiredArgsConstructor
 public class InquiryController {
 

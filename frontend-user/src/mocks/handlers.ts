@@ -29,9 +29,8 @@ export const handlers = [
 
         // 새 쿠폰 데이터 (구매 날짜, 유효기간 추가)
         const newCoupon = {
-            ...body.coupon,
+            couponId: body.coupon?.id || body.couponId,
             purchaseId: Date.now(),
-            quantity: body.quantity || 1,
             purchasedAt: new Date().toISOString(),
             validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1년 뒤
             status: 'AVAILABLE' // AVAILABLE, USED, EXPIRED

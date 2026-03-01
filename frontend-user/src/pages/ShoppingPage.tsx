@@ -272,7 +272,18 @@ export const ShoppingPage = () => {
         if (!isAuthenticated) return;
         try {
             const data = await couponsApi.myList();
-            setMyCouponsList(Array.isArray(data) ? data : []);
+
+            // 백엔드가 준 구매 내역 + 프론트 하드코딩 쿠폰 상세정보 매핑
+            const mappedCoupons = (Array.isArray(data) ? data : []).map(item => {
+                const baseInfo = coupons.find(c => c.id === item.coupon?.id || c.id === item.couponId);
+                return {
+                    ...baseInfo, // 이름, 이미지, 브랜드 등
+                    ...item,     // 유효기간, 상태, id
+                    couponId: baseInfo?.id || item.coupon?.id || item.couponId
+                };
+            });
+
+            setMyCouponsList(mappedCoupons);
             setCouponsDrawerOpen(true);
         } catch (e) {
             console.error(e);

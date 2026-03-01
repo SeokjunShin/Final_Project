@@ -1,13 +1,13 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Card, CardContent, Stack, TextField, Typography, Dialog, DialogTitle, DialogContent, Avatar, Divider, Chip } from '@mui/material';
+import { Box, Button, Card, CardContent, Stack, TextField, Typography, Avatar, Divider, Chip } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/api/client';
-import { authApi } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';
-import { SecureKeypad } from '@/components/common/SecureKeypad';
+import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import HomeIcon from '@mui/icons-material/Home';
@@ -35,26 +35,9 @@ export const MyProfilePage = () => {
     },
   });
 
+  const navigate = useNavigate();
+  const [secondAuthPassed, setSecondAuthPassed] = useState(() => sessionStorage.getItem('second_auth_passed') === 'true');
   const [isEditing, setIsEditing] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [secondPwd, setSecondPwd] = useState('');
-  const [secondAuthError, setSecondAuthError] = useState('');
-
-  useEffect(() => {
-    if (secondPwd.length === 6 && isAuthModalOpen) {
-      authApi.verifySecondPassword(secondPwd)
-        .then(() => {
-          setIsAuthModalOpen(false);
-          setIsEditing(true);
-          setSecondPwd('');
-          setSecondAuthError('');
-        })
-        .catch((err) => {
-          setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
-          setSecondPwd('');
-        });
-    }
-  }, [secondPwd, isAuthModalOpen]);
 
   const form = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -78,6 +61,13 @@ export const MyProfilePage = () => {
 
   return (
     <Box maxWidth="sm" sx={{ mx: 'auto', mt: 2 }}>
+      {!secondAuthPassed && (
+        <SecondAuthDialog
+          open={true}
+          onClose={() => navigate('/')}
+          onSuccess={() => setSecondAuthPassed(true)}
+        />
+      )}
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
         <SecurityIcon sx={{ color: '#d32f2f', fontSize: 28 }} />
         <Typography variant="h5" sx={{ fontWeight: 800, color: '#333' }}>
@@ -182,7 +172,7 @@ export const MyProfilePage = () => {
                   <Button
                     variant="outlined"
                     startIcon={<EditIcon />}
-                    onClick={() => setIsAuthModalOpen(true)}
+                    onClick={() => setIsEditing(true)}
                     sx={{
                       py: 1.2,
                       px: 4,
@@ -203,53 +193,6 @@ export const MyProfilePage = () => {
         </CardContent>
       </Card>
 
-      {/* 정보수정 2차 인증 팝업 */}
-      <Dialog
-        open={isAuthModalOpen}
-        fullWidth
-        maxWidth="xs"
-        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
-        onClose={() => { setIsAuthModalOpen(false); setSecondPwd(''); setSecondAuthError(''); }}
-        slotProps={{
-          backdrop: {
-            sx: {
-              backgroundColor: 'rgba(255, 255, 255, 0.8)',
-              backdropFilter: 'blur(4px)',
-            }
-          }
-        }}
-      >
-        <DialogTitle sx={{ textAlign: 'center', fontWeight: 800, color: '#333', pt: 3, pb: 1 }}>
-          정보수정 인증
-        </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 4, overflow: 'hidden' }}>
-          <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, textAlign: 'center', mb: 3 }}>
-            소중한 개인정보 보호를 위해<br />
-            2차 비밀번호(6자리)를 입력해 주세요.
-          </Typography>
-          <Box sx={{ width: '100%', maxWidth: 300 }}>
-            <SecureKeypad
-              value={secondPwd}
-              onChange={(v) => { setSecondPwd(v); setSecondAuthError(''); }}
-            />
-            {secondAuthError && (
-              <Typography color="error" variant="body2" sx={{ textAlign: 'center', mt: 2, fontWeight: 600 }}>
-                {secondAuthError}
-              </Typography>
-            )}
-            <Box sx={{ mt: 3, textAlign: 'center' }}>
-              <Button
-                variant="outlined"
-                color="inherit"
-                onClick={() => { setIsAuthModalOpen(false); setSecondPwd(''); setSecondAuthError(''); }}
-                sx={{ borderRadius: 2, px: 3, color: '#666', borderColor: '#ccc' }}
-              >
-                닫기
-              </Button>
-            </Box>
-          </Box>
-        </DialogContent>
-      </Dialog>
     </Box>
   );
 };

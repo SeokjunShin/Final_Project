@@ -29,6 +29,8 @@
   ListItemText,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { cardApplicationApi } from '@/api';
 import type { CardApplication, CardApplicationRequest } from '@/types';
@@ -66,6 +68,8 @@ const cardProductOptions = [
 ];
 
 export const CardApplicationsPage = () => {
+  const navigate = useNavigate();
+  const [secondAuthPassed, setSecondAuthPassed] = useState(() => sessionStorage.getItem('second_auth_passed') === 'true');
   const { show } = useSnackbar();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -128,7 +132,7 @@ export const CardApplicationsPage = () => {
     if (step === 0) {
       if (!formData.fullName.trim()) newErrors.fullName = '이름을 입력해주세요';
       if (!formData.ssn.trim()) newErrors.ssn = '주민등록번호를 입력해주세요';
-      else if (!/^\d{6}-?\d{7}$/.test(formData.ssn.replace(/-/g, ''))) 
+      else if (!/^\d{6}-?\d{7}$/.test(formData.ssn.replace(/-/g, '')))
         newErrors.ssn = '주민등록번호 형식이 올바르지 않습니다 (예: 900101-1234567)';
       if (!formData.phone.trim()) newErrors.phone = '연락처를 입력해주세요';
       else if (!/^01[0-9]-?\d{3,4}-?\d{4}$/.test(formData.phone.replace(/-/g, '')))
@@ -585,6 +589,13 @@ export const CardApplicationsPage = () => {
 
   return (
     <Box>
+      {!secondAuthPassed && (
+        <SecondAuthDialog
+          open={true}
+          onClose={() => navigate(-1)}
+          onSuccess={() => setSecondAuthPassed(true)}
+        />
+      )}
       <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
         카드 신청 / 발급
       </Typography>

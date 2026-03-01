@@ -9,6 +9,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { useState } from 'react';
 import { pointsApi, bankAccountApi, type BankAccount } from '@/api';
+import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDateTime } from '@/utils/dateUtils';
@@ -55,6 +56,9 @@ export const PointsPage = () => {
   const queryClient = useQueryClient();
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+
+  const [secondAuthOpen, setSecondAuthOpen] = useState(false);
+  const [pendingConvertData, setPendingConvertData] = useState<{ points: number, accountId: number } | null>(null);
 
   // 포인트 잔액 조회
   const { data: balance, isLoading: balanceLoading } = useQuery({
@@ -153,6 +157,12 @@ export const PointsPage = () => {
 
     if ((balance?.availablePoints ?? 0) < data.points) {
       show('포인트 잔액이 부족합니다.', 'error');
+      return;
+    }
+
+    if (sessionStorage.getItem('second_auth_passed') !== 'true') {
+      setPendingConvertData({ points: data.points, accountId: account.id });
+      setSecondAuthOpen(true);
       return;
     }
 
@@ -497,6 +507,18 @@ export const PointsPage = () => {
           </DialogActions>
         </form>
       </Dialog>
+
+      <SecondAuthDialog
+        open={secondAuthOpen}
+        onClose={() => { setSecondAuthOpen(false); setPendingConvertData(null); }}
+        onSuccess={() => {
+          setSecondAuthOpen(false);
+          if (pendingConvertData) {
+            convertMutation.mutate(pendingConvertData);
+            setPendingConvertData(null);
+          }
+        }}
+      />
     </Box>
   );
 };

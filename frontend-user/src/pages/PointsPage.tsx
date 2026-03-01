@@ -160,13 +160,8 @@ export const PointsPage = () => {
       return;
     }
 
-    if (sessionStorage.getItem('second_auth_passed') !== 'true') {
-      setPendingConvertData({ points: data.points, accountId: account.id });
-      setSecondAuthOpen(true);
-      return;
-    }
-
-    convertMutation.mutate({ points: data.points, accountId: account.id });
+    setPendingConvertData({ points: data.points, accountId: account.id });
+    setSecondAuthOpen(true);
   };
 
   const pointBalance = balance?.availablePoints ?? 0;

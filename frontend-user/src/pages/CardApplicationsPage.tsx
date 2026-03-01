@@ -29,7 +29,6 @@
   ListItemText,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { cardApplicationApi } from '@/api';
@@ -68,8 +67,7 @@ const cardProductOptions = [
 ];
 
 export const CardApplicationsPage = () => {
-  const navigate = useNavigate();
-  const [secondAuthPassed, setSecondAuthPassed] = useState(() => sessionStorage.getItem('second_auth_passed') === 'true');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { show } = useSnackbar();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -466,7 +464,7 @@ export const CardApplicationsPage = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">내 카드 신청 내역</Typography>
-        <Button variant="contained" onClick={() => setShowForm(true)}>
+        <Button variant="contained" onClick={() => setIsAuthModalOpen(true)}>
           새 카드 신청
         </Button>
       </Box>
@@ -481,7 +479,7 @@ export const CardApplicationsPage = () => {
             <Typography color="text.secondary" sx={{ mb: 2 }}>
               카드 신청 내역이 없습니다.
             </Typography>
-            <Button variant="contained" onClick={() => setShowForm(true)}>
+            <Button variant="contained" onClick={() => setIsAuthModalOpen(true)}>
               첫 카드 신청하기
             </Button>
           </CardContent>
@@ -589,13 +587,14 @@ export const CardApplicationsPage = () => {
 
   return (
     <Box>
-      {!secondAuthPassed && (
-        <SecondAuthDialog
-          open={true}
-          onClose={() => navigate(-1)}
-          onSuccess={() => setSecondAuthPassed(true)}
-        />
-      )}
+      <SecondAuthDialog
+        open={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          setShowForm(true);
+        }}
+      />
       <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
         카드 신청 / 발급
       </Typography>

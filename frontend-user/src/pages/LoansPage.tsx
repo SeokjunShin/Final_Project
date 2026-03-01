@@ -1,6 +1,5 @@
 import { Box, Button, Card, CardContent, Chip, Dialog, DialogContent, DialogTitle, FormControl, InputAdornment, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TableSection } from '@/components/common/TableSection';
@@ -29,8 +28,7 @@ const formatDate = (iso: string | null) => {
 };
 
 export const LoansPage = () => {
-  const navigate = useNavigate();
-  const [secondAuthPassed, setSecondAuthPassed] = useState(() => sessionStorage.getItem('second_auth_passed') === 'true');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { show } = useSnackbar();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
@@ -64,6 +62,12 @@ export const LoansPage = () => {
       show('신청 금액을 입력해 주세요.', 'error');
       return;
     }
+
+    setIsAuthModalOpen(true); // 2차 인증 팝업 유도
+  };
+
+  const executeLoan = () => {
+    const num = Number(amount?.replace(/,/g, ''));
     createMutation.mutate({ loanType, principalAmount: num });
   };
 
@@ -78,13 +82,14 @@ export const LoansPage = () => {
 
   return (
     <Box>
-      {!secondAuthPassed && (
-        <SecondAuthDialog
-          open={true}
-          onClose={() => navigate(-1)}
-          onSuccess={() => setSecondAuthPassed(true)}
-        />
-      )}
+      <SecondAuthDialog
+        open={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          executeLoan();
+        }}
+      />
       <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
         금융서비스 - 대출
       </Typography>

@@ -24,7 +24,6 @@ import {
   ListItemText,
 } from '@mui/material';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StarIcon from '@mui/icons-material/Star';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
@@ -156,8 +155,8 @@ export const CardProductsPage = () => {
   const filteredCards = tabValue === 0
     ? cardProducts
     : tabValue === 1
-    ? cardProducts.filter(c => c.category === 'credit')
-    : cardProducts.filter(c => c.category === 'check');
+      ? cardProducts.filter(c => c.category === 'credit')
+      : cardProducts.filter(c => c.category === 'check');
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
@@ -166,15 +165,7 @@ export const CardProductsPage = () => {
         <Container maxWidth="lg">
           <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
             <Stack direction="row" alignItems="center" spacing={2}>
-              <Button
-                component={RouterLink}
-                to="/"
-                startIcon={<ArrowBackIcon />}
-                sx={{ color: '#666' }}
-              >
-                홈으로
-              </Button>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: '#d32f2f', letterSpacing: -1 }}>
+              <Typography component={RouterLink} to="/" variant="h5" sx={{ fontWeight: 800, color: '#d32f2f', letterSpacing: -1, textDecoration: 'none', '&:hover': { opacity: 0.8 } }}>
                 MyCard
               </Typography>
             </Stack>

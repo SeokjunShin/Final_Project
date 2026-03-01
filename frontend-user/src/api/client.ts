@@ -52,6 +52,12 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const isLoginRequest = original?.url?.includes('/auth/login');
+    const isSecondAuthRequest = original?.url?.includes('/auth/verify-second-password');
+
+    // 2차 비밀번호 인증 실패(401)는 토큰 만료와 무관하므로 예외 처리
+    if (error.response?.status === 401 && isSecondAuthRequest) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !original?._retry && !isLoginRequest) {
       if (isRefreshing) {
@@ -93,7 +99,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401 && !isLoginRequest) {
+    if (error.response?.status === 401 && !isLoginRequest && !isSecondAuthRequest) {
       tokenStorage.clear();
       window.location.href = '/login';
     }

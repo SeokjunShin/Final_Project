@@ -5,13 +5,23 @@ import { PublicRoute, ProtectedRoute } from './guards';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { AdminLoginPage } from '@/pages/LoginPage';
 import { AdminDashboardPage } from '@/pages/DashboardPage';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
 /** 루트(/) 접속 시 보여줄 화면 + /dashboard로 리다이렉트 (빈 화면 방지) */
 const RootRedirect = () => {
   const navigate = useNavigate();
+  const { user, ready } = useAdminAuth();
+
   useEffect(() => {
-    navigate('/dashboard', { replace: true });
-  }, [navigate]);
+    if (!ready) return;
+    if (!user) {
+      navigate('/login', { replace: true });
+    } else if (user.role === 'REVIEWER') {
+      navigate('/documents', { replace: true });
+    } else {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [navigate, user, ready]);
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 2, bgcolor: '#eff3fa' }}>
       <CircularProgress />
@@ -49,7 +59,20 @@ export const router = createBrowserRouter([
           { path: '/dashboard', element: <AdminDashboardPage /> },
           { path: '/support/inquiries', element: <InquiriesPage /> },
           { path: '/inquiries', element: <Navigate to="/support/inquiries" replace /> },
+        ],
+      },
+    ],
+  },
+  {
+    element: <ProtectedRoute roles={['REVIEWER']} />,
+    children: [
+      {
+        element: <AdminLayout />,
+        children: [
           { path: '/documents', element: <DocumentsPage /> },
+          { path: '/card-applications', element: <CardApplicationsPage /> },
+          { path: '/reissue-requests', element: <ReissueRequestsPage /> },
+          { path: '/loans', element: <LoansPage /> },
         ],
       },
     ],
@@ -67,9 +90,6 @@ export const router = createBrowserRouter([
           { path: '/events', element: <EventsPage /> },
           { path: '/policies/points', element: <PointPolicyPage /> },
           { path: '/audit-logs', element: <AuditLogsPage /> },
-          { path: '/card-applications', element: <CardApplicationsPage /> },
-          { path: '/reissue-requests', element: <ReissueRequestsPage /> },
-          { path: '/loans', element: <LoansPage /> },
         ],
       },
     ],

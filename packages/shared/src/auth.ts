@@ -8,5 +8,5 @@ export const hasAnyRole = (role: Role | null | undefined, allowed: Role[]): bool
 };
 
 export const isAdminRole = (role: Role | null | undefined): boolean => {
-  return role === 'ADMIN' || role === 'OPERATOR';
+  return role === 'ADMIN' || role === 'OPERATOR' || role === 'REVIEWER';
 };

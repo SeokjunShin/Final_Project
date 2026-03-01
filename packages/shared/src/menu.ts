@@ -8,7 +8,7 @@ export interface MenuItemDef {
 
 export const userMenu: MenuItemDef[] = [
   { label: '대시보드', path: '/dashboard', roles: ['USER'] },
-  { label: '내 정보/보안', path: '/my/profile', roles: ['USER'] },
+  { label: '내정보', path: '/my/profile', roles: ['USER'] },
   { label: '이용대금 명세서', path: '/statements', roles: ['USER'] },
   { label: '승인/취소 내역', path: '/approvals', roles: ['USER'] },
   { label: '카드관리', path: '/cards', roles: ['USER'] },
@@ -25,11 +25,11 @@ export const userMenu: MenuItemDef[] = [
 export const adminMenu: MenuItemDef[] = [
   { label: '운영 대시보드', path: '/dashboard', roles: ['OPERATOR', 'ADMIN'] },
   { label: '문의 큐', path: '/support/inquiries', roles: ['OPERATOR', 'ADMIN'] },
-  { label: '문서 검토', path: '/documents', roles: ['OPERATOR', 'ADMIN'] },
   { label: '메시지 발송', path: '/messages', roles: ['ADMIN'] },
-  { label: '카드 신청 관리', path: '/card-applications', roles: ['ADMIN'] },
-  { label: '재발급 신청', path: '/reissue-requests', roles: ['ADMIN'] },
-  { label: '대출 현황', path: '/loans', roles: ['ADMIN'] },
+  { label: '문서 검토', path: '/documents', roles: ['REVIEWER'] },
+  { label: '카드 신청 관리', path: '/card-applications', roles: ['REVIEWER'] },
+  { label: '재발급 신청', path: '/reissue-requests', roles: ['REVIEWER'] },
+  { label: '대출 현황', path: '/loans', roles: ['REVIEWER'] },
   { label: '사용자 관리', path: '/users', roles: ['ADMIN'] },
   { label: '가맹점 관리', path: '/merchants', roles: ['ADMIN'] },
   { label: '혜택 정책', path: '/benefits', roles: ['ADMIN'] },

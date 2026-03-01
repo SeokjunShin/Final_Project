@@ -29,14 +29,14 @@ export const ProtectedRoute = ({ roles }: { roles: Role[] }) => {
 };
 
 export const PublicRoute = () => {
-  const { ready, isAuthenticated } = useAdminAuth();
+  const { ready, isAuthenticated, user } = useAdminAuth();
 
   if (!ready) {
     return <LoadingScreen />;
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={user?.role === 'REVIEWER' ? "/documents" : "/dashboard"} replace />;
   }
 
   return <Outlet />;

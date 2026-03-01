@@ -44,7 +44,7 @@ export const LoginPage = () => {
     try {
       await login(value);
       show('로그인되었습니다.', 'success');
-      navigate('/dashboard');
+      navigate('/');
     } catch (e: unknown) {
       const data = (e as { response?: { data?: { code?: string; message?: string } } })?.response?.data;
       const code = data?.code;
@@ -85,6 +85,9 @@ export const LoginPage = () => {
 
         <Card sx={{ p: 1.5 }}>
           <CardContent>
+            <Link component={RouterLink} to="/" sx={{ textDecoration: 'none', color: '#d32f2f', fontWeight: 800, fontSize: '1.3rem', display: 'block', mb: 2 }}>
+              MyCard
+            </Link>
             <Typography variant="h5" sx={{ mb: 0.5 }}>
               로그인
             </Typography>
@@ -108,7 +111,7 @@ export const LoginPage = () => {
                           try {
                             await loginReactivate(values);
                             show('비활성이 해제되고 로그인되었습니다.', 'success');
-                            navigate('/dashboard');
+                            navigate('/');
                           } catch (e: unknown) {
                             const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
                             setLoginError({

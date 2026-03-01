@@ -28,7 +28,7 @@ export const AdminLoginPage = () => {
     try {
       await login(value);
       show('로그인되었습니다.', 'success');
-      navigate('/dashboard');
+      navigate('/');
     } catch {
       show('로그인에 실패했습니다.', 'error');
     }

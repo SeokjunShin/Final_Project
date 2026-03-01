@@ -12,6 +12,9 @@ import {
   ListItemText,
   Toolbar,
   Typography,
+  Dialog,
+  DialogContent,
+  DialogTitle
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -23,10 +26,12 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import HomeIcon from '@mui/icons-material/Home';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { userMenu } from '@shared/menu';
 import { useAuth } from '@/contexts/AuthContext';
+import { SecureKeypad } from '@/components/common/SecureKeypad';
+import { authApi } from '@/api';
 
 const drawerWidth = 305;
 
@@ -45,6 +50,24 @@ export const UserLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+
+  const [isSecondAuthPassed, setIsSecondAuthPassed] = useState(() => sessionStorage.getItem('second_auth_passed') === 'true');
+  const [secondPwd, setSecondPwd] = useState('');
+  const [secondAuthError, setSecondAuthError] = useState('');
+
+  useEffect(() => {
+    if (secondPwd.length === 6) {
+      authApi.verifySecondPassword(secondPwd)
+        .then(() => {
+          sessionStorage.setItem('second_auth_passed', 'true');
+          setIsSecondAuthPassed(true);
+        })
+        .catch((err) => {
+          setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
+          setSecondPwd('');
+        });
+    }
+  }, [secondPwd]);
 
   const crumbs = location.pathname.split('/').filter(Boolean);
 
@@ -208,6 +231,59 @@ export const UserLayout = () => {
       >
         <Outlet />
       </Box>
+
+      {/* 2차 비밀번호 인증 팝업 */}
+      <Dialog
+        open={!isSecondAuthPassed}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+        // 백드롭 클릭이나 ESC 키로 닫히지 않도록 강제 방어
+        onClose={(_, reason) => {
+          if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
+            // 이외의 닫기 동작(기본은 없음)
+          }
+        }}
+        slotProps={{
+          backdrop: {
+            sx: {
+              backgroundColor: 'rgba(255, 255, 255, 0.8)', // 뒤쪽 화면이 살짝 비치는 반투명 하얀색
+              backdropFilter: 'blur(4px)', // 블러 효과
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ textAlign: 'center', fontWeight: 800, color: '#333', pt: 3, pb: 1 }}>
+          2차 비밀번호 인증
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 4, overflow: 'hidden' }}>
+          <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, textAlign: 'center', mb: 3 }}>
+            안전한 마이페이지 이용을 위해<br />
+            2차 비밀번호(6자리)를 입력해 주세요.
+          </Typography>
+          <Box sx={{ width: '100%', maxWidth: 300 }}>
+            <SecureKeypad
+              value={secondPwd}
+              onChange={(v) => { setSecondPwd(v); setSecondAuthError(''); }}
+            />
+            {secondAuthError && (
+              <Typography color="error" variant="body2" sx={{ textAlign: 'center', mt: 2, fontWeight: 600 }}>
+                {secondAuthError}
+              </Typography>
+            )}
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={() => navigate('/')}
+                sx={{ borderRadius: 2, px: 3, color: '#666', borderColor: '#ccc' }}
+              >
+                닫기
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

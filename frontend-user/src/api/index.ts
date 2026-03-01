@@ -46,7 +46,7 @@ export const pointsApi = {
   balance: () => apiClient.get<{ totalPoints: number; availablePoints: number; expiringPoints: number; expiringDate: string | null }>('/points/balance').then((r) => r.data),
   ledger: (params: Record<string, unknown>) =>
     apiClient.get<Paged<PointLedger>>('/points/ledger', { params }).then((r) => r.data),
-  convert: (points: number, accountId?: number) => 
+  convert: (points: number, accountId?: number) =>
     apiClient.post('/points/convert', { points, accountId }).then((r) => r.data),
   withdrawals: (params: Record<string, unknown>) =>
     apiClient.get('/points/withdrawals', { params }).then((r) => r.data),
@@ -54,13 +54,13 @@ export const pointsApi = {
 
 // 은행 계좌 API
 export const bankAccountApi = {
-  getBankCodes: () => 
+  getBankCodes: () =>
     apiClient.get<{ code: string; name: string }[]>('/bank-accounts/banks').then((r) => r.data),
-  list: () => 
+  list: () =>
     apiClient.get<BankAccount[]>('/bank-accounts').then((r) => r.data),
   add: (payload: { bankCode: string; accountNumber: string; accountHolder: string; setAsDefault?: boolean }) =>
     apiClient.post<BankAccount>('/bank-accounts', payload).then((r) => r.data),
-  delete: (accountId: number) => 
+  delete: (accountId: number) =>
     apiClient.delete(`/bank-accounts/${accountId}`),
   setDefault: (accountId: number) =>
     apiClient.put<BankAccount>(`/bank-accounts/${accountId}/default`).then((r) => r.data),
@@ -132,4 +132,15 @@ export const loansApi = {
   detail: (id: number) => apiClient.get<LoanDetail>(`/loans/${id}`).then((r) => r.data),
   create: (payload: LoanCreatePayload) =>
     apiClient.post<LoanListItem>('/loans', payload).then((r) => r.data),
+};
+
+export const couponsApi = {
+  myList: () => apiClient.get<{ content: any[] }>('/coupons/my').then((r) => r.data.content),
+  purchase: (payload: { coupon: any; quantity: number }) =>
+    apiClient.post('/coupons/purchase', payload).then((r) => r.data),
+};
+
+export const authApi = {
+  verifySecondPassword: (secondaryPin: string) =>
+    apiClient.post('/auth/verify-second-password', { secondaryPin }).then((r) => r.data),
 };

@@ -1,10 +1,18 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Card, CardContent, Stack, Switch, TextField, Typography } from '@mui/material';
-import { useMutation, useQuery } from '@tanstack/react-query';
+﻿import { useState, useEffect } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Box, Button, Card, CardContent, Stack, TextField, Typography, Dialog, DialogTitle, DialogContent, Avatar, Divider, Chip } from '@mui/material';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { apiClient } from '@/api/client';
+import { authApi } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';
+import { SecureKeypad } from '@/components/common/SecureKeypad';
+import PersonIcon from '@mui/icons-material/Person';
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
+import HomeIcon from '@mui/icons-material/Home';
+import SecurityIcon from '@mui/icons-material/Security';
+import EditIcon from '@mui/icons-material/Edit';
 
 const profileSchema = z.object({
   currentPassword: z.string().min(1, '현재 비밀번호를 입력하세요.'),
@@ -18,6 +26,7 @@ type ProfileForm = z.infer<typeof profileSchema>;
 export const MyProfilePage = () => {
   const { show } = useSnackbar();
 
+  const queryClient = useQueryClient();
   const { data } = useQuery({
     queryKey: ['my-profile'],
     queryFn: async () => {
@@ -25,6 +34,27 @@ export const MyProfilePage = () => {
       return data;
     },
   });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [secondPwd, setSecondPwd] = useState('');
+  const [secondAuthError, setSecondAuthError] = useState('');
+
+  useEffect(() => {
+    if (secondPwd.length === 6 && isAuthModalOpen) {
+      authApi.verifySecondPassword(secondPwd)
+        .then(() => {
+          setIsAuthModalOpen(false);
+          setIsEditing(true);
+          setSecondPwd('');
+          setSecondAuthError('');
+        })
+        .catch((err) => {
+          setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
+          setSecondPwd('');
+        });
+    }
+  }, [secondPwd, isAuthModalOpen]);
 
   const form = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -38,56 +68,188 @@ export const MyProfilePage = () => {
 
   const updateProfile = useMutation({
     mutationFn: (payload: ProfileForm) => apiClient.patch('/me', payload),
-    onSuccess: () => show('내 정보가 수정되었습니다.', 'success'),
+    onSuccess: () => {
+      show('내 정보가 수정되었습니다.', 'success');
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['my-profile'] });
+    },
     onError: () => show('수정에 실패했습니다.', 'error'),
   });
 
-  const toggle2fa = useMutation({
-    mutationFn: (enabled: boolean) =>
-      apiClient.post('/me/security', {
-        currentPassword: form.getValues('currentPassword'),
-        twoFactorEnabled: enabled,
-      }),
-    onSuccess: () => show('보안 설정이 변경되었습니다.', 'success'),
-    onError: () => show('보안 설정 변경에 실패했습니다.', 'error'),
-  });
-
   return (
-    <Box>
-      <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
-        내 정보 / 보안 설정
-      </Typography>
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Stack spacing={2} component="form" onSubmit={form.handleSubmit((v) => updateProfile.mutate(v))}>
-            <TextField label="이름" {...form.register('name')} error={!!form.formState.errors.name} helperText={form.formState.errors.name?.message} />
-            <TextField label="연락처" {...form.register('phone')} />
-            <TextField label="주소" {...form.register('address')} />
-            <TextField
-              label="현재 비밀번호(재인증)"
-              type="password"
-              {...form.register('currentPassword')}
-              error={!!form.formState.errors.currentPassword}
-              helperText={form.formState.errors.currentPassword?.message}
-            />
-            <Button variant="contained" type="submit" disabled={updateProfile.isPending}>
-              저장
-            </Button>
-          </Stack>
+    <Box maxWidth="sm" sx={{ mx: 'auto', mt: 2 }}>
+      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
+        <SecurityIcon sx={{ color: '#d32f2f', fontSize: 28 }} />
+        <Typography variant="h5" sx={{ fontWeight: 800, color: '#333' }}>
+          내정보
+        </Typography>
+      </Stack>
+
+      <Card sx={{ mb: 4, borderRadius: 3, boxShadow: '0 8px 30px rgba(0,0,0,0.06)' }}>
+        <CardContent sx={{ p: 0 }}>
+          {/* 상단 프로필 헤더 영역 */}
+          <Box sx={{ bgcolor: '#fff5f5', p: 4, textAlign: 'center', borderBottom: '1px solid #f0f0f0' }}>
+            <Avatar
+              sx={{ width: 80, height: 80, mx: 'auto', mb: 2, bgcolor: '#d32f2f', fontSize: '2rem', fontWeight: 600, boxShadow: '0 4px 15px rgba(211,47,47,0.3)' }}
+            >
+              {data?.name ? data.name.substring(0, 1) : '익'}
+            </Avatar>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#333', mb: 0.5 }}>
+              {data?.name || '고객'}님, 안녕하세요!
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              회원님의 소중한 정보를 안전하게 관리하고 있습니다.
+            </Typography>
+          </Box>
+
+          <Box sx={{ p: 4 }}>
+            {isEditing ? (
+              <Stack spacing={3} component="form" onSubmit={form.handleSubmit((v) => updateProfile.mutate(v))}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#d32f2f', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <EditIcon fontSize="small" /> 정보 수정
+                </Typography>
+                <TextField label="이름" {...form.register('name')} error={!!form.formState.errors.name} helperText={form.formState.errors.name?.message} fullWidth disabled />
+                <TextField label="연락처 옵션" {...form.register('phone')} fullWidth placeholder="010-0000-0000" />
+                <TextField label="배송 주소" {...form.register('address')} fullWidth placeholder="거주하시는 주소를 입력해주세요" />
+
+                <Box sx={{ mt: 2, p: 2, bgcolor: '#f8f9fa', borderRadius: 2, border: '1px solid #eee' }}>
+                  <Typography variant="caption" sx={{ color: '#666', mb: 1.5, display: 'block' }}>
+                    본인 확인을 위해 현재 로그인된 계정의 비밀번호를 입력해주세요. <br /> (2차 비밀번호 아님)
+                  </Typography>
+                  <TextField
+                    label="계정 비밀번호"
+                    type="password"
+                    {...form.register('currentPassword')}
+                    error={!!form.formState.errors.currentPassword}
+                    helperText={form.formState.errors.currentPassword?.message}
+                    fullWidth
+                    size="small"
+                  />
+                </Box>
+
+                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                  <Button variant="contained" type="submit" disabled={updateProfile.isPending} fullWidth sx={{ py: 1.5, fontSize: '1rem', fontWeight: 600, bgcolor: '#333', '&:hover': { bgcolor: '#000' } }}>
+                    지금 저장하기
+                  </Button>
+                  <Button variant="outlined" color="inherit" disabled={updateProfile.isPending} onClick={() => setIsEditing(false)} fullWidth sx={{ py: 1.5, fontSize: '1rem', fontWeight: 600 }}>
+                    취소
+                  </Button>
+                </Stack>
+              </Stack>
+            ) : (
+              <Stack spacing={0}>
+                {/* 이름 */}
+                <Stack direction="row" alignItems="center" spacing={2} sx={{ py: 2 }}>
+                  <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <PersonIcon sx={{ color: '#999' }} />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>이름</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>{data?.name || '-'}</Typography>
+                  </Box>
+                </Stack>
+                <Divider />
+
+                {/* 연락처 */}
+                <Stack direction="row" alignItems="center" spacing={2} sx={{ py: 2 }}>
+                  <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <PhoneIphoneIcon sx={{ color: '#999' }} />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>연락처</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>
+                      {data?.phone ? <Chip label={data.phone} size="small" variant="outlined" /> : <Typography color="text.disabled">등록된 연락처가 없습니다.</Typography>}
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Divider />
+
+                {/* 주소 */}
+                <Stack direction="row" alignItems="center" spacing={2} sx={{ py: 2 }}>
+                  <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <HomeIcon sx={{ color: '#999' }} />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>배송 주소</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>
+                      {data?.address || <Typography color="text.disabled">등록된 주소가 없습니다.</Typography>}
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                {/* 하단 버튼 영역 */}
+                <Box sx={{ pt: 4, pb: 1, textAlign: 'center' }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={() => setIsAuthModalOpen(true)}
+                    sx={{
+                      py: 1.2,
+                      px: 4,
+                      borderRadius: 10,
+                      fontWeight: 600,
+                      borderWidth: 2,
+                      borderColor: '#d32f2f',
+                      color: '#d32f2f',
+                      '&:hover': { bgcolor: '#fff5f5', borderWidth: 2, borderColor: '#b71c1c' }
+                    }}
+                  >
+                    내 정보 수정하기
+                  </Button>
+                </Box>
+              </Stack>
+            )}
+          </Box>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Typography>2FA(OTP 흐름) 사용</Typography>
-            <Switch
-              checked={Boolean(data?.twoFactorEnabled)}
-              onChange={(_, checked) => toggle2fa.mutate(checked)}
+      {/* 정보수정 2차 인증 팝업 */}
+      <Dialog
+        open={isAuthModalOpen}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+        onClose={() => { setIsAuthModalOpen(false); setSecondPwd(''); setSecondAuthError(''); }}
+        slotProps={{
+          backdrop: {
+            sx: {
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(4px)',
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ textAlign: 'center', fontWeight: 800, color: '#333', pt: 3, pb: 1 }}>
+          정보수정 인증
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 4, overflow: 'hidden' }}>
+          <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, textAlign: 'center', mb: 3 }}>
+            소중한 개인정보 보호를 위해<br />
+            2차 비밀번호(6자리)를 입력해 주세요.
+          </Typography>
+          <Box sx={{ width: '100%', maxWidth: 300 }}>
+            <SecureKeypad
+              value={secondPwd}
+              onChange={(v) => { setSecondPwd(v); setSecondAuthError(''); }}
             />
-          </Stack>
-        </CardContent>
-      </Card>
+            {secondAuthError && (
+              <Typography color="error" variant="body2" sx={{ textAlign: 'center', mt: 2, fontWeight: 600 }}>
+                {secondAuthError}
+              </Typography>
+            )}
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={() => { setIsAuthModalOpen(false); setSecondPwd(''); setSecondAuthError(''); }}
+                sx={{ borderRadius: 2, px: 3, color: '#666', borderColor: '#ccc' }}
+              >
+                닫기
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

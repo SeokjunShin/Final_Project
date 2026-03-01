@@ -1,13 +1,17 @@
-import { Box, Button, Card, FormControlLabel, Grid, Stack, Switch, Typography, Chip } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { Box, Button, Card, CardContent, FormControlLabel, Grid, Stack, Switch, Typography, Chip, IconButton, Dialog, DialogTitle, DialogContent } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { cardsApi } from '@/api';
+import { cardsApi, authApi } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PublicIcon from '@mui/icons-material/Public';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AddCardIcon from '@mui/icons-material/AddCard';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { Link as RouterLink } from 'react-router-dom';
 import { CreditCard as CreditCardVisual } from '@/components/common/CreditCard';
+import { SecureKeypad } from '@/components/common/SecureKeypad';
 
 const getStatusInfo = (status: string) => {
   switch (status) {
@@ -23,6 +27,48 @@ const getStatusInfo = (status: string) => {
 export const CardsPage = () => {
   const { show } = useSnackbar();
   const queryClient = useQueryClient();
+
+  const [visibleCards, setVisibleCards] = useState<Set<number>>(new Set());
+  const [reissueCardId, setReissueCardId] = useState<number | null>(null);
+  const [secondPwd, setSecondPwd] = useState('');
+  const [secondAuthError, setSecondAuthError] = useState('');
+
+  useEffect(() => {
+    if (secondPwd.length === 6 && reissueCardId !== null) {
+      authApi.verifySecondPassword(secondPwd)
+        .then(() => cardsApi.requestReissue(reissueCardId))
+        .then(() => {
+          show('재발급 신청이 접수되었습니다. 관리자 확인 후 처리됩니다.', 'success');
+          queryClient.invalidateQueries({ queryKey: ['cards'] });
+          setReissueCardId(null);
+          setSecondPwd('');
+          setSecondAuthError('');
+        })
+        .catch((err) => {
+          if (err.response?.status === 401) {
+            setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
+            setSecondPwd('');
+          } else {
+            const data = err?.response?.data;
+            const msg = (typeof data?.message === 'string' ? data.message : null) ?? '재발급 신청에 실패했습니다.';
+            show(String(msg), 'error');
+            setReissueCardId(null);
+            setSecondPwd('');
+            setSecondAuthError('');
+          }
+        });
+    }
+  }, [secondPwd, reissueCardId, queryClient, show]);
+
+  const toggleVisibility = (id: number) => {
+    setVisibleCards(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const { data, isError, refetch, isLoading } = useQuery({
     queryKey: ['cards'],
     queryFn: () => cardsApi.list(),
@@ -131,9 +177,16 @@ export const CardsPage = () => {
                 <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, textAlign: 'center' }}>
                   {cardName}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
-                  {card.cardNumber || '****-****-****-****'}
-                </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {visibleCards.has(card.id)
+                      ? (card.cardNumber || '****-****-****-****')
+                      : (card.cardNumber ? `${card.cardNumber.substring(0, 9)}****-****` : '****-****-****-****')}
+                  </Typography>
+                  <IconButton size="small" onClick={() => toggleVisibility(card.id)} sx={{ color: '#999' }}>
+                    {visibleCards.has(card.id) ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                  </IconButton>
+                </Stack>
 
                 <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 2 }}>
                   <Box sx={{ textAlign: 'center' }}>
@@ -175,21 +228,7 @@ export const CardsPage = () => {
                     variant="text"
                     size="small"
                     startIcon={<RefreshIcon sx={{ fontSize: 16 }} />}
-                    onClick={async () => {
-                      try {
-                        await cardsApi.requestReissue(card.id);
-                        show('재발급 신청이 접수되었습니다. 관리자 확인 후 처리됩니다.', 'success');
-                        queryClient.invalidateQueries({ queryKey: ['cards'] });
-                      } catch (e: any) {
-                        const data = e?.response?.data;
-                        const msg =
-                          (typeof data?.message === 'string' ? data.message : null) ??
-                          (typeof data === 'string' ? data : null) ??
-                          (typeof e?.message === 'string' ? e.message : null) ??
-                          '재발급 신청에 실패했습니다.';
-                        show(String(msg), 'error');
-                      }
-                    }}
+                    onClick={() => setReissueCardId(card.id)}
                     sx={{ color: '#666', fontSize: '0.75rem' }}
                   >
                     재발급
@@ -200,6 +239,54 @@ export const CardsPage = () => {
           );
         })}
       </Grid>
+
+      {/* 재발급 2차 비밀번호 인증 팝업 */}
+      <Dialog
+        open={reissueCardId !== null}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+        onClose={() => { setReissueCardId(null); setSecondPwd(''); setSecondAuthError(''); }}
+        slotProps={{
+          backdrop: {
+            sx: {
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(4px)',
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ textAlign: 'center', fontWeight: 800, color: '#333', pt: 3, pb: 1 }}>
+          재발급 승인 인증
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 4, overflow: 'hidden' }}>
+          <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, textAlign: 'center', mb: 3 }}>
+            카드를 새로 발급받기 위해<br />
+            2차 비밀번호(6자리)를 입력해 주세요.
+          </Typography>
+          <Box sx={{ width: '100%', maxWidth: 300 }}>
+            <SecureKeypad
+              value={secondPwd}
+              onChange={(v) => { setSecondPwd(v); setSecondAuthError(''); }}
+            />
+            {secondAuthError && (
+              <Typography color="error" variant="body2" sx={{ textAlign: 'center', mt: 2, fontWeight: 600 }}>
+                {secondAuthError}
+              </Typography>
+            )}
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={() => { setReissueCardId(null); setSecondPwd(''); setSecondAuthError(''); }}
+                sx={{ borderRadius: 2, px: 3, color: '#666', borderColor: '#ccc' }}
+              >
+                취소
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

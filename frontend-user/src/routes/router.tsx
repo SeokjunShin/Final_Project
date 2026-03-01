@@ -23,11 +23,15 @@ import { CardProductsPage } from '@/pages/CardProductsPage';
 import { RequestActivationPage } from '@/pages/account/RequestActivationPage';
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage';
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
+import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage';
+import { ShoppingPage } from '@/pages/ShoppingPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
   { path: '/events', element: <PublicEventsPage /> },
   { path: '/cards/products', element: <CardProductsPage /> },
+  { path: '/privacy', element: <PrivacyPolicyPage /> },
+  { path: '/shopping', element: <ShoppingPage /> },
   {
     element: <PublicRoute />,
     children: [

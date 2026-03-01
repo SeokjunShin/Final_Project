@@ -1,4 +1,4 @@
-﻿import { Link as RouterLink } from 'react-router-dom';
+﻿import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -18,8 +18,6 @@ import CreditCardIcon from '@mui/icons-material/CreditCard';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -83,7 +81,8 @@ const events = [
 ];
 
 export const HomePage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#fff' }}>
@@ -98,18 +97,30 @@ export const HomePage = () => {
               <Typography component={RouterLink} to="/cards/products" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
                 카드
               </Typography>
-              <Typography component={RouterLink} to="/points" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
-                포인트
+              <Typography component={RouterLink} to="/shopping" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
+                쇼핑
               </Typography>
-              <Typography component={RouterLink} to="/support/inquiries" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
-                고객센터
+              <Typography component={RouterLink} to="/events" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
+                이벤트
               </Typography>
             </Stack>
             <Stack direction="row" spacing={1}>
               {isAuthenticated ? (
-                <Button component={RouterLink} to="/dashboard" variant="contained" sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}>
-                  My카드
-                </Button>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Typography variant="body2" sx={{ color: '#333', fontWeight: 600 }}>
+                    {user?.name}님
+                  </Typography>
+                  <Button
+                    variant="text"
+                    onClick={async () => { await logout(); navigate('/'); }}
+                    sx={{ color: '#666', fontWeight: 500, '&:hover': { color: '#d32f2f', bgcolor: 'transparent' } }}
+                  >
+                    로그아웃
+                  </Button>
+                  <Button component={RouterLink} to="/dashboard" variant="contained" sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}>
+                    My카드
+                  </Button>
+                </Stack>
               ) : (
                 <>
                   <Button component={RouterLink} to="/login" variant="outlined" sx={{ borderColor: '#d32f2f', color: '#d32f2f', '&:hover': { bgcolor: '#fff5f5' } }}>
@@ -246,40 +257,7 @@ export const HomePage = () => {
         </Container>
       </Box>
 
-      {/* Benefits Banner */}
-      <Box sx={{ backgroundImage: `linear-gradient(rgba(211,47,47,0.9), rgba(183,28,28,0.9)), url(${IMAGES.lifestyle})`, backgroundSize: 'cover', backgroundPosition: 'center', py: 8 }}>
-        <Container maxWidth="lg">
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 2 }}>
-                MyCard 앱으로<br />더 편리하게
-              </Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.9)', mb: 3 }}>
-                카드 이용 내역 실시간 알림, 간편 결제 설정,<br />포인트 조회까지 한 번에 관리하세요.
-              </Typography>
-              <Button variant="contained" sx={{ bgcolor: '#fff', color: '#d32f2f', '&:hover': { bgcolor: '#f5f5f5' } }}>앱 다운로드</Button>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Grid container spacing={3}>
-                {[
-                  { icon: <AccountBalanceWalletIcon />, title: '간편 결제', desc: '터치 한 번으로' },
-                  { icon: <NotificationsIcon />, title: '실시간 알림', desc: '즉시 확인' },
-                  { icon: <CardGiftcardIcon />, title: '포인트 적립', desc: '자동 적립' },
-                  { icon: <SupportAgentIcon />, title: '24시간 상담', desc: '언제든지' },
-                ].map((item) => (
-                  <Grid item xs={6} key={item.title}>
-                    <Box sx={{ bgcolor: 'rgba(255,255,255,0.15)', borderRadius: 2, p: 2.5, textAlign: 'center' }}>
-                      <Box sx={{ color: '#fff', mb: 1 }}>{item.icon}</Box>
-                      <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.9rem' }}>{item.title}</Typography>
-                      <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.8rem' }}>{item.desc}</Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
+
 
       {/* Footer */}
       <Box sx={{ bgcolor: '#1a1a1a', color: '#999', py: 6 }}>
@@ -326,7 +304,7 @@ export const HomePage = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
             <Typography variant="body2">© 2026 MyCard. All rights reserved.</Typography>
             <Stack direction="row" spacing={3}>
-              <Typography variant="body2" sx={{ cursor: 'pointer', '&:hover': { color: '#fff' } }}>개인정보처리방침</Typography>
+              <Typography component={RouterLink} to="/privacy" variant="body2" sx={{ cursor: 'pointer', textDecoration: 'none', color: '#999', '&:hover': { color: '#fff' } }}>개인정보처리방침</Typography>
               <Typography variant="body2" sx={{ cursor: 'pointer', '&:hover': { color: '#fff' } }}>이용약관</Typography>
             </Stack>
           </Box>

@@ -3,6 +3,9 @@ package com.mycard.api.service;
 import com.mycard.api.dto.auth.LoginRequest;
 import com.mycard.api.dto.auth.LoginResponse;
 import com.mycard.api.dto.auth.RegisterRequest;
+import com.mycard.api.dto.auth.RegisterSecondPasswordRequest;
+import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
+import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
 import com.mycard.api.dto.auth.TokenResponse;
 import com.mycard.api.entity.AuditLog;
 import com.mycard.api.entity.LoginAttempt;
@@ -117,6 +120,8 @@ public class AuthService {
                     .name(userPrincipal.getFullName())
                     .email(userPrincipal.getUsername())
                     .role(primaryRole)
+                    .hasSecondaryPassword(user != null && user.getSecondaryPassword() != null
+                            && !user.getSecondaryPassword().isBlank())
                     .build();
 
             return LoginResponse.builder()
@@ -197,6 +202,7 @@ public class AuthService {
                 .name(userPrincipal.getFullName())
                 .email(userPrincipal.getUsername())
                 .role(primaryRole)
+                .hasSecondaryPassword(user.getSecondaryPassword() != null && !user.getSecondaryPassword().isBlank())
                 .build();
 
         return LoginResponse.builder()
@@ -353,5 +359,40 @@ public class AuthService {
         userRepository.save(user);
 
         log.info("New user registered: {}", request.getEmail());
+    }
+
+    @Transactional
+    public VerifySecondPasswordResponse verifySecondPassword(UserPrincipal user, VerifySecondPasswordRequest request) {
+        User targetUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new BadRequestException("사용자를 찾을 수 없습니다."));
+
+        if (targetUser.getSecondaryPassword() == null || targetUser.getSecondaryPassword().isBlank()) {
+            throw new BadRequestException("2차 비밀번호가 설정되어 있지 않습니다.");
+        }
+
+        if (!passwordEncoder.matches(request.getSecondaryPassword(), targetUser.getSecondaryPassword())) {
+            throw new BadRequestException("비밀번호가 일치하지 않습니다.");
+        }
+
+        return VerifySecondPasswordResponse.builder()
+                .success(true)
+                .message("인증에 성공했습니다.")
+                .build();
+    }
+
+    @Transactional
+    public void registerSecondPassword(UserPrincipal user, RegisterSecondPasswordRequest request) {
+        User targetUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new BadRequestException("사용자를 찾을 수 없습니다."));
+
+        if (targetUser.getSecondaryPassword() != null && !targetUser.getSecondaryPassword().isBlank()) {
+            throw new BadRequestException("이미 2차 비밀번호가 설정되어 있습니다. 변경은 보안 설정에서 진행해주세요.");
+        }
+
+        targetUser.setSecondaryPassword(passwordEncoder.encode(request.getSecondaryPassword()));
+        userRepository.save(targetUser);
+
+        auditService.log(AuditLog.ActionType.UPDATE, "User", targetUser.getId(),
+                "User registered initial secondary password");
     }
 }

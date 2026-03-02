@@ -37,9 +37,16 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useAuth } from '@/contexts/AuthContext';
-import { pointsApi, couponsApi } from '@/api';
+import { pointsApi, couponsApi, authApi } from '@/api';
 import { format } from 'date-fns';
+import { SecureKeypad } from '@/components/common/SecureKeypad';
+
+const formatPin = (pin?: string) => {
+    if (!pin) return '';
+    return pin.replace(/(.{4})/g, '$1-').slice(0, -1);
+};
 
 /* ─── 카테고리 ─── */
 const categories = [
@@ -104,6 +111,22 @@ const getBadgeColor = (badge: string) => {
     }
 };
 
+/** 연속된 숫자 2개 이상 포함 여부 (오름/내림, 9↔0은 연속으로 보지 않음) */
+const hasConsecutiveDigits = (pin: string): boolean => {
+    for (let i = 0; i < pin.length - 1; i++) {
+        const curr = parseInt(pin[i], 10);
+        const next = parseInt(pin[i + 1], 10);
+        const diff = Math.abs(curr - next);
+        if (diff === 1) return true;
+    }
+    return false;
+};
+
+/** 동일한 숫자 3개 이상 반복 여부 (예: 111, 222) */
+const hasSameDigits = (pin: string): boolean => {
+    return /(\d)\1\1/.test(pin);
+};
+
 /* ─── localStorage 유틸 ─── */
 const loadCart = (): CartItem[] => {
     try {
@@ -139,25 +162,93 @@ export const ShoppingPage = () => {
     const [addedSnack, setAddedSnack] = useState('');
     const [myPoints, setMyPoints] = useState<number | null>(null);
     const [purchasedItems, setPurchasedItems] = useState<CartItem[]>([]);
-    const [spentPoints, setSpentPoints] = useState(() => {
-        try {
-            return parseInt(localStorage.getItem('mock_spent_points') || '0', 10);
-        } catch { return 0; }
-    });
 
     // 쿠폰함 Drawer 상태 추가
     const [couponsDrawerOpen, setCouponsDrawerOpen] = useState(false);
     const [myCouponsList, setMyCouponsList] = useState<any[]>([]);
 
+    // 2차 비밀번호 상태
+    const { user } = useAuth();
+    const isSetupMode = user && !user.hasSecondaryPassword;
+    const [pendingPurchaseType, setPendingPurchaseType] = useState<'single' | 'cart' | null>(null);
+    const [isSecondAuthModalOpen, setIsSecondAuthModalOpen] = useState(false);
+    const [secondPwd, setSecondPwd] = useState('');
+    const [secondAuthError, setSecondAuthError] = useState('');
+    const [setupStep, setSetupStep] = useState(1);
+    const [tempPwd, setTempPwd] = useState('');
+
 
     // 로그인 시 보유 포인트 조회
-    useEffect(() => {
+    const fetchBalance = () => {
         if (isAuthenticated) {
             pointsApi.balance()
-                .then((data) => setMyPoints(Math.max(0, data.availablePoints - spentPoints)))
+                .then((data) => setMyPoints(Math.max(0, data.availablePoints)))
                 .catch(() => setMyPoints(null));
         }
-    }, [isAuthenticated, spentPoints]);
+    };
+
+    useEffect(() => {
+        fetchBalance();
+    }, [isAuthenticated]);
+
+    const handleSuccessfulAuth = () => {
+        setIsSecondAuthModalOpen(false);
+        if (pendingPurchaseType === 'single') {
+            executeSinglePurchase();
+        } else if (pendingPurchaseType === 'cart') {
+            executeCartPurchase();
+        }
+    };
+
+    useEffect(() => {
+        if (secondPwd.length === 6 && isSecondAuthModalOpen) {
+            if (isSetupMode) {
+                if (setupStep === 1) {
+                    if (hasConsecutiveDigits(secondPwd)) {
+                        setSecondAuthError('연속된 숫자(예: 12, 89)를 포함할 수 없습니다.');
+                        setSecondPwd('');
+                        return;
+                    }
+                    if (hasSameDigits(secondPwd)) {
+                        setSecondAuthError('동일한 숫자 반복(예: 111)은 사용할 수 없습니다.');
+                        setSecondPwd('');
+                        return;
+                    }
+                    setTempPwd(secondPwd);
+                    setSecondPwd('');
+                    setSetupStep(2);
+                } else if (setupStep === 2) {
+                    if (secondPwd === tempPwd) {
+                        authApi.registerSecondPassword(secondPwd)
+                            .then(() => {
+                                // 회원 상태 갱신 필요 시 reload할 수 있으나 UI 흐름 유지를 위해 임시 통과
+                                handleSuccessfulAuth();
+                            })
+                            .catch((err) => {
+                                setSecondAuthError(err.response?.data?.message || '설정에 실패했습니다.');
+                                setSecondPwd('');
+                                setSetupStep(1);
+                                setTempPwd('');
+                            });
+                    } else {
+                        setSecondAuthError('비밀번호가 일치하지 않습니다. 다시 설정해주세요.');
+                        setSecondPwd('');
+                        setSetupStep(1);
+                        setTempPwd('');
+                    }
+                }
+            } else {
+                authApi.verifySecondPassword(secondPwd)
+                    .then(() => {
+                        handleSuccessfulAuth();
+                    })
+                    .catch((err) => {
+                        setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
+                        setSecondPwd('');
+                    });
+            }
+        }
+    }, [secondPwd, isSetupMode, setupStep, tempPwd, isSecondAuthModalOpen, pendingPurchaseType]);
 
     // cart 변경 시 저장 (첫 렌더링 스킵)
     const isFirstRender = useRef(true);
@@ -204,54 +295,44 @@ export const ShoppingPage = () => {
         setDialogOpen(true);
     };
 
-    const handleConfirmExchange = async () => {
+    const executeSinglePurchase = async () => {
         if (!selectedCoupon) return;
-
-        const cost = selectedCoupon.points;
-        if (myPoints === null || myPoints < cost) {
-            alert('보유 포인트가 부족합니다.');
-            setDialogOpen(false);
-            return;
-        }
-
         try {
             await couponsApi.purchase({ coupon: selectedCoupon, quantity: 1 });
-
-            // 백엔드기를 안 타므로 프론트엔드 단에서 가상으로 깎음
-            setSpentPoints(prev => {
-                const next = prev + cost;
-                localStorage.setItem('mock_spent_points', next.toString());
-                return next;
-            });
+            fetchBalance();
             setPurchasedItems([{ coupon: selectedCoupon, quantity: 1 }]);
             setDialogOpen(false);
             setConfirmOpen(true);
         } catch (e: any) {
             console.error(e);
             alert(e.response?.data?.message || '포인트 교환에 실패했습니다.');
+        } finally {
+            setPendingPurchaseType(null);
         }
     };
 
-    const handleCartCheckout = async () => {
-        const total = cart.reduce((sum, i) => sum + i.coupon.points * i.quantity, 0);
-
-        if (myPoints === null || myPoints < total) {
+    const handleConfirmExchange = async () => {
+        if (!selectedCoupon) return;
+        const cost = selectedCoupon.points;
+        if (myPoints === null || myPoints < cost) {
             alert('보유 포인트가 부족합니다.');
+            setDialogOpen(false);
             return;
         }
+        setPendingPurchaseType('single');
+        setSecondPwd('');
+        setSecondAuthError('');
+        setSetupStep(1);
+        setTempPwd('');
+        setIsSecondAuthModalOpen(true);
+    };
 
+    const executeCartPurchase = async () => {
         try {
-            // Mock API 로컬 스토리지 동시성 이슈를 위해 순차 처리
             for (const item of cart) {
                 await couponsApi.purchase({ coupon: item.coupon, quantity: item.quantity });
             }
-
-            setSpentPoints(prev => {
-                const next = prev + total;
-                localStorage.setItem('mock_spent_points', next.toString());
-                return next;
-            });
-
+            fetchBalance();
             setPurchasedItems([...cart]);
             setCartOpen(false);
             setCart([]);
@@ -259,7 +340,23 @@ export const ShoppingPage = () => {
         } catch (e: any) {
             console.error(e);
             alert(e.response?.data?.message || '포인트 교환에 실패했습니다.');
+        } finally {
+            setPendingPurchaseType(null);
         }
+    };
+
+    const handleCartCheckout = async () => {
+        const total = cart.reduce((sum, i) => sum + i.coupon.points * i.quantity, 0);
+        if (myPoints === null || myPoints < total) {
+            alert('보유 포인트가 부족합니다.');
+            return;
+        }
+        setPendingPurchaseType('cart');
+        setSecondPwd('');
+        setSecondAuthError('');
+        setSetupStep(1);
+        setTempPwd('');
+        setIsSecondAuthModalOpen(true);
     };
 
     const handleCheckoutDone = () => {
@@ -275,11 +372,10 @@ export const ShoppingPage = () => {
 
             // 백엔드가 준 구매 내역 + 프론트 하드코딩 쿠폰 상세정보 매핑
             const mappedCoupons = (Array.isArray(data) ? data : []).map(item => {
-                const baseInfo = coupons.find(c => c.id === item.coupon?.id || c.id === item.couponId);
+                const baseInfo = coupons.find(c => c.id === item.couponId);
                 return {
                     ...baseInfo, // 이름, 이미지, 브랜드 등
-                    ...item,     // 유효기간, 상태, id
-                    couponId: baseInfo?.id || item.coupon?.id || item.couponId
+                    ...item,     // 유효기간, 상태등 API 응답값 덮어쓰기
                 };
             });
 
@@ -692,7 +788,32 @@ export const ShoppingPage = () => {
                                             <Typography variant="caption" color="text.secondary">유효기간</Typography>
                                             <Typography variant="body2" sx={{ fontWeight: 600 }}>~ {format(new Date(coupon.validUntil), 'yyyy.MM.dd')}</Typography>
                                         </Box>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+
+                                        {/* PIN 번호 표시 영역 */}
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f1f8e9', p: 1, borderRadius: 1, mt: 1 }}>
+                                            <Box>
+                                                <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 700, display: 'block', mb: 0.2 }}>
+                                                    PIN 번호
+                                                </Typography>
+                                                <Typography sx={{ fontWeight: 800, fontSize: '1rem', letterSpacing: 1, color: '#333' }}>
+                                                    {formatPin(coupon.pinCode)}
+                                                </Typography>
+                                            </Box>
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => {
+                                                    if (coupon.pinCode) {
+                                                        navigator.clipboard.writeText(coupon.pinCode);
+                                                        alert('PIN 번호가 복사되었습니다.');
+                                                    }
+                                                }}
+                                                sx={{ color: '#2e7d32', bgcolor: '#e8f5e9', '&:hover': { bgcolor: '#c8e6c9' } }}
+                                            >
+                                                <ContentCopyIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
                                             <Chip label={coupon.status === 'AVAILABLE' ? '사용가능' : '사용완료'} color={coupon.status === 'AVAILABLE' ? 'success' : 'default'} size="small" sx={{ fontWeight: 700, borderRadius: 1, fontSize: '0.7rem', height: 20 }} />
                                             <Typography variant="caption" color="text.secondary">수량: 1개</Typography>
                                         </Box>
@@ -703,6 +824,80 @@ export const ShoppingPage = () => {
                     )}
                 </Box>
             </Drawer>
+
+            {/* 결제 2차 인증 팝업 */}
+            <Dialog
+                open={isSecondAuthModalOpen}
+                fullWidth
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+                onClose={() => {
+                    setIsSecondAuthModalOpen(false);
+                    setSecondPwd('');
+                    setSecondAuthError('');
+                    setPendingPurchaseType(null);
+                }}
+                slotProps={{
+                    backdrop: {
+                        sx: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                            backdropFilter: 'blur(4px)',
+                        }
+                    }
+                }}
+            >
+                <DialogTitle sx={{ textAlign: 'center', fontWeight: 800, color: '#333', pt: 3, pb: 1 }}>
+                    {isSetupMode ? '2차 비밀번호 설정' : '결제 보안 인증'}
+                </DialogTitle>
+                <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 4, overflow: 'hidden' }}>
+                    <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, textAlign: 'center', mb: 3 }}>
+                        {isSetupMode ? (
+                            setupStep === 1 ? (
+                                <>
+                                    안전한 포인트 결제를 위해<br />
+                                    새로운 2차 비밀번호(6자리)를 설정해 주세요.
+                                </>
+                            ) : (
+                                <>
+                                    확인을 위해 방금 입력하신<br />
+                                    비밀번호를 다시 한 번 입력해 주세요.
+                                </>
+                            )
+                        ) : (
+                            <>
+                                안전한 포인트 결제를 위해<br />
+                                2차 비밀번호(6자리)를 입력해 주세요.
+                            </>
+                        )}
+                    </Typography>
+                    <Box sx={{ width: '100%', maxWidth: 300 }}>
+                        <SecureKeypad
+                            value={secondPwd}
+                            onChange={(v) => { setSecondPwd(v); setSecondAuthError(''); }}
+                        />
+                        {secondAuthError && (
+                            <Typography color="error" variant="body2" sx={{ textAlign: 'center', mt: 2, fontWeight: 600 }}>
+                                {secondAuthError}
+                            </Typography>
+                        )}
+                        <Box sx={{ mt: 3, textAlign: 'center' }}>
+                            <Button
+                                variant="outlined"
+                                color="inherit"
+                                onClick={() => {
+                                    setIsSecondAuthModalOpen(false);
+                                    setSecondPwd('');
+                                    setSecondAuthError('');
+                                    setPendingPurchaseType(null);
+                                }}
+                                sx={{ borderRadius: 2, px: 3, color: '#666', borderColor: '#ccc' }}
+                            >
+                                취소
+                            </Button>
+                        </Box>
+                    </Box>
+                </DialogContent>
+            </Dialog>
         </Box>
     );
 };

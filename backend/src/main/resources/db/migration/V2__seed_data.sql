@@ -6,13 +6,13 @@ INSERT INTO roles (id, name, description) VALUES
   (1, 'USER', '일반 사용자'),
   (2, 'OPERATOR', '상담원'),
   (3, 'MASTER_ADMIN', '관리자'),
-  (4, 'REVIEW_ADMIN', '리뷰 관리자');
+  (4, 'REVIEW_ADMIN', '심사 관리자');
 
 -- Users (password: MyCard!234)
 INSERT INTO users (id, email, password_hash, name, phone, status) VALUES
   (1,   'user1@mycard.local', '$2a$12$PqcXBVTaFDti5bPDa2k5IOxs0zN9cUTeoN9ZxFocsXmyIaWgx0Yvu', '홍길동', '010-1111-1111', 'ACTIVE'),
   (2,   'user2@mycard.local', '$2a$12$OjbgXXmP6FE.r7FevQhFPOrsxQYlWqNRWOXnIrcA/Qma8.G42eO.y', '김민수', '010-2222-2222', 'ACTIVE'),
-  (3,   'reviewadmin@mycard.local', '$2a$12$R85yQRcEWzjqz6f6wyxbLu45tP7BdVvaRsL2m06WcY5h3yBTwQhiq', '리뷰관리자', '010-3333-3333', 'ACTIVE'),
+  (3,   'reviewadmin@mycard.local', '$2a$12$R85yQRcEWzjqz6f6wyxbLu45tP7BdVvaRsL2m06WcY5h3yBTwQhiq', '심사관리자', '010-3333-3333', 'ACTIVE'),
   (101, 'op1@mycard.local',   '$2a$12$KTNCtgdgsjcARphzh5bu1eRPfOm4zsHObCjPWm7xwGzSFmUl7S/Kq', '박상담', '010-9000-0101', 'ACTIVE'),
   (102, 'op2@mycard.local',   '$2a$12$abBrL9VdR2WFzBgTzntzpuQ.A2T/.TnG.RWPo3.3S0QFdwGV4qa/K', '최상담', '010-9000-0102', 'ACTIVE'),
   (201, 'masteradmin@mycard.local', '$2a$12$tTR6GAS4iiEHZa0q8O054.nlJuosmt8albvhAqQm8Hrr0VGXwNT/G', '마스터관리자', '010-9999-0201', 'ACTIVE');
@@ -184,9 +184,9 @@ INSERT INTO installment_plans (id, user_id, approval_id, months, status, created
 
 -- Audit Logs (운영 증적 샘플)
 INSERT INTO audit_logs (id, actor_id, actor_role, action, target_type, target_id, diff_json, request_id, ip, user_agent, created_at) VALUES
-  (99501, 201, 'ADMIN',    'NOTICE_CREATE',     'NOTICE',    97001, JSON_OBJECT('title','시스템 점검 안내'), 'req-001', '192.168.0.10', 'Mozilla/5.0', '2026-03-20 09:00:01'),
+  (99501, 201, 'MASTER_ADMIN',    'NOTICE_CREATE',     'NOTICE',    97001, JSON_OBJECT('title','시스템 점검 안내'), 'req-001', '192.168.0.10', 'Mozilla/5.0', '2026-03-20 09:00:01'),
   (99502, 101, 'OPERATOR', 'INQUIRY_ANSWER',    'INQUIRY',   90001, JSON_OBJECT('status','ANSWERED'),       'req-002', '192.168.0.21', 'Mozilla/5.0', '2026-03-02 11:10:01'),
-  (99503, 201, 'ADMIN',    'POINT_POLICY_UPD',  'POLICY',    99101, JSON_OBJECT('fee_rate','0.0300'),       'req-003', '192.168.0.10', 'Mozilla/5.0', '2026-03-25 09:00:01');
+  (99503, 201, 'MASTER_ADMIN',    'POINT_POLICY_UPD',  'POLICY',    99101, JSON_OBJECT('fee_rate','0.0300'),       'req-003', '192.168.0.10', 'Mozilla/5.0', '2026-03-25 09:00:01');
 
 -- Login attempts 샘플(선택)
 INSERT INTO login_attempts (email, user_id, ip, user_agent, success, created_at) VALUES

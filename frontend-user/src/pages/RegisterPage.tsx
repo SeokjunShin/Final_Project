@@ -73,9 +73,15 @@ const hasConsecutiveDigits = (pin: string): boolean => {
   return false;
 };
 
+/** 동일한 숫자 3개 이상 반복 여부 (예: 111, 222) */
+const hasSameDigits = (pin: string): boolean => {
+  return /(\d)\1\1/.test(pin);
+};
+
 const checkSecondaryPinConditions = (pin: string) => ({
   length: pin.length === 6,
   noConsecutive: pin.length >= 2 ? !hasConsecutiveDigits(pin) : true,
+  noSame: pin.length >= 3 ? !hasSameDigits(pin) : true,
 });
 
 export const RegisterPage = () => {
@@ -126,6 +132,10 @@ export const RegisterPage = () => {
     }
     if (hasConsecutiveDigits(secondaryPin)) {
       setPinError('연속된 숫자(예: 12, 89)를 포함할 수 없습니다.');
+      return;
+    }
+    if (hasSameDigits(secondaryPin)) {
+      setPinError('동일한 숫자 반복(예: 111)은 사용할 수 없습니다.');
       return;
     }
     setPinStep('confirm');
@@ -346,7 +356,7 @@ export const RegisterPage = () => {
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2, lineHeight: 1.6 }}>
             보안을 위해 아래 랜덤 키패드로 6자리 숫자를 입력해주세요.
             <br />
-            연속된 숫자(예: 12, 89)는 사용할 수 없습니다.
+            연속된 숫자(예: 12) 및 동일 숫자 반복(예: 111)은 불가합니다.
           </Typography>
 
           {/* 조건 표시 */}
@@ -371,6 +381,18 @@ export const RegisterPage = () => {
                 <ListItemText
                   primary="연속된 숫자 없음 (예: 12, 89 금지)"
                   primaryTypographyProps={{ variant: 'caption', color: pinConditions.noConsecutive ? (secondaryPin.length >= 2 ? '#4caf50' : 'text.secondary') : '#e53935' }}
+                />
+              </ListItem>
+              <ListItem disableGutters>
+                <ListItemIcon sx={{ minWidth: 24 }}>
+                  {pinConditions.noSame ?
+                    <CheckCircleIcon sx={{ fontSize: 16, color: secondaryPin.length >= 3 ? '#4caf50' : '#bdbdbd' }} /> :
+                    <CancelIcon sx={{ fontSize: 16, color: '#e53935' }} />
+                  }
+                </ListItemIcon>
+                <ListItemText
+                  primary="동일한 숫자 반복 없음 (예: 111 금지)"
+                  primaryTypographyProps={{ variant: 'caption', color: pinConditions.noSame ? (secondaryPin.length >= 3 ? '#4caf50' : 'text.secondary') : '#e53935' }}
                 />
               </ListItem>
             </List>

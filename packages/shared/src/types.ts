@@ -1,10 +1,11 @@
-﻿export type Role = 'USER' | 'OPERATOR' | 'ADMIN' | 'REVIEWER';
+﻿export type Role = 'USER' | 'OPERATOR' | 'MASTER_ADMIN' | 'REVIEW_ADMIN';
 
 export interface AuthUser {
   id: number;
   name: string;
   email: string;
   role: Role;
+  hasSecondaryPassword?: boolean;
 }
 
 export interface AuthTokens {

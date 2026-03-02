@@ -413,10 +413,14 @@ app:
 
 ## 테스트 계정
 
-| 역할 | 이메일 | 비밀번호 |
-|------|--------|----------|
-| 사용자 | user1@mycard.local | MyCard!234 |
-| 관리자 | admin@mycard.local | MyCard!234 |
+| 역할 | 이름 | 이메일 | 비밀번호 |
+|------|------|--------|----------|
+| 일반 사용자 | 홍길동 | user1@mycard.local | MyCard!234 |
+| 일반 사용자 | 김민수 | user2@mycard.local | MyCard!234 |
+| 심사 관리자 | 심사관리자 | reviewadmin@mycard.local | MyCard!234 |
+| 상담원 | 박상담 | op1@mycard.local | MyCard!234 |
+| 상담원 | 최상담 | op2@mycard.local | MyCard!234 |
+| 마스터 관리자 | 마스터관리자 | masteradmin@mycard.local | MyCard!234 |
 
 ---
 

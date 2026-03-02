@@ -101,7 +101,7 @@ public class FileStorageService {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("첨부파일", attachmentId));
 
-        if (!attachment.getUploadedBy().getId().equals(currentUser.getId()) && !currentUser.isAdmin()) {
+        if (!attachment.getUploadedBy().getId().equals(currentUser.getId()) && !currentUser.isStaff()) {
             throw new com.mycard.api.exception.AccessDeniedException("첨부파일 삭제 권한이 없습니다.");
         }
 

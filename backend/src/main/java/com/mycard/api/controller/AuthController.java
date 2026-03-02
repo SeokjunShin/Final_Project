@@ -6,9 +6,13 @@ import com.mycard.api.dto.auth.LoginResponse;
 import com.mycard.api.dto.auth.RefreshTokenRequest;
 import com.mycard.api.dto.auth.RegisterRequest;
 import com.mycard.api.dto.auth.TokenResponse;
+import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
+import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
 import com.mycard.api.security.CurrentUser;
 import com.mycard.api.security.UserPrincipal;
 import com.mycard.api.service.AuthService;
+import com.mycard.api.entity.User;
+import com.mycard.api.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRepository userRepository;
 
     @Operation(summary = "회원가입")
     @PostMapping("/register")
@@ -55,11 +60,16 @@ public class AuthController {
                 .map(r -> r.replace("ROLE_", ""))
                 .orElse("USER");
 
+        User userEntity = userRepository.findById(user.getId()).orElse(null);
+        boolean hasSecondaryPassword = userEntity != null && userEntity.getSecondaryPassword() != null
+                && !userEntity.getSecondaryPassword().isBlank();
+
         AuthUserResponse response = AuthUserResponse.builder()
                 .id(user.getId())
                 .name(user.getFullName())
                 .email(user.getUsername())
                 .role(role)
+                .hasSecondaryPassword(hasSecondaryPassword)
                 .build();
         return ResponseEntity.ok(response);
     }
@@ -69,6 +79,24 @@ public class AuthController {
     public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         TokenResponse response = authService.refreshToken(request.getRefreshToken());
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "2차 비밀번호 검증")
+    @PostMapping("/verify-second-password")
+    public ResponseEntity<VerifySecondPasswordResponse> verifySecondPassword(
+            @CurrentUser UserPrincipal user,
+            @Valid @RequestBody VerifySecondPasswordRequest request) {
+        VerifySecondPasswordResponse response = authService.verifySecondPassword(user, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "2차 비밀번호 최초 설정")
+    @PostMapping("/register-second-password")
+    public ResponseEntity<Void> registerSecondPassword(
+            @CurrentUser UserPrincipal user,
+            @Valid @RequestBody com.mycard.api.dto.auth.RegisterSecondPasswordRequest request) {
+        authService.registerSecondPassword(user, request);
+        return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "로그아웃")

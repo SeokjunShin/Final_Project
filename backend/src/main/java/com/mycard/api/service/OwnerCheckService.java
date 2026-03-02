@@ -28,7 +28,7 @@ public class OwnerCheckService {
 
     public void requireOperatorOrAdmin(UserPrincipal principal) {
         if (!isAdminOrOperator(principal)) {
-            throw new AccessDeniedException("OPERATOR 또는 ADMIN 권한이 필요합니다.");
+            throw new AccessDeniedException("OPERATOR, REVIEW_ADMIN 또는 MASTER_ADMIN 권한이 필요합니다.");
         }
     }
 
@@ -100,7 +100,7 @@ public class OwnerCheckService {
      * 현재 사용자가 관리자 또는 운영자인지 확인
      */
     public boolean isAdminOrOperator(UserPrincipal currentUser) {
-        return currentUser != null && (currentUser.isAdmin() || currentUser.isOperator());
+        return currentUser != null && currentUser.isStaff();
     }
 
     /**

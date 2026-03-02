@@ -50,7 +50,7 @@ export const AdminLoginPage = () => {
             운영 포털 로그인
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-            admin.mycard.local · OPERATOR / ADMIN
+            admin.mycard.local · OPERATOR / MASTER_ADMIN / REVIEW_ADMIN
           </Typography>
 
           <Stack spacing={1.6} component="form" onSubmit={handleSubmit(onSubmit)}>

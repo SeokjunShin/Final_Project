@@ -45,6 +45,22 @@ const menuIcons: Record<string, React.ReactNode> = {
   '/support/inquiries': <SupportAgentIcon />,
 };
 
+/** 연속된 숫자 2개 이상 포함 여부 (오름/내림, 9↔0은 연속으로 보지 않음) */
+const hasConsecutiveDigits = (pin: string): boolean => {
+  for (let i = 0; i < pin.length - 1; i++) {
+    const curr = parseInt(pin[i], 10);
+    const next = parseInt(pin[i + 1], 10);
+    const diff = Math.abs(curr - next);
+    if (diff === 1) return true;
+  }
+  return false;
+};
+
+/** 동일한 숫자 3개 이상 반복 여부 (예: 111, 222) */
+const hasSameDigits = (pin: string): boolean => {
+  return /(\d)\1\1/.test(pin);
+};
+
 export const UserLayout = () => {
   const [open, setOpen] = useState(false);
   const location = useLocation();
@@ -55,19 +71,63 @@ export const UserLayout = () => {
   const [secondPwd, setSecondPwd] = useState('');
   const [secondAuthError, setSecondAuthError] = useState('');
 
+  const [setupStep, setSetupStep] = useState(1);
+  const [tempPwd, setTempPwd] = useState('');
+
+  const isSetupMode = user && !user.hasSecondaryPassword;
+
   useEffect(() => {
     if (secondPwd.length === 6) {
-      authApi.verifySecondPassword(secondPwd)
-        .then(() => {
-          sessionStorage.setItem('second_auth_passed', 'true');
-          setIsSecondAuthPassed(true);
-        })
-        .catch((err) => {
-          setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
+      if (isSetupMode) {
+        if (setupStep === 1) {
+          if (hasConsecutiveDigits(secondPwd)) {
+            setSecondAuthError('연속된 숫자(예: 12, 89)를 포함할 수 없습니다.');
+            setSecondPwd('');
+            return;
+          }
+          if (hasSameDigits(secondPwd)) {
+            setSecondAuthError('동일한 숫자 반복(예: 111)은 사용할 수 없습니다.');
+            setSecondPwd('');
+            return;
+          }
+          setTempPwd(secondPwd);
           setSecondPwd('');
-        });
+          setSetupStep(2);
+        } else if (setupStep === 2) {
+          if (secondPwd === tempPwd) {
+            authApi.registerSecondPassword(secondPwd)
+              .then(() => {
+                sessionStorage.setItem('second_auth_passed', 'true');
+                setIsSecondAuthPassed(true);
+                // 계정 정보 갱신을 위해 새로고침 처리
+                window.location.reload();
+              })
+              .catch((err) => {
+                setSecondAuthError(err.response?.data?.message || '설정에 실패했습니다.');
+                setSecondPwd('');
+                setSetupStep(1);
+                setTempPwd('');
+              });
+          } else {
+            setSecondAuthError('비밀번호가 일치하지 않습니다. 다시 설정해주세요.');
+            setSecondPwd('');
+            setSetupStep(1);
+            setTempPwd('');
+          }
+        }
+      } else {
+        authApi.verifySecondPassword(secondPwd)
+          .then(() => {
+            sessionStorage.setItem('second_auth_passed', 'true');
+            setIsSecondAuthPassed(true);
+          })
+          .catch((err) => {
+            setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
+            setSecondPwd('');
+          });
+      }
     }
-  }, [secondPwd]);
+  }, [secondPwd, isSetupMode, setupStep, tempPwd]);
 
   const crumbs = location.pathname.split('/').filter(Boolean);
 
@@ -254,12 +314,13 @@ export const UserLayout = () => {
         }}
       >
         <DialogTitle sx={{ textAlign: 'center', fontWeight: 800, color: '#333', pt: 3, pb: 1 }}>
-          2차 비밀번호 인증
+          {isSetupMode ? '2차 비밀번호 설정' : '2차 비밀번호 인증'}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 4, overflow: 'hidden' }}>
           <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, textAlign: 'center', mb: 3 }}>
-            안전한 마이페이지 이용을 위해<br />
-            2차 비밀번호(6자리)를 입력해 주세요.
+            {isSetupMode
+              ? (setupStep === 1 ? '안전한 마이페이지 이용을 위해\n새로운 2차 비밀번호(6자리)를 설정해 주세요.\n(연속된 숫자 및 동일 숫자 3자리 반복 금지)' : '확인을 위해\n2차 비밀번호를 한 번 더 입력해 주세요.')
+              : '안전한 마이페이지 이용을 위해\n2차 비밀번호(6자리)를 입력해 주세요.'}
           </Typography>
           <Box sx={{ width: '100%', maxWidth: 300 }}>
             <SecureKeypad

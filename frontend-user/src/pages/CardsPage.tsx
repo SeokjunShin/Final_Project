@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Card, CardContent, FormControlLabel, Grid, Stack, Switch, Typography, Chip, IconButton, Dialog, DialogTitle, DialogContent } from '@mui/material';
+import { Box, Button, Card, FormControlLabel, Grid, Stack, Switch, Typography, Chip, IconButton, Dialog, DialogTitle, DialogContent } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cardsApi, authApi } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';

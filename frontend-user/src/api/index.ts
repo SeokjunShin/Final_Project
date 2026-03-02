@@ -142,5 +142,9 @@ export const couponsApi = {
 
 export const authApi = {
   verifySecondPassword: (secondaryPin: string) =>
-    apiClient.post('/auth/verify-second-password', { secondaryPin }).then((r) => r.data),
+    apiClient.post('/auth/verify-second-password', { secondaryPassword: secondaryPin }).then((r) => r.data),
+  registerSecondPassword: (secondaryPin: string) =>
+    apiClient.post('/auth/register-second-password', { secondaryPassword: secondaryPin }).then((r) => r.data),
+  changePassword: (payload: any) =>
+    apiClient.post('/me/password', payload).then((r) => r.data),
 };

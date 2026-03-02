@@ -36,7 +36,7 @@ export const PublicRoute = () => {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={user?.role === 'REVIEWER' ? "/documents" : "/dashboard"} replace />;
+    return <Navigate to={user?.role === 'REVIEW_ADMIN' ? "/documents" : "/dashboard"} replace />;
   }
 
   return <Outlet />;

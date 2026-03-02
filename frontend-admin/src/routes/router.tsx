@@ -16,8 +16,8 @@ const RootRedirect = () => {
     if (!ready) return;
     if (!user) {
       navigate('/login', { replace: true });
-    } else if (user.role === 'REVIEWER') {
-      navigate('/documents', { replace: true });
+    } else if (user.role === 'REVIEW_ADMIN') {
+      navigate('/card-applications', { replace: true });
     } else {
       navigate('/dashboard', { replace: true });
     }
@@ -51,25 +51,25 @@ export const router = createBrowserRouter([
     children: [{ path: '/login', element: <AdminLoginPage /> }],
   },
   {
-    element: <ProtectedRoute roles={['OPERATOR', 'ADMIN']} />,
+    element: <ProtectedRoute roles={['OPERATOR', 'MASTER_ADMIN']} />,
     children: [
       {
         element: <AdminLayout />,
         children: [
           { path: '/dashboard', element: <AdminDashboardPage /> },
           { path: '/support/inquiries', element: <InquiriesPage /> },
+          { path: '/messages', element: <MessagesPage /> },
           { path: '/inquiries', element: <Navigate to="/support/inquiries" replace /> },
         ],
       },
     ],
   },
   {
-    element: <ProtectedRoute roles={['REVIEWER']} />,
+    element: <ProtectedRoute roles={['REVIEW_ADMIN']} />,
     children: [
       {
         element: <AdminLayout />,
         children: [
-          { path: '/documents', element: <DocumentsPage /> },
           { path: '/card-applications', element: <CardApplicationsPage /> },
           { path: '/reissue-requests', element: <ReissueRequestsPage /> },
           { path: '/loans', element: <LoansPage /> },
@@ -78,18 +78,38 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    element: <ProtectedRoute roles={['ADMIN']} />,
+    element: <ProtectedRoute roles={['MASTER_ADMIN']} />,
     children: [
       {
         element: <AdminLayout />,
         children: [
-          { path: '/messages', element: <MessagesPage /> },
+          { path: '/documents', element: <DocumentsPage /> },
+        ],
+      },
+    ],
+  },
+  {
+    element: <ProtectedRoute roles={['MASTER_ADMIN']} />,
+    children: [
+      {
+        element: <AdminLayout />,
+        children: [
           { path: '/users', element: <UsersPage /> },
           { path: '/merchants', element: <MerchantsPage /> },
           { path: '/benefits', element: <BenefitsPage /> },
-          { path: '/events', element: <EventsPage /> },
           { path: '/policies/points', element: <PointPolicyPage /> },
           { path: '/audit-logs', element: <AuditLogsPage /> },
+        ],
+      },
+    ],
+  },
+  {
+    element: <ProtectedRoute roles={['MASTER_ADMIN']} />,
+    children: [
+      {
+        element: <AdminLayout />,
+        children: [
+          { path: '/events', element: <EventsPage /> },
         ],
       },
     ],

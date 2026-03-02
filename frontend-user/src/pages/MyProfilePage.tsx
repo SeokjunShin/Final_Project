@@ -23,6 +23,20 @@ const profileSchema = z.object({
 
 type ProfileForm = z.infer<typeof profileSchema>;
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, '현재 비밀번호를 입력하세요.'),
+  newPassword: z
+    .string()
+    .min(8, '비밀번호는 8자 이상이어야 합니다.')
+    .regex(/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/, '비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.'),
+  newPasswordConfirm: z.string().min(1, '비밀번호 확인을 입력하세요.'),
+}).refine((data) => data.newPassword === data.newPasswordConfirm, {
+  message: '새 비밀번호가 일치하지 않습니다.',
+  path: ['newPasswordConfirm'],
+});
+
+type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
+
 export const MyProfilePage = () => {
   const { show } = useSnackbar();
 
@@ -37,6 +51,8 @@ export const MyProfilePage = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authTarget, setAuthTarget] = useState<'profile' | 'password'>('profile');
+  const [isPwdModalOpen, setIsPwdModalOpen] = useState(false);
   const [secondPwd, setSecondPwd] = useState('');
   const [secondAuthError, setSecondAuthError] = useState('');
 
@@ -45,7 +61,12 @@ export const MyProfilePage = () => {
       authApi.verifySecondPassword(secondPwd)
         .then(() => {
           setIsAuthModalOpen(false);
-          setIsEditing(true);
+          if (authTarget === 'profile') {
+            setIsEditing(true);
+          } else {
+            pwdForm.reset();
+            setIsPwdModalOpen(true);
+          }
           setSecondPwd('');
           setSecondAuthError('');
         })
@@ -54,7 +75,7 @@ export const MyProfilePage = () => {
           setSecondPwd('');
         });
     }
-  }, [secondPwd, isAuthModalOpen]);
+  }, [secondPwd, isAuthModalOpen, authTarget]);
 
   const form = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -73,7 +94,25 @@ export const MyProfilePage = () => {
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ['my-profile'] });
     },
-    onError: () => show('수정에 실패했습니다.', 'error'),
+    onError: (err: any) => show(err.response?.data?.message || '수정에 실패했습니다.', 'error'),
+  });
+
+  const pwdForm = useForm<ChangePasswordForm>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: { currentPassword: '', newPassword: '', newPasswordConfirm: '' },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: (payload: ChangePasswordForm) =>
+      authApi.changePassword({ currentPassword: payload.currentPassword, newPassword: payload.newPassword }),
+    onSuccess: () => {
+      show('비밀번호가 성공적으로 변경되었습니다.', 'success');
+      setIsPwdModalOpen(false);
+      pwdForm.reset();
+    },
+    onError: (err: any) => {
+      show(err.response?.data?.message || '비밀번호 변경에 실패했습니다.', 'error');
+    },
   });
 
   return (
@@ -177,12 +216,11 @@ export const MyProfilePage = () => {
                   </Box>
                 </Stack>
 
-                {/* 하단 버튼 영역 */}
-                <Box sx={{ pt: 4, pb: 1, textAlign: 'center' }}>
+                <Box sx={{ pt: 4, pb: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <Button
                     variant="outlined"
                     startIcon={<EditIcon />}
-                    onClick={() => setIsAuthModalOpen(true)}
+                    onClick={() => { setAuthTarget('profile'); setIsAuthModalOpen(true); }}
                     sx={{
                       py: 1.2,
                       px: 4,
@@ -191,10 +229,22 @@ export const MyProfilePage = () => {
                       borderWidth: 2,
                       borderColor: '#d32f2f',
                       color: '#d32f2f',
+                      mx: 'auto',
+                      width: 'fit-content',
                       '&:hover': { bgcolor: '#fff5f5', borderWidth: 2, borderColor: '#b71c1c' }
                     }}
                   >
                     내 정보 수정하기
+                  </Button>
+                  <Button
+                    variant="text"
+                    onClick={() => {
+                      setAuthTarget('password');
+                      setIsAuthModalOpen(true);
+                    }}
+                    sx={{ color: '#888', textDecoration: 'underline', width: 'fit-content', mx: 'auto' }}
+                  >
+                    로그인 비밀번호 변경
                   </Button>
                 </Box>
               </Stack>
@@ -248,6 +298,71 @@ export const MyProfilePage = () => {
               </Button>
             </Box>
           </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* 비밀번호 변경 팝업 */}
+      <Dialog
+        open={isPwdModalOpen}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: 3, p: 2 } }}
+        onClose={() => setIsPwdModalOpen(false)}
+      >
+        <DialogTitle sx={{ textAlign: 'center', fontWeight: 800, color: '#333', pt: 2, pb: 1 }}>
+          비밀번호 변경
+        </DialogTitle>
+        <DialogContent sx={{ pb: 2 }}>
+          <Stack spacing={2} component="form" onSubmit={pwdForm.handleSubmit((v) => changePasswordMutation.mutate(v))} mt={2}>
+            <TextField
+              label="현재 비밀번호"
+              type="password"
+              {...pwdForm.register('currentPassword')}
+              error={!!pwdForm.formState.errors.currentPassword}
+              helperText={pwdForm.formState.errors.currentPassword?.message}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="새 비밀번호"
+              type="password"
+              {...pwdForm.register('newPassword')}
+              error={!!pwdForm.formState.errors.newPassword}
+              helperText={pwdForm.formState.errors.newPassword?.message}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="새 비밀번호 확인"
+              type="password"
+              {...pwdForm.register('newPasswordConfirm')}
+              error={!!pwdForm.formState.errors.newPasswordConfirm}
+              helperText={pwdForm.formState.errors.newPasswordConfirm?.message}
+              fullWidth
+              size="small"
+            />
+            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+              <Button
+                variant="outlined"
+                color="inherit"
+                disabled={changePasswordMutation.isPending}
+                onClick={() => setIsPwdModalOpen(false)}
+                fullWidth
+                sx={{ borderRadius: 2 }}
+              >
+                취소
+              </Button>
+              <Button
+                variant="contained"
+                type="submit"
+                disabled={changePasswordMutation.isPending}
+                fullWidth
+                sx={{ borderRadius: 2, bgcolor: '#333', '&:hover': { bgcolor: '#000' } }}
+              >
+                변경하기
+              </Button>
+            </Stack>
+          </Stack>
         </DialogContent>
       </Dialog>
     </Box>

@@ -1,5 +1,6 @@
 package com.mycard.api.dto.auth;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -22,6 +23,7 @@ public class RegisterRequest {
 
     @NotBlank(message = "2차 비밀번호를 입력해주세요.")
     @Pattern(regexp = "^\\d{6}$", message = "2차 비밀번호는 숫자 6자리여야 합니다.")
+    @JsonAlias("secondaryPin")
     private String secondaryPassword;
 
     @NotBlank(message = "이름을 입력해주세요.")

@@ -92,8 +92,23 @@ public class UserPrincipal implements UserDetails {
                 .anyMatch(auth -> auth.getAuthority().equals(normalized));
     }
 
-    public boolean isAdmin() {
+    public boolean isMasterAdmin() {
         return hasRole("MASTER_ADMIN");
+    }
+
+    public boolean isReviewAdmin() {
+        return hasRole("REVIEW_ADMIN");
+    }
+
+    /**
+     * 운영자/심사자/최고관리자 중 하나라도 가진 경우
+     */
+    public boolean isStaff() {
+        return isMasterAdmin() || isReviewAdmin() || isOperator();
+    }
+
+    public boolean isAdmin() {
+        return isMasterAdmin();
     }
 
     public boolean isOperator() {

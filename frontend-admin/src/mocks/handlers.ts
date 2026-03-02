@@ -1,6 +1,6 @@
 import { http, HttpResponse, passthrough } from 'msw';
 
-// JWT 토큰 기반 REVIEWER 권한 확인 헬퍼
+// JWT 토큰 기반 심사/관리자 권한 확인 헬퍼
 const isReviewer = (request: Request) => {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
@@ -8,7 +8,8 @@ const isReviewer = (request: Request) => {
     try {
         const payloadStr = atob(token.split('.')[1]);
         const payload = JSON.parse(payloadStr);
-        return payload.roles && payload.roles.includes('ROLE_REVIEWER');
+        const roles = payload.roles ?? [];
+        return roles.includes('ROLE_REVIEWER') || roles.includes('ROLE_REVIEW_ADMIN') || roles.includes('ROLE_MASTER_ADMIN');
     } catch {
         return false;
     }

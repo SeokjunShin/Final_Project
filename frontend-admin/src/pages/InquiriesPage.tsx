@@ -49,7 +49,7 @@ export const InquiriesPage = () => {
   const { show } = useAdminSnackbar();
   const queryClient = useQueryClient();
   const { user } = useAdminAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const isManager = user?.role === 'MASTER_ADMIN' || user?.role === 'REVIEW_ADMIN';
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-inquiries', queue],
@@ -58,10 +58,10 @@ export const InquiriesPage = () => {
     },
   });
 
-  // 상담원 목록 조회 (관리자만)
+  // 상담원 목록 조회 (담당자만)
   const operatorsQuery = useQuery({
     queryKey: ['admin-operators'],
-    enabled: isAdmin,
+    enabled: isManager,
     queryFn: () => adminApi.getOperators(),
   });
 
@@ -209,7 +209,7 @@ export const InquiriesPage = () => {
                     <Stack direction="row" spacing={0.5}>
                       {status === 'OPEN' && (
                         <>
-                          {isAdmin ? (
+                          {isManager ? (
                             <Button
                               size="small"
                               variant="outlined"
@@ -363,7 +363,11 @@ export const InquiriesPage = () => {
             >
               {(operatorsQuery.data || []).map((op: any) => (
                 <MenuItem key={op.id} value={op.id}>
-                  {op.name} ({op.role === 'ADMIN' ? '관리자' : '상담원'})
+                  {op.role === 'MASTER_ADMIN'
+                    ? '관리자'
+                    : op.role === 'REVIEW_ADMIN'
+                      ? '심사관리자'
+                      : '상담원'}
                 </MenuItem>
               ))}
             </Select>

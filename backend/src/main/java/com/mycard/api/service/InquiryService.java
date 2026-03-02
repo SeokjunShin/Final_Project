@@ -74,7 +74,7 @@ public class InquiryService {
         }
 
         if (ownerCheckService.isAdminOrOperator(currentUser)
-                && !currentUser.isAdmin()
+                && !currentUser.isStaff()
                 && inquiry.getAssignedOperator() != null
                 && !inquiry.isAssignedTo(currentUser.getId())) {
             throw new AccessDeniedException("배정된 운영자만 답변을 등록할 수 있습니다.");
@@ -151,7 +151,7 @@ public class InquiryService {
                 .orElseThrow(() -> new ResourceNotFoundException("상담원", operatorId));
 
         // 상담원 또는 관리자 권한 확인
-        if (!"OPERATOR".equals(operator.getRole()) && !"MASTER_ADMIN".equals(operator.getRole())) {
+        if (!"OPERATOR".equals(operator.getRole()) && !"MASTER_ADMIN".equals(operator.getRole()) && !"REVIEW_ADMIN".equals(operator.getRole())) {
             throw new BadRequestException("상담원 또는 관리자만 배정받을 수 있습니다.");
         }
 
@@ -170,7 +170,7 @@ public class InquiryService {
         Inquiry inquiry = inquiryRepository.findById(inquiryId)
                 .orElseThrow(() -> new ResourceNotFoundException("문의", inquiryId));
 
-        if (!currentUser.isAdmin() && !inquiry.isAssignedTo(currentUser.getId())) {
+        if (!currentUser.isStaff() && !inquiry.isAssignedTo(currentUser.getId())) {
             throw new AccessDeniedException("배정된 운영자 또는 관리자만 문의를 종료할 수 있습니다.");
         }
         if (inquiry.getStatus() == Inquiry.InquiryStatus.CLOSED

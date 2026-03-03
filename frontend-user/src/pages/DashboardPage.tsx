@@ -15,6 +15,23 @@ import { CreditCard as CreditCardVisual } from '@/components/common/CreditCard';
 
 const money = (v: number | undefined | null) => `${(v ?? 0).toLocaleString('ko-KR')}원`;
 
+// 카드 번호 마스킹: 앞 8자리만 노출, 나머지는 **** 처리 (예: 4532-1234-****-****)
+const maskCardNumber = (num: string | null | undefined): string => {
+  if (!num) return '****-****-****-****';
+  const parts = num.split('-');
+  if (parts.length === 4) {
+    return `${parts[0]}-${parts[1]}-****-****`;
+  }
+  // 하이픈 없는 경우: 16자리 → 앞 8자리 노출
+  const digits = num.replace(/\D/g, '');
+  if (digits.length >= 8) {
+    const p1 = digits.slice(0, 4);
+    const p2 = digits.slice(4, 8);
+    return `${p1}-${p2}-****-****`;
+  }
+  return '****-****-****-****';
+};
+
 export const DashboardPage = () => {
   const { user } = useAuth();
 
@@ -104,13 +121,13 @@ export const DashboardPage = () => {
                 <Card sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
                   <CreditCardVisual
                     cardName={cardName}
-                    cardNumber={card.cardNumber}
+                    cardNumber={maskCardNumber(card.cardNumber)}
                     size="small"
                   />
                   <Box sx={{ flex: 1 }}>
                     <Typography sx={{ fontWeight: 700, mb: 0.5, fontSize: '0.95rem' }}>{cardName}</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', mb: 1, fontSize: '0.8rem' }}>
-                      {card.cardNumber || '****-****-****-****'}
+                      {maskCardNumber(card.cardNumber)}
                     </Typography>
                     <Stack direction="row" spacing={2}>
                       <Box>

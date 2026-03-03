@@ -188,15 +188,14 @@ export const PublicEventsPage = () => {
                           {event.title}
                         </Typography>
                         <Stack direction="row" spacing={1}>
-                          {event.isWinner && (
+                          {event.isWinner ? (
                             <Chip
                               icon={<EmojiEventsIcon sx={{ fontSize: 14 }} />}
                               label="당첨"
                               size="small"
                               sx={{ bgcolor: '#fff8e1', color: '#e65100', fontWeight: 700, fontSize: '0.75rem' }}
                             />
-                          )}
-                          {!event.isWinner && event.isParticipated ? (
+                          ) : event.isParticipated ? (
                             <Chip
                               icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
                               label="참여완료"

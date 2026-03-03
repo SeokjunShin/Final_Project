@@ -18,6 +18,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatBot } from '@/components/common/ChatBot';
+import { AppFooter } from '@/components/common/AppFooter';
 
 // ─── 약관 데이터 ───────────────────────────────────────────
 
@@ -275,15 +276,7 @@ export const TermsPage = () => {
                 </Box>
             </Container>
 
-            {/* Footer */}
-            <Box sx={{ bgcolor: '#1a1a1a', color: '#999', py: 4, mt: 6 }}>
-                <Container maxWidth="lg">
-                    <Typography variant="body2" sx={{ textAlign: 'center' }}>
-                        © 2024 MyCard. All rights reserved.
-                    </Typography>
-                </Container>
-            </Box>
-
+            <AppFooter />
             <ChatBot />
         </Box>
     );

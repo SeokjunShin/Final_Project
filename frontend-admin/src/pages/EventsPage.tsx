@@ -65,6 +65,8 @@ const getStatusChip = (status: string) => {
 export const EventsPage = () => {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [formData, setFormData] = useState<EventFormData>(initialFormData);
   const [creating, setCreating] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -195,7 +197,20 @@ export const EventsPage = () => {
         <AdminTable
           rows={data}
           columns={[
-            { field: 'title', headerName: '이벤트명', flex: 2 },
+            {
+              field: 'title',
+              headerName: '이벤트명',
+              flex: 2,
+              renderCell: (params) => (
+                <Typography
+                  variant="body2"
+                  sx={{ cursor: 'pointer', color: '#1976d2', fontWeight: 500, '&:hover': { textDecoration: 'underline' } }}
+                  onClick={() => { setSelectedEvent(params.row); setDetailOpen(true); }}
+                >
+                  {params.row.title}
+                </Typography>
+              )
+            },
             {
               field: 'period',
               headerName: '기간',
@@ -329,6 +344,44 @@ export const EventsPage = () => {
           >
             {creating ? '생성 중...' : '생성'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 이벤트 상세 정보 다이얼로그 */}
+      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>이벤트 상세 정보</DialogTitle>
+        <DialogContent dividers>
+          {selectedEvent && (
+            <Stack spacing={2.5}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>{selectedEvent.title}</Typography>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>이벤트 기간</Typography>
+                <Typography variant="body2">
+                  {new Date(selectedEvent.startDate).toLocaleString('ko-KR')} ~ {new Date(selectedEvent.endDate).toLocaleString('ko-KR')}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>이벤트 내용</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6, bgcolor: '#f9f9f9', p: 1.5, borderRadius: 1 }}>
+                  {selectedEvent.description}
+                </Typography>
+              </Box>
+              {selectedEvent.imageUrl && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>썸네일 이미지</Typography>
+                  <Box
+                    component="img"
+                    src={selectedEvent.imageUrl}
+                    alt="이벤트 이미지"
+                    sx={{ width: '100%', maxHeight: 250, objectFit: 'contain', borderRadius: 1, border: '1px solid #eee' }}
+                  />
+                </Box>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDetailOpen(false)}>닫기</Button>
         </DialogActions>
       </Dialog>
 

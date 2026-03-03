@@ -17,6 +17,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import { useAuth } from '@/contexts/AuthContext';
+import { AppFooter } from '@/components/common/AppFooter';
 
 /* ─── 목차 데이터 ─── */
 const TOC = [
@@ -613,25 +614,7 @@ export const PrivacyPolicyPage = () => {
                 </Box>
             </Container>
 
-            {/* ─── Footer ─── */}
-            <Box sx={{ bgcolor: '#1a1a1a', color: '#999', py: 4 }}>
-                <Container maxWidth="lg">
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-                        <Box>
-                            <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700, mb: 1, fontSize: '1rem' }}>MyCard</Typography>
-                            <Typography variant="body2">© 2026 MyCard. All rights reserved.</Typography>
-                        </Box>
-                        <Stack direction="row" spacing={3} sx={{ alignItems: 'center' }}>
-                            <Typography component={RouterLink} to="/" variant="body2" sx={{ color: '#999', textDecoration: 'none', '&:hover': { color: '#fff' } }}>
-                                메인페이지
-                            </Typography>
-                            <Typography component={RouterLink} to="/privacy" variant="body2" sx={{ color: '#fff', textDecoration: 'none', fontWeight: 600 }}>
-                                개인정보처리방침
-                            </Typography>
-                        </Stack>
-                    </Box>
-                </Container>
-            </Box>
+            <AppFooter />
 
             {/* ─── 맨 위로 버튼 ─── */}
             {showTop && (

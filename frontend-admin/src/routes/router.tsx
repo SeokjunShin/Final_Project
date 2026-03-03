@@ -58,7 +58,6 @@ export const router = createBrowserRouter([
         children: [
           { path: '/dashboard', element: <AdminDashboardPage /> },
           { path: '/support/inquiries', element: <InquiriesPage /> },
-          { path: '/messages', element: <MessagesPage /> },
           { path: '/inquiries', element: <Navigate to="/support/inquiries" replace /> },
         ],
       },
@@ -84,6 +83,7 @@ export const router = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { path: '/documents', element: <DocumentsPage /> },
+          { path: '/messages', element: <MessagesPage /> },
         ],
       },
     ],

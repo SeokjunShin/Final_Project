@@ -33,6 +33,7 @@ import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import { useAuth } from '@/contexts/AuthContext';
 import { CreditCard as CreditCardVisual } from '@/components/common/CreditCard';
+import { ChatBot } from '@/components/common/ChatBot';
 
 interface CardProduct {
   id: number;
@@ -390,6 +391,7 @@ export const CardProductsPage = () => {
           </>
         )}
       </Dialog>
+      <ChatBot />
     </Box>
   );
 };

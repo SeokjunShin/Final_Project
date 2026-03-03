@@ -25,6 +25,7 @@ import { ForbiddenPage } from '@/pages/errors/ForbiddenPage';
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage';
 import { ShoppingPage } from '@/pages/ShoppingPage';
+import { TermsPage } from '@/pages/TermsPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
   { path: '/cards/products', element: <CardProductsPage /> },
   { path: '/privacy', element: <PrivacyPolicyPage /> },
   { path: '/shopping', element: <ShoppingPage /> },
+  { path: '/terms', element: <TermsPage /> },
   {
     element: <PublicRoute />,
     children: [

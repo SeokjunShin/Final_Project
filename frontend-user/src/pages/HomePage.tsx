@@ -1,4 +1,5 @@
-﻿import { Link as RouterLink, useNavigate } from 'react-router-dom';
+﻿import { useState, useEffect } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -22,6 +23,8 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/api/client';
+import { ChatBot } from '@/components/common/ChatBot';
 
 // Unsplash 무료 이미지 URLs
 const IMAGES = {
@@ -56,33 +59,34 @@ const cardProducts = [
   },
 ];
 
-const events = [
-  {
-    title: '신규 가입 캐시백 이벤트',
-    desc: '첫 결제 시 20,000원 캐시백',
-    period: '2026.02.01 ~ 02.28',
-    image: IMAGES.promo1,
-    badge: 'HOT',
-  },
-  {
-    title: '해외 결제 수수료 면제',
-    desc: '해외 이용 시 수수료 0원',
-    period: '2026.02.01 ~ 03.31',
-    image: IMAGES.promo2,
-    badge: 'NEW',
-  },
-  {
-    title: '주유 할인 프로모션',
-    desc: '리터당 최대 100원 할인',
-    period: '2026.02.15 ~ 03.15',
-    image: IMAGES.promo3,
-    badge: '혜택',
-  },
-];
+// 이벤트 이미지 (imageUrl이 없을 때 사용하는 기본 이미지)
+const DEFAULT_EVENT_IMAGES = [IMAGES.promo1, IMAGES.promo2, IMAGES.promo3];
+
+interface EventItem {
+  id: number;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  imageUrl?: string;
+}
 
 export const HomePage = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const [events, setEvents] = useState<EventItem[]>([]);
+
+  useEffect(() => {
+    apiClient.get('/events', { params: { size: 3 } })
+      .then((res) => {
+        const list = res.data?.content || res.data || [];
+        setEvents(list);
+      })
+      .catch(() => {
+        // 이벤트 로딩 실패 시 빈 목록 유지
+      });
+  }, []);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#fff' }}>
@@ -235,25 +239,41 @@ export const HomePage = () => {
             </Box>
             <Button component={RouterLink} to="/events" endIcon={<ArrowForwardIcon />} sx={{ color: '#d32f2f' }}>전체보기</Button>
           </Box>
-          <Grid container spacing={3}>
-            {events.map((event) => (
-              <Grid item xs={12} md={4} key={event.title}>
-                <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
-                  <Box sx={{ position: 'relative' }}>
-                    <CardMedia component="img" image={event.image} alt={event.title} sx={{ height: 180, objectFit: 'cover' }} />
-                    <Box sx={{ position: 'absolute', top: 12, left: 12, bgcolor: event.badge === 'HOT' ? '#d32f2f' : event.badge === 'NEW' ? '#1976d2' : '#ff9800', color: '#fff', px: 1.5, py: 0.5, borderRadius: 1, fontSize: '0.75rem', fontWeight: 700 }}>
-                      {event.badge}
-                    </Box>
-                  </Box>
-                  <CardContent>
-                    <Typography sx={{ fontWeight: 700, mb: 1 }}>{event.title}</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{event.desc}</Typography>
-                    <Typography variant="caption" color="text.secondary">{event.period}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+          {events.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography color="text.secondary">현재 진행 중인 이벤트가 없습니다.</Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={3}>
+              {events.map((event, index) => {
+                const badgeLabel = event.status === 'ACTIVE' ? '진행중' : event.status === 'DRAFT' ? '예정' : '종료';
+                const badgeColor = event.status === 'ACTIVE' ? '#d32f2f' : event.status === 'DRAFT' ? '#1976d2' : '#999';
+                const imageUrl = event.imageUrl || DEFAULT_EVENT_IMAGES[index % DEFAULT_EVENT_IMAGES.length];
+                const startDate = new Date(event.startDate).toLocaleDateString('ko-KR');
+                const endDate = new Date(event.endDate).toLocaleDateString('ko-KR');
+                return (
+                  <Grid item xs={12} md={4} key={event.id}>
+                    <Card
+                      sx={{ height: '100%', transition: 'transform 0.2s', cursor: 'pointer', '&:hover': { transform: 'translateY(-4px)' } }}
+                      onClick={() => navigate('/events')}
+                    >
+                      <Box sx={{ position: 'relative' }}>
+                        <CardMedia component="img" image={imageUrl} alt={event.title} sx={{ height: 180, objectFit: 'cover' }} />
+                        <Box sx={{ position: 'absolute', top: 12, left: 12, bgcolor: badgeColor, color: '#fff', px: 1.5, py: 0.5, borderRadius: 1, fontSize: '0.75rem', fontWeight: 700 }}>
+                          {badgeLabel}
+                        </Box>
+                      </Box>
+                      <CardContent>
+                        <Typography sx={{ fontWeight: 700, mb: 1 }}>{event.title}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{event.description}</Typography>
+                        <Typography variant="caption" color="text.secondary">{startDate} ~ {endDate}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
         </Container>
       </Box>
 
@@ -305,11 +325,12 @@ export const HomePage = () => {
             <Typography variant="body2">© 2026 MyCard. All rights reserved.</Typography>
             <Stack direction="row" spacing={3}>
               <Typography component={RouterLink} to="/privacy" variant="body2" sx={{ cursor: 'pointer', textDecoration: 'none', color: '#999', '&:hover': { color: '#fff' } }}>개인정보처리방침</Typography>
-              <Typography variant="body2" sx={{ cursor: 'pointer', '&:hover': { color: '#fff' } }}>이용약관</Typography>
+              <Typography component={RouterLink} to="/terms" variant="body2" sx={{ cursor: 'pointer', textDecoration: 'none', color: '#999', '&:hover': { color: '#fff' } }}>이용약관</Typography>
             </Stack>
           </Box>
         </Container>
       </Box>
+      <ChatBot />
     </Box>
   );
 };

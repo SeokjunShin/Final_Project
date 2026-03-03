@@ -32,6 +32,7 @@ import { userMenu } from '@shared/menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { SecureKeypad } from '@/components/common/SecureKeypad';
 import { authApi } from '@/api';
+import { ChatBot } from '@/components/common/ChatBot';
 
 const drawerWidth = 305;
 
@@ -345,6 +346,7 @@ export const UserLayout = () => {
           </Box>
         </DialogContent>
       </Dialog>
+      <ChatBot />
     </Box>
   );
 };

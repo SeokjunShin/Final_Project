@@ -42,6 +42,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { pointsApi, couponsApi, authApi } from '@/api';
 import { format } from 'date-fns';
 import { SecureKeypad } from '@/components/common/SecureKeypad';
+import { ChatBot } from '@/components/common/ChatBot';
 
 const formatPin = (pin?: string) => {
     if (!pin) return '';
@@ -898,6 +899,7 @@ export const ShoppingPage = () => {
                     </Box>
                 </DialogContent>
             </Dialog>
+            <ChatBot />
         </Box>
     );
 };

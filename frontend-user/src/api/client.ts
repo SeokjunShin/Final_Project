@@ -59,7 +59,10 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && !original?._retry && !isLoginRequest) {
+    // 비로그인 상태(토큰 없음)에서의 401은 리다이렉트 없이 에러만 전달
+    const hasToken = tokenStorage.getAccessToken();
+
+    if (error.response?.status === 401 && !original?._retry && !isLoginRequest && hasToken) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           queue.push({ resolve, reject });
@@ -99,7 +102,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401 && !isLoginRequest && !isSecondAuthRequest) {
+    if (error.response?.status === 401 && !isLoginRequest && !isSecondAuthRequest && hasToken) {
       tokenStorage.clear();
       window.location.href = '/login';
     }

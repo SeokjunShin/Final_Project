@@ -28,7 +28,13 @@ export const AdminLoginPage = () => {
     try {
       await login(value);
       show('로그인되었습니다.', 'success');
-      navigate('/');
+      // 역할별 기본 페이지로 직접 이동
+      const profile = JSON.parse(localStorage.getItem('admin_profile') || '{}');
+      if (profile.role === 'REVIEW_ADMIN') {
+        navigate('/card-applications', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch {
       show('로그인에 실패했습니다.', 'error');
     }

@@ -686,7 +686,7 @@ public class AdminController {
      * 메시지 목록 조회
      */
     @Operation(summary = "메시지 목록 조회", description = "발송된 메시지 목록을 조회합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'OPERATOR')")
     @GetMapping("/messages")
     public ResponseEntity<List<Map<String, Object>>> getMessages() {
         List<Message> messages = messageRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -710,7 +710,7 @@ public class AdminController {
      * 메시지 발송
      */
     @Operation(summary = "메시지 발송", description = "사용자에게 메시지를 발송합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'OPERATOR')")
     @PostMapping("/messages")
     @Transactional
     public ResponseEntity<Map<String, Object>> sendMessage(

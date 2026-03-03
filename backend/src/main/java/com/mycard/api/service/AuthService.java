@@ -116,7 +116,11 @@ public class AuthService {
                     .map(GrantedAuthority::getAuthority)
                     .toList();
 
-            String primaryRole = roles.isEmpty() ? "USER" : roles.get(0).replace("ROLE_", "");
+            String primaryRole = roles.stream()
+                    .map(r -> r.replace("ROLE_", ""))
+                    .filter(r -> !r.equals("USER"))
+                    .findFirst()
+                    .orElse("USER");
 
             LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
                     .id(userPrincipal.getId())
@@ -198,7 +202,11 @@ public class AuthService {
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
-        String primaryRole = roles.isEmpty() ? "USER" : roles.get(0).replace("ROLE_", "");
+        String primaryRole = roles.stream()
+                .map(r -> r.replace("ROLE_", ""))
+                .filter(r -> !r.equals("USER"))
+                .findFirst()
+                .orElse("USER");
 
         LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
                 .id(userPrincipal.getId())

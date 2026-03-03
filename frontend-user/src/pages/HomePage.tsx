@@ -27,7 +27,7 @@ import { apiClient } from '@/api/client';
 import { ChatBot } from '@/components/common/ChatBot';
 import { AppFooter } from '@/components/common/AppFooter';
 
-// Unsplash 무료 이미지 URLs
+// Unsplash 무료 이미지  URLs
 const IMAGES = {
   hero: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1920&q=80',
   card1: 'https://images.unsplash.com/photo-1556742111-a301076d9d18?w=800&q=80',

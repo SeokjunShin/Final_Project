@@ -72,6 +72,7 @@ export const router = createBrowserRouter([
           { path: '/card-applications', element: <CardApplicationsPage /> },
           { path: '/reissue-requests', element: <ReissueRequestsPage /> },
           { path: '/loans', element: <LoansPage /> },
+          { path: '/documents', element: <DocumentsPage /> },
         ],
       },
     ],
@@ -82,7 +83,6 @@ export const router = createBrowserRouter([
       {
         element: <AdminLayout />,
         children: [
-          { path: '/documents', element: <DocumentsPage /> },
           { path: '/messages', element: <MessagesPage /> },
         ],
       },

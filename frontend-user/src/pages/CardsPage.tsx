@@ -30,43 +30,76 @@ export const CardsPage = () => {
 
   const [visibleCards, setVisibleCards] = useState<Set<number>>(new Set());
   const [reissueCardId, setReissueCardId] = useState<number | null>(null);
+  const [visibilityCardId, setVisibilityCardId] = useState<number | null>(null);
   const [secondPwd, setSecondPwd] = useState('');
   const [secondAuthError, setSecondAuthError] = useState('');
 
   useEffect(() => {
-    if (secondPwd.length === 6 && reissueCardId !== null) {
-      authApi.verifySecondPassword(secondPwd)
-        .then(() => cardsApi.requestReissue(reissueCardId))
-        .then(() => {
-          show('재발급 신청이 접수되었습니다. 관리자 확인 후 처리됩니다.', 'success');
-          queryClient.invalidateQueries({ queryKey: ['cards'] });
-          setReissueCardId(null);
-          setSecondPwd('');
-          setSecondAuthError('');
-        })
-        .catch((err) => {
-          if (err.response?.status === 401) {
-            setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
-            setSecondPwd('');
-          } else {
-            const data = err?.response?.data;
-            const msg = (typeof data?.message === 'string' ? data.message : null) ?? '재발급 신청에 실패했습니다.';
-            show(String(msg), 'error');
+    if (secondPwd.length === 6) {
+      if (reissueCardId !== null) {
+        authApi.verifySecondPassword(secondPwd)
+          .then(() => cardsApi.requestReissue(reissueCardId))
+          .then(() => {
+            show('재발급 신청이 접수되었습니다. 관리자 확인 후 처리됩니다.', 'success');
+            queryClient.invalidateQueries({ queryKey: ['cards'] });
             setReissueCardId(null);
             setSecondPwd('');
             setSecondAuthError('');
-          }
-        });
+          })
+          .catch((err) => {
+            if (err.response?.status === 401) {
+              setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
+              setSecondPwd('');
+            } else {
+              const data = err?.response?.data;
+              const msg = (typeof data?.message === 'string' ? data.message : null) ?? '재발급 신청에 실패했습니다.';
+              show(String(msg), 'error');
+              setReissueCardId(null);
+              setSecondPwd('');
+              setSecondAuthError('');
+            }
+          });
+      } else if (visibilityCardId !== null) {
+        authApi.verifySecondPassword(secondPwd)
+          .then(() => {
+            setVisibleCards(prev => {
+              const next = new Set(prev);
+              next.add(visibilityCardId);
+              return next;
+            });
+            setVisibilityCardId(null);
+            setSecondPwd('');
+            setSecondAuthError('');
+          })
+          .catch((err) => {
+            if (err.response?.status === 401) {
+              setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
+              setSecondPwd('');
+            } else {
+              show('인증에 실패했습니다.', 'error');
+              setVisibilityCardId(null);
+              setSecondPwd('');
+              setSecondAuthError('');
+            }
+          });
+      }
     }
-  }, [secondPwd, reissueCardId, queryClient, show]);
+  }, [secondPwd, reissueCardId, visibilityCardId, queryClient, show]);
 
   const toggleVisibility = (id: number) => {
-    setVisibleCards(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    if (visibleCards.has(id)) {
+      // If currently visible, hide it immediately
+      setVisibleCards(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    } else {
+      // If currently hidden, prompt for secondary password
+      setVisibilityCardId(id);
+      setSecondPwd('');
+      setSecondAuthError('');
+    }
   };
 
   const { data, isError, refetch, isLoading } = useQuery({
@@ -165,7 +198,7 @@ export const CardsPage = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3, position: 'relative' }}>
                   <CreditCardVisual
                     cardName={cardName}
-                    cardNumber={card.cardNumber}
+                    cardNumber={visibleCards.has(card.id) ? card.cardNumber : (card.cardNumber ? `${card.cardNumber.substring(0, 9).replace(/-$/, '')}-****-****` : undefined)}
                     size="medium"
                   />
                   <Box sx={{ position: 'absolute', top: -8, right: -8 }}>
@@ -181,7 +214,7 @@ export const CardsPage = () => {
                   <Typography variant="body2" color="text.secondary">
                     {visibleCards.has(card.id)
                       ? (card.cardNumber || '****-****-****-****')
-                      : (card.cardNumber ? `${card.cardNumber.substring(0, 9)}****-****` : '****-****-****-****')}
+                      : (card.cardNumber ? `${card.cardNumber.substring(0, 9).replace(/-$/, '')}-****-****` : '****-****-****-****')}
                   </Typography>
                   <IconButton size="small" onClick={() => toggleVisibility(card.id)} sx={{ color: '#999' }}>
                     {visibleCards.has(card.id) ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
@@ -240,13 +273,15 @@ export const CardsPage = () => {
         })}
       </Grid>
 
-      {/* 재발급 2차 비밀번호 인증 팝업 */}
+      {/* 2차 비밀번호 입력 모달 (재발급 & 개인정보 조회 공용) */}
       <Dialog
-        open={reissueCardId !== null}
-        fullWidth
+        open={reissueCardId !== null || visibilityCardId !== null}
+        onClose={() => { setReissueCardId(null); setVisibilityCardId(null); setSecondPwd(''); setSecondAuthError(''); }}
         maxWidth="xs"
-        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
-        onClose={() => { setReissueCardId(null); setSecondPwd(''); setSecondAuthError(''); }}
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3, boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }
+        }}
         slotProps={{
           backdrop: {
             sx: {
@@ -257,12 +292,21 @@ export const CardsPage = () => {
         }}
       >
         <DialogTitle sx={{ textAlign: 'center', fontWeight: 800, color: '#333', pt: 3, pb: 1 }}>
-          재발급 승인 인증
+          {reissueCardId !== null ? '재발급 승인 인증' : '카드 번호 보기 인증'}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 4, overflow: 'hidden' }}>
           <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, textAlign: 'center', mb: 3 }}>
-            카드를 새로 발급받기 위해<br />
-            2차 비밀번호(6자리)를 입력해 주세요.
+            {reissueCardId !== null ? (
+              <>
+                카드를 새로 발급받기 위해<br />
+                2차 비밀번호(6자리)를 입력해 주세요.
+              </>
+            ) : (
+              <>
+                전체 카드 번호를 조회하기 위해<br />
+                2차 비밀번호(6자리)를 입력해 주세요.
+              </>
+            )}
           </Typography>
           <Box sx={{ width: '100%', maxWidth: 300 }}>
             <SecureKeypad
@@ -278,7 +322,7 @@ export const CardsPage = () => {
               <Button
                 variant="outlined"
                 color="inherit"
-                onClick={() => { setReissueCardId(null); setSecondPwd(''); setSecondAuthError(''); }}
+                onClick={() => { setReissueCardId(null); setVisibilityCardId(null); setSecondPwd(''); setSecondAuthError(''); }}
                 sx={{ borderRadius: 2, px: 3, color: '#666', borderColor: '#ccc' }}
               >
                 취소

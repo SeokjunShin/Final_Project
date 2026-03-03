@@ -10,6 +10,7 @@ import AddCardIcon from '@mui/icons-material/AddCard';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link as RouterLink } from 'react-router-dom';
+import { formatDateTime } from '@/utils/dateUtils';
 import { CreditCard as CreditCardVisual } from '@/components/common/CreditCard';
 
 const money = (v: number | undefined | null) => `${(v ?? 0).toLocaleString('ko-KR')}원`;
@@ -232,7 +233,7 @@ export const DashboardPage = () => {
                   <ResponsiveContainer>
                     <BarChart data={dashboardData?.monthlySpend ?? []} barCategoryGap="20%">
                       <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} tickFormatter={(v) => `${(v/10000).toFixed(0)}만`} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`} />
                       <Tooltip formatter={(v) => money(Number(v))} cursor={{ fill: 'rgba(211,47,47,0.05)' }} />
                       <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                         {(dashboardData?.monthlySpend ?? []).map((_: any, index: number) => (
@@ -274,7 +275,10 @@ export const DashboardPage = () => {
                           {row.merchantName}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {row.approvedAt} · {row.cardMaskedNumber}
+                          {formatDateTime(row.approvedAt)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {row.cardMaskedNumber}
                         </Typography>
                       </Box>
                       <Stack alignItems="flex-end" spacing={0.5}>

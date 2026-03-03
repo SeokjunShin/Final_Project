@@ -167,6 +167,66 @@ public class PointService {
                 "이벤트 당첨 포인트 지급: " + points + "P (" + eventTitle + ")");
     }
 
+    @Transactional
+    public void grantPointsAsAdmin(Long adminId, Long targetUserId,
+            com.mycard.api.dto.admin.PointGrantRequest request) {
+        BigDecimal points = BigDecimal.valueOf(request.getPoints());
+
+        // Get or create point balance with lock (pessimistic)
+        PointBalance balance = pointBalanceRepository.findByUserIdForUpdate(targetUserId)
+                .orElseGet(() -> createInitialBalance(targetUserId));
+
+        // Add points
+        balance.addPoints(points);
+        pointBalanceRepository.save(balance);
+
+        User targetUser = userRepository.getReferenceById(targetUserId);
+
+        // Record point earn history (using ADJUST to signify manual admin intervention)
+        PointLedger ledger = new PointLedger(targetUser, PointLedger.TransactionType.ADJUST,
+                points, balance.getAvailablePoints(),
+                "관리자 지급: " + request.getReason());
+        ledger.setReferenceType("AdminGrant");
+        ledger.setReferenceId(adminId); // Referencing the admin who granted it
+        pointLedgerRepository.save(ledger);
+
+        auditService.log(AuditLog.ActionType.UPDATE, "PointBalance", targetUserId,
+                "관리자 포인트 수동 지급: " + request.getPoints() + "P (사유: " + request.getReason() + ")");
+    }
+
+    @Transactional
+    public void revokePointsAsAdmin(Long adminId, Long targetUserId,
+            com.mycard.api.dto.admin.PointRevokeRequest request) {
+        BigDecimal points = BigDecimal.valueOf(request.getPoints());
+
+        // Get point balance with lock (pessimistic)
+        PointBalance balance = pointBalanceRepository.findByUserIdForUpdate(targetUserId)
+                .orElseThrow(() -> new RuntimeException("해당 사용자의 포인트 잔액이 존재하지 않습니다."));
+
+        // Safety check: prevent negative balance
+        if (balance.getAvailablePoints().compareTo(points) < 0) {
+            throw new RuntimeException(
+                    "차감하려는 포인트(" + request.getPoints() + "P)가 현재 잔액(" + balance.getAvailablePoints() + "P)보다 많습니다.");
+        }
+
+        // Deduct points
+        balance.addPoints(points.negate());
+        pointBalanceRepository.save(balance);
+
+        User targetUser = userRepository.getReferenceById(targetUserId);
+
+        // Record point deduction history (using ADJUST with negative amount)
+        PointLedger ledger = new PointLedger(targetUser, PointLedger.TransactionType.ADJUST,
+                points.negate(), balance.getAvailablePoints(),
+                "관리자 차감: " + request.getReason());
+        ledger.setReferenceType("AdminRevoke");
+        ledger.setReferenceId(adminId);
+        pointLedgerRepository.save(ledger);
+
+        auditService.log(AuditLog.ActionType.UPDATE, "PointBalance", targetUserId,
+                "관리자 포인트 수동 차감: " + request.getPoints() + "P (사유: " + request.getReason() + ")");
+    }
+
     @Transactional(readOnly = true)
     public Page<PointWithdrawalResponse> getWithdrawals(UserPrincipal currentUser, Pageable pageable) {
         return pointWithdrawalRepository.findByUserId(currentUser.getId(), pageable)

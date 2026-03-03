@@ -33,6 +33,10 @@ export const adminApi = {
   messages: () => adminApiClient.get('/admin/messages').then((r) => r.data),
   users: () => adminApiClient.get('/admin/users').then((r) => r.data),
   updateUserState: (userId: number, state: string) => adminApiClient.patch(`/admin/users/${userId}/state`, { state }),
+  grantPoints: (userId: number, payload: { points: number; reason: string }) =>
+    adminApiClient.post(`/admin/users/${userId}/points/grant`, payload).then((r) => r.data),
+  revokePoints: (userId: number, payload: { points: number; reason: string }) =>
+    adminApiClient.post(`/admin/users/${userId}/points/revoke`, payload).then((r) => r.data),
   /** N일 이상 미접속 활성 계정 일괄 비활성 처리 */
   bulkInactiveByLastLogin: (days: number = 90) =>
     adminApiClient.post<{ count: number; message: string }>('/admin/users/bulk-inactive-by-last-login', null, { params: { days } }).then((r) => r.data),

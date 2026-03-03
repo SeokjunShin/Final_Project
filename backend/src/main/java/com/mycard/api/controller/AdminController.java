@@ -67,6 +67,7 @@ public class AdminController {
     private final CardRepository cardRepository;
     private final EventService eventService;
     private final EventParticipationRepository participationRepository;
+    private final PointService pointService;
 
     // ===================== 대시보드 =====================
 
@@ -256,6 +257,50 @@ public class AdminController {
         Map<String, Object> result = new HashMap<>();
         result.put("count", targets.size());
         result.put("message", days + "일 이상 미접속 계정 " + targets.size() + "건을 비활성 처리했습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    // ===================== 포인트 지급 (수동) =====================
+
+    /**
+     * 관리자 수동 포인트 지급
+     */
+    @Operation(summary = "사용자 포인트 메뉴얼 지급", description = "관리자가 특정 사용자에게 직접 포인트를 지급합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
+    @PostMapping("/users/{userId}/points/grant")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> grantPointsToUser(
+            @PathVariable Long userId,
+            @Valid @RequestBody com.mycard.api.dto.admin.PointGrantRequest request,
+            @AuthenticationPrincipal UserPrincipal adminUser) {
+
+        pointService.grantPointsAsAdmin(adminUser.getId(), userId, request);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("userId", userId);
+        result.put("grantedPoints", request.getPoints());
+        result.put("message", "포인트가 성공적으로 지급되었습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 관리자 수동 포인트 차감
+     */
+    @Operation(summary = "사용자 포인트 수동 차감", description = "관리자가 특정 사용자의 포인트를 차감합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
+    @PostMapping("/users/{userId}/points/revoke")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> revokePointsFromUser(
+            @PathVariable Long userId,
+            @Valid @RequestBody com.mycard.api.dto.admin.PointRevokeRequest request,
+            @AuthenticationPrincipal UserPrincipal adminUser) {
+
+        pointService.revokePointsAsAdmin(adminUser.getId(), userId, request);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("userId", userId);
+        result.put("revokedPoints", request.getPoints());
+        result.put("message", "포인트가 성공적으로 차감되었습니다.");
         return ResponseEntity.ok(result);
     }
 

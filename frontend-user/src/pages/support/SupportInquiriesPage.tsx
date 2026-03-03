@@ -27,6 +27,7 @@ import { z } from 'zod';
 import { supportApi } from '@/api';
 import { TableSection } from '@/components/common/TableSection';
 import { useSnackbar } from '@/contexts/SnackbarContext';
+import { formatDateTime } from '@/utils/dateUtils';
 
 const createSchema = z.object({
   category: z.string().min(1, '분류를 입력하세요.'),
@@ -85,7 +86,7 @@ export const SupportInquiriesPage = () => {
         width: 140,
         renderCell: (params: any) => statusChip(params.row.status),
       },
-      { field: 'createdAt', headerName: '등록일', width: 140 },
+      { field: 'createdAt', headerName: '등록일', width: 180, valueFormatter: (v: string) => formatDateTime(v) },
     ],
     [],
   );
@@ -131,14 +132,14 @@ export const SupportInquiriesPage = () => {
                 <Typography sx={{ fontWeight: 700 }}>{detailQuery.data.title}</Typography>
                 <Typography variant="body2">{detailQuery.data.content}</Typography>
                 <Box>{statusChip(detailQuery.data.status)}</Box>
-                <Typography variant="caption" color="text.secondary">등록일: {detailQuery.data.createdAt}</Typography>
+                <Typography variant="caption" color="text.secondary">등록일: {formatDateTime(detailQuery.data.createdAt)}</Typography>
 
                 <Typography sx={{ fontWeight: 700, mt: 1 }}>답변</Typography>
                 {(detailQuery.data.replies ?? []).map((reply) => (
                   <Box key={reply.id} sx={{ p: 1.2, border: '1px solid #e1e9f8', borderRadius: 2 }}>
                     <Typography variant="body2">{reply.content}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {reply.authorName} · {reply.createdAt}
+                      {reply.authorName} · {formatDateTime(reply.createdAt)}
                     </Typography>
                   </Box>
                 ))}

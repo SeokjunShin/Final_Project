@@ -145,6 +145,10 @@ export const authApi = {
     apiClient.post('/auth/verify-second-password', { secondaryPassword: secondaryPin }).then((r) => r.data),
   registerSecondPassword: (secondaryPin: string) =>
     apiClient.post('/auth/register-second-password', { secondaryPassword: secondaryPin }).then((r) => r.data),
+  sendResetCode: (email: string) =>
+    apiClient.post('/auth/second-password/reset/request-code', { email }).then((r) => r.data),
+  resetSecondPassword: (payload: { email: string; code: string; newSecondPassword: string }) =>
+    apiClient.post('/auth/second-password/reset/confirm', payload).then((r) => r.data),
   changePassword: (payload: any) =>
     apiClient.post('/me/password', payload).then((r) => r.data),
 };

@@ -5,6 +5,8 @@ import com.mycard.api.dto.auth.LoginRequest;
 import com.mycard.api.dto.auth.LoginResponse;
 import com.mycard.api.dto.auth.RefreshTokenRequest;
 import com.mycard.api.dto.auth.RegisterRequest;
+import com.mycard.api.dto.auth.SendResetCodeRequest;
+import com.mycard.api.dto.auth.ConfirmResetPasswordRequest;
 import com.mycard.api.dto.auth.TokenResponse;
 import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
@@ -96,6 +98,24 @@ public class AuthController {
             @CurrentUser UserPrincipal user,
             @Valid @RequestBody com.mycard.api.dto.auth.RegisterSecondPasswordRequest request) {
         authService.registerSecondPassword(user, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "2차 비밀번호 재설정용 인증 코드 메일 발송")
+    @PostMapping("/second-password/reset/request-code")
+    public ResponseEntity<Void> sendResetCode(
+            @CurrentUser UserPrincipal user,
+            @Valid @RequestBody SendResetCodeRequest request) {
+        authService.sendResetCode(user, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "2차 비밀번호 재설정 확정")
+    @PostMapping("/second-password/reset/confirm")
+    public ResponseEntity<Void> resetSecondPassword(
+            @CurrentUser UserPrincipal user,
+            @Valid @RequestBody ConfirmResetPasswordRequest request) {
+        authService.resetSecondPassword(user, request);
         return ResponseEntity.ok().build();
     }
 

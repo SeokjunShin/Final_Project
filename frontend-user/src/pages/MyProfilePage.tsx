@@ -8,6 +8,7 @@ import { apiClient } from '@/api/client';
 import { authApi } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { SecureKeypad } from '@/components/common/SecureKeypad';
+import { ResetSecondPasswordModal } from '@/components/profile/ResetSecondPasswordModal';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import HomeIcon from '@mui/icons-material/Home';
@@ -53,6 +54,7 @@ export const MyProfilePage = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTarget, setAuthTarget] = useState<'profile' | 'password'>('profile');
   const [isPwdModalOpen, setIsPwdModalOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [secondPwd, setSecondPwd] = useState('');
   const [secondAuthError, setSecondAuthError] = useState('');
 
@@ -246,6 +248,13 @@ export const MyProfilePage = () => {
                   >
                     로그인 비밀번호 변경
                   </Button>
+                  <Button
+                    variant="text"
+                    onClick={() => setIsResetModalOpen(true)}
+                    sx={{ color: '#888', textDecoration: 'underline', width: 'fit-content', mx: 'auto' }}
+                  >
+                    2차 비밀번호 재설정
+                  </Button>
                 </Box>
               </Stack>
             )}
@@ -365,6 +374,11 @@ export const MyProfilePage = () => {
           </Stack>
         </DialogContent>
       </Dialog>
+
+      <ResetSecondPasswordModal
+        open={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+      />
     </Box>
   );
 };

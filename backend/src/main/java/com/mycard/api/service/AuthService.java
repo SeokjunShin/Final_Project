@@ -4,6 +4,8 @@ import com.mycard.api.dto.auth.LoginRequest;
 import com.mycard.api.dto.auth.LoginResponse;
 import com.mycard.api.dto.auth.RegisterRequest;
 import com.mycard.api.dto.auth.RegisterSecondPasswordRequest;
+import com.mycard.api.dto.auth.SendResetCodeRequest;
+import com.mycard.api.dto.auth.ConfirmResetPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
 import com.mycard.api.dto.auth.TokenResponse;
@@ -55,6 +57,7 @@ public class AuthService {
     private final JwtTokenProvider tokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
+    private final EmailService emailService;
 
     @Value("${app.security.login-attempt-limit:5}")
     private int loginAttemptLimit;
@@ -394,5 +397,31 @@ public class AuthService {
 
         auditService.log(AuditLog.ActionType.UPDATE, "User", targetUser.getId(),
                 "User registered initial secondary password");
+    }
+
+    @Transactional
+    public void sendResetCode(UserPrincipal user, SendResetCodeRequest request) {
+        User targetUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new BadRequestException("사용자를 찾을 수 없습니다."));
+
+        // 이메일 발송
+        emailService.sendResetCode(request.getEmail());
+    }
+
+    @Transactional
+    public void resetSecondPassword(UserPrincipal user, ConfirmResetPasswordRequest request) {
+        User targetUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new BadRequestException("사용자를 찾을 수 없습니다."));
+
+        boolean isValid = emailService.verifyCode(request.getEmail(), request.getCode());
+        if (!isValid) {
+            throw new BadRequestException("인증 코드가 올바르지 않거나 만료되었습니다.");
+        }
+
+        targetUser.setSecondaryPassword(passwordEncoder.encode(request.getNewSecondPassword()));
+        userRepository.save(targetUser);
+
+        auditService.log(AuditLog.ActionType.UPDATE, "User", targetUser.getId(),
+                "User resetted secondary password via email verification");
     }
 }

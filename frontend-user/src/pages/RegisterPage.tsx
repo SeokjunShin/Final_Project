@@ -8,11 +8,13 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   Collapse,
   Dialog,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   Link,
   List,
@@ -97,6 +99,18 @@ export const RegisterPage = () => {
   const password = watch('password', '');
   const passwordConditions = checkPasswordConditions(password);
 
+  /* ─── 이메일 중복확인 상태 ─── */
+  const [emailChecked, setEmailChecked] = useState(false);
+  const [emailCheckResult, setEmailCheckResult] = useState<'available' | 'duplicate' | null>(null);
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [checkedEmail, setCheckedEmail] = useState(''); // 중복확인 완료된 이메일
+
+  /* ─── 약관 동의 상태 ─── */
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+
   /* ─── 2차 비밀번호 상태 ─── */
   const [dialogOpen, setDialogOpen] = useState(false);
   const [secondaryPin, setSecondaryPin] = useState('');
@@ -106,6 +120,39 @@ export const RegisterPage = () => {
   const [pinDone, setPinDone] = useState(false); // 설정 완료 여부
 
   const pinConditions = checkSecondaryPinConditions(secondaryPin);
+
+  const currentEmail = watch('email', '');
+
+  const handleCheckEmail = async () => {
+    if (!currentEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentEmail)) {
+      show('유효한 이메일을 입력해주세요.', 'error');
+      return;
+    }
+    setEmailChecking(true);
+    try {
+      const result = await authApi.checkEmail(currentEmail);
+      if (result.exists) {
+        setEmailCheckResult('duplicate');
+        setEmailChecked(false);
+      } else {
+        setEmailCheckResult('available');
+        setEmailChecked(true);
+        setCheckedEmail(currentEmail);
+      }
+    } catch {
+      show('이메일 확인에 실패했습니다.', 'error');
+    } finally {
+      setEmailChecking(false);
+    }
+  };
+
+  // 이메일이 변경되면 중복확인 초기화
+  const handleEmailChange = () => {
+    if (emailChecked && currentEmail !== checkedEmail) {
+      setEmailChecked(false);
+      setEmailCheckResult(null);
+    }
+  };
 
   const openDialog = () => {
     // 리셋 후 열기
@@ -165,8 +212,16 @@ export const RegisterPage = () => {
   };
 
   const onSubmit = async (value: FormValues) => {
+    if (!emailChecked || value.email !== checkedEmail) {
+      show('이메일 중복확인을 해주세요.', 'error');
+      return;
+    }
     if (!pinDone) {
       show('2차 비밀번호를 설정해주세요.', 'error');
+      return;
+    }
+    if (!agreeTerms || !agreePrivacy) {
+      show('이용약관 및 개인정보처리방침에 동의해주세요.', 'error');
       return;
     }
 
@@ -199,7 +254,46 @@ export const RegisterPage = () => {
             MyCard 회원가입
           </Typography>
           <Stack spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
-            <TextField label="이메일" {...register('email')} error={!!errors.email} helperText={errors.email?.message} />
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+              <TextField
+                label="이메일"
+                {...register('email', {
+                  onChange: handleEmailChange,
+                })}
+                error={!!errors.email}
+                helperText={
+                  errors.email?.message ||
+                  (emailCheckResult === 'available' ? '✓ 사용 가능한 이메일입니다.' : '') ||
+                  (emailCheckResult === 'duplicate' ? '✗ 이미 사용 중인 이메일입니다.' : '')
+                }
+                sx={{ flex: 1 }}
+                FormHelperTextProps={{
+                  sx: {
+                    color: emailCheckResult === 'available' ? '#4caf50' : emailCheckResult === 'duplicate' ? '#d32f2f' : undefined,
+                  },
+                }}
+              />
+              <Button
+                variant="outlined"
+                onClick={handleCheckEmail}
+                disabled={emailChecking || !currentEmail}
+                sx={{
+                  minWidth: 80,
+                  height: 56,
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderColor: emailChecked ? '#4caf50' : '#d32f2f',
+                  color: emailChecked ? '#4caf50' : '#d32f2f',
+                  '&:hover': {
+                    borderColor: emailChecked ? '#388e3c' : '#b71c1c',
+                    bgcolor: emailChecked ? '#f1f8e9' : '#fff5f5',
+                  },
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {emailChecking ? '확인중...' : emailChecked ? '확인완료' : '중복확인'}
+              </Button>
+            </Box>
             <TextField label="비밀번호" type="password" {...register('password')} error={!!errors.password} />
 
             {/* 비밀번호 조건 */}
@@ -304,10 +398,124 @@ export const RegisterPage = () => {
               helperText={errors.phone?.message}
             />
 
+            {/* ─── 약관 동의 ─── */}
+            <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 2, p: 2, bgcolor: '#fafbfc' }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', mb: 1 }}>약관 동의</Typography>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={agreeTerms && agreePrivacy}
+                    onChange={(e) => {
+                      setAgreeTerms(e.target.checked);
+                      setAgreePrivacy(e.target.checked);
+                    }}
+                    sx={{ color: '#d32f2f', '&.Mui-checked': { color: '#d32f2f' } }}
+                  />
+                }
+                label={<Typography sx={{ fontWeight: 600, fontSize: '0.85rem' }}>전체 동의</Typography>}
+              />
+              <Box sx={{ borderTop: '1px solid #eee', mt: 0.5, pt: 0.5, pl: 1 }}>
+                {/* 이용약관 */}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={agreeTerms}
+                        onChange={(e) => setAgreeTerms(e.target.checked)}
+                        size="small"
+                        sx={{ color: '#999', '&.Mui-checked': { color: '#d32f2f' } }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" sx={{ color: '#555' }}>
+                        [필수] 이용약관 동의
+                      </Typography>
+                    }
+                  />
+                  <Typography
+                    variant="caption"
+                    onClick={() => setShowTerms(!showTerms)}
+                    sx={{ color: '#888', cursor: 'pointer', textDecoration: 'underline', '&:hover': { color: '#d32f2f' }, mr: 1 }}
+                  >
+                    {showTerms ? '접기' : '보기'}
+                  </Typography>
+                </Box>
+                <Collapse in={showTerms}>
+                  <Box sx={{ bgcolor: '#fff', border: '1px solid #eee', borderRadius: 1, p: 1.5, ml: 3.5, mb: 1.5, maxHeight: 150, overflowY: 'auto', fontSize: '0.75rem', color: '#666', lineHeight: 1.7 }}>
+                    <b>제1조 (목적)</b><br />
+                    이 약관은 MyCard(이하 "회사")가 제공하는 카드 서비스의 이용과 관련하여 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.<br /><br />
+                    <b>제2조 (용어의 정의)</b><br />
+                    ① "서비스"란 회사가 제공하는 카드 발급, 포인트 적립·사용, e쿠폰 교환 등 제반 서비스를 말합니다.<br />
+                    ② "회원"이란 이 약관에 동의하고 회원가입을 완료한 자를 말합니다.<br />
+                    ③ "포인트"란 서비스 이용 과정에서 적립되는 가상의 보상 단위를 말합니다.<br /><br />
+                    <b>제3조 (약관의 효력 및 변경)</b><br />
+                    ① 이 약관은 서비스 화면에 게시하거나 기타의 방법으로 회원에게 공지함으로써 효력이 발생합니다.<br />
+                    ② 회사는 관련 법령에 위배되지 않는 범위에서 이 약관을 변경할 수 있으며, 변경 시 7일 전 공지합니다.<br /><br />
+                    <b>제4조 (서비스의 제공)</b><br />
+                    회사는 다음의 서비스를 제공합니다: 카드 신청 및 관리, 결제 내역 조회, 포인트 적립 및 사용, e쿠폰 교환, 대출 신청 등.<br /><br />
+                    <b>제5조 (회원의 의무)</b><br />
+                    ① 회원은 관계 법령, 이 약관, 이용안내 등을 준수하여야 합니다.<br />
+                    ② 회원은 타인의 개인정보를 도용하여 서비스를 이용할 수 없습니다.<br />
+                    ③ 회원은 2차 비밀번호 등 인증정보를 안전하게 관리할 책임이 있습니다.
+                  </Box>
+                </Collapse>
+
+                {/* 개인정보처리방침 */}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={agreePrivacy}
+                        onChange={(e) => setAgreePrivacy(e.target.checked)}
+                        size="small"
+                        sx={{ color: '#999', '&.Mui-checked': { color: '#d32f2f' } }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" sx={{ color: '#555' }}>
+                        [필수] 개인정보처리방침 동의
+                      </Typography>
+                    }
+                  />
+                  <Typography
+                    variant="caption"
+                    onClick={() => setShowPrivacy(!showPrivacy)}
+                    sx={{ color: '#888', cursor: 'pointer', textDecoration: 'underline', '&:hover': { color: '#d32f2f' }, mr: 1 }}
+                  >
+                    {showPrivacy ? '접기' : '보기'}
+                  </Typography>
+                </Box>
+                <Collapse in={showPrivacy}>
+                  <Box sx={{ bgcolor: '#fff', border: '1px solid #eee', borderRadius: 1, p: 1.5, ml: 3.5, mb: 1, maxHeight: 150, overflowY: 'auto', fontSize: '0.75rem', color: '#666', lineHeight: 1.7 }}>
+                    <b>1. 수집하는 개인정보 항목</b><br />
+                    회사는 회원가입 및 서비스 제공을 위해 다음 정보를 수집합니다.<br />
+                    · 필수항목: 이메일, 비밀번호, 이름<br />
+                    · 선택항목: 전화번호<br />
+                    · 자동수집: 접속 IP, 서비스 이용기록, 방문기록<br /><br />
+                    <b>2. 개인정보의 수집 및 이용목적</b><br />
+                    · 회원 식별 및 가입 의사 확인<br />
+                    · 카드 서비스 제공 및 관리<br />
+                    · 포인트 적립·사용 및 e쿠폰 발급<br />
+                    · 고객 문의 및 불만 처리<br />
+                    · 서비스 개선 및 신규 서비스 개발<br /><br />
+                    <b>3. 개인정보의 보유 및 이용기간</b><br />
+                    회원 탈퇴 시까지 보유하며, 관계 법령에 따라 일정 기간 보존이 필요한 경우 해당 기간 동안 보관합니다.<br />
+                    · 계약 및 청약철회에 관한 기록: 5년<br />
+                    · 대금결제 및 재화 등의 공급에 관한 기록: 5년<br />
+                    · 소비자의 불만 또는 분쟁처리에 관한 기록: 3년<br /><br />
+                    <b>4. 개인정보의 제3자 제공</b><br />
+                    회사는 원칙적으로 회원의 개인정보를 외부에 제공하지 않습니다. 다만, 법령의 규정에 의거하거나 회원의 동의가 있는 경우에 한하여 제공할 수 있습니다.<br /><br />
+                    <b>5. 개인정보의 파기</b><br />
+                    보유기간이 경과하거나 처리목적이 달성된 경우 지체 없이 파기합니다.
+                  </Box>
+                </Collapse>
+              </Box>
+            </Box>
+
             <Button
               type="submit"
               variant="contained"
-              disabled={isSubmitting || !pinDone}
+              disabled={isSubmitting || !pinDone || !emailChecked || !agreeTerms || !agreePrivacy}
               sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}
             >
               회원가입

@@ -265,7 +265,7 @@ export const HomePage = () => {
                       </Box>
                       <CardContent>
                         <Typography sx={{ fontWeight: 700, mb: 1 }}>{event.title}</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{event.description}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'pre-line' }}>{event.description}</Typography>
                         <Typography variant="caption" color="text.secondary">{startDate} ~ {endDate}</Typography>
                       </CardContent>
                     </Card>

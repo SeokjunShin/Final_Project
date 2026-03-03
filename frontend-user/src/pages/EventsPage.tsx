@@ -195,6 +195,7 @@ export const EventsPage = () => {
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
+                        whiteSpace: 'pre-line',
                       }}
                     >
                       {event.description}
@@ -238,7 +239,7 @@ export const EventsPage = () => {
                 alt={selectedEvent.title}
                 sx={{ objectFit: 'cover', borderRadius: 1, mb: 2 }}
               />
-              <Typography sx={{ mb: 2, lineHeight: 1.8, color: '#333' }}>
+              <Typography sx={{ mb: 2, lineHeight: 1.8, color: '#333', whiteSpace: 'pre-line' }}>
                 {selectedEvent.description}
               </Typography>
               <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>

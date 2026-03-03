@@ -102,27 +102,24 @@ INSERT INTO statement_items (id, statement_id, approval_id, amount) VALUES
 
 -- Points
 INSERT INTO point_balance (user_id, balance) VALUES
-  (1, 4500),
-  (2, 6500),
+  (1, 12500),
+  (2, 9500),
   (3, 6200);
 
 INSERT INTO point_ledger (id, user_id, entry_type, amount, balance_after, ref_type, ref_id, memo, created_at) VALUES
   (7001, 1, 'ADJUST', 10000, 10000, NULL, NULL, '신규 가입 보너스', '2026-02-01 09:00:00'),
   (7002, 1, 'EARN',    2500, 12500, 'STATEMENT', 5001, '2월 이용 적립', '2026-03-01 00:05:00'),
-  (7003, 1, 'SPEND',  -3000,  9500, NULL, NULL, '기프트 교환', '2026-03-05 12:00:00'),
-  (7004, 1, 'CONVERT',-5000,  4500, 'WITHDRAW', 8001, '포인트 현금 전환', '2026-03-06 10:00:00'),
 
   (7101, 2, 'ADJUST',  8000,  8000, NULL, NULL, '신규 가입 보너스', '2026-02-03 09:00:00'),
   (7102, 2, 'EARN',    1500,  9500, 'STATEMENT', 5101, '2월 이용 적립', '2026-03-01 00:06:00'),
-  (7103, 2, 'CONVERT',-3000,  6500, 'WITHDRAW', 8002, '포인트 현금 전환', '2026-03-10 11:00:00'),
 
   (7201, 3, 'ADJUST',  5000,  5000, NULL, NULL, '신규 가입 보너스', '2026-02-05 09:00:00'),
   (7202, 3, 'EARN',    1200,  6200, 'STATEMENT', 5201, '2월 이용 적립', '2026-03-01 00:07:00');
 
 -- Point Withdrawals
 INSERT INTO point_withdrawals (id, user_id, points_amount, cash_amount, fee_amount, bank_name, account_masked, status, requested_at, processed_at) VALUES
-  (8001, 1, 5000, 5000, 150, '국민은행', '***-**-1234', 'REQUESTED', '2026-03-06 10:00:00', NULL),
-  (8002, 2, 3000, 3000,  90, '신한은행', '***-**-5678', 'PROCESSED', '2026-03-10 11:00:00', '2026-03-10 15:30:00');
+  (8000, 1, 0, 0, 0, NULL, NULL, 'REQUESTED', '2023-01-01 00:00:00', NULL);
+DELETE FROM point_withdrawals WHERE id = 8000;
 
 -- Customer Support (Inquiries)
 INSERT INTO inquiries (id, user_id, category, title, content, status, assigned_operator_id, created_at) VALUES
@@ -156,12 +153,7 @@ INSERT INTO attachments (id, uploader_id, inquiry_id, document_id, message_id, o
   (99003, 3, NULL, 95003, NULL, 'income_proof_blur.jpg',   'doc_95003_01.jpg', '/var/lib/mycard/uploads/documents', 'image/jpeg', 452000, NULL, '2026-03-10 09:31:00');
 
 -- Events
-INSERT INTO events (id, title, content, start_at, end_at, status, created_by, created_at) VALUES
-  (99011, '봄맞이 캐시백 이벤트', '기간 내 응모 시 추첨을 통해 캐시백을 제공합니다(모의).', '2026-03-01 00:00:00', '2026-04-30 23:59:59', 'ACTIVE', 201, '2026-03-01 08:00:00');
-
-INSERT INTO event_entries (id, event_id, user_id, entered_at, is_winner, winner_at) VALUES
-  (99021, 99011, 1, '2026-03-03 12:00:00', 1, '2026-03-20 10:00:00'),
-  (99022, 99011, 2, '2026-03-05 12:00:00', 0, NULL);
+-- (Dummy events removed in favor of real event in V14)
 
 -- Point Policy
 INSERT INTO point_policies (id, policy_name, fee_rate, daily_withdrawal_limit_points, min_withdraw_points, max_withdraw_points, active, updated_by) VALUES

@@ -6,6 +6,10 @@ export const authApi = {
   register: async (payload: RegisterRequest) => {
     await apiClient.post('/auth/register', payload);
   },
+  checkEmail: async (email: string) => {
+    const { data } = await apiClient.get<{ exists: boolean }>('/auth/check-email', { params: { email } });
+    return data;
+  },
   login: async (payload: LoginRequest) => {
     const { data } = await apiClient.post<LoginResponse>('/auth/login', payload);
     tokenStorage.setAccessToken(data.accessToken);

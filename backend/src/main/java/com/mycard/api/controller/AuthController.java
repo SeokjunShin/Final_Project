@@ -39,6 +39,13 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "이메일 중복 확인")
+    @GetMapping("/check-email")
+    public ResponseEntity<java.util.Map<String, Boolean>> checkEmail(@RequestParam String email) {
+        boolean exists = userRepository.existsByEmail(email);
+        return ResponseEntity.ok(java.util.Map.of("exists", exists));
+    }
+
     @Operation(summary = "로그인")
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {

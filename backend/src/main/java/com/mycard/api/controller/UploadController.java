@@ -25,7 +25,7 @@ public class UploadController {
 
     @Operation(summary = "이미지 업로드", description = "이미지 파일을 업로드하고 접근 경로를 반환받습니다.")
     @PostMapping("/image")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     public ResponseEntity<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {
         String fileUrl = imageUploadService.storeImage(file);
 

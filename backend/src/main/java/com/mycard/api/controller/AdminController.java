@@ -171,7 +171,7 @@ public class AdminController {
      * 사용자 상태 변경
      */
     @Operation(summary = "사용자 상태 변경", description = "사용자의 활성화/잠금 상태를 변경합니다.")
-    @PreAuthorize("hasRole('MASTER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     @PatchMapping("/users/{userId}/status")
     public ResponseEntity<UserAdminResponse> updateUserStatus(
             @PathVariable Long userId,
@@ -186,7 +186,7 @@ public class AdminController {
      * ACTIVE=활성화, LOCKED=잠금, INACTIVE=비활성
      */
     @Operation(summary = "사용자 상태 변경 (state)", description = "사용자의 상태를 변경합니다.")
-    @PreAuthorize("hasRole('MASTER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     @PatchMapping("/users/{userId}/state")
     @Transactional
     public ResponseEntity<Map<String, Object>> updateUserState(
@@ -225,7 +225,7 @@ public class AdminController {
      * 사용자 계정 잠금 해제
      */
     @Operation(summary = "계정 잠금 해제", description = "잠긴 사용자 계정을 해제합니다.")
-    @PreAuthorize("hasRole('MASTER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     @PostMapping("/users/{userId}/unlock")
     public ResponseEntity<Void> unlockUser(@PathVariable Long userId) {
         userAdminService.unlockUser(userId);
@@ -238,7 +238,7 @@ public class AdminController {
      * @param days 미접속 일수 (기본 90일). 이 기간 동안 로그인 이력이 없거나 마지막 로그인이 이전인 계정을 비활성 처리
      */
     @Operation(summary = "미접속 계정 비활성 처리", description = "지정 일수 이상 로그인하지 않은 활성 계정을 비활성 처리합니다.")
-    @PreAuthorize("hasRole('MASTER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     @PostMapping("/users/bulk-inactive-by-last-login")
     @Transactional
     public ResponseEntity<Map<String, Object>> bulkInactiveByLastLogin(
@@ -266,7 +266,7 @@ public class AdminController {
      * 관리자 수동 포인트 지급
      */
     @Operation(summary = "사용자 포인트 메뉴얼 지급", description = "관리자가 특정 사용자에게 직접 포인트를 지급합니다.")
-    @PreAuthorize("hasRole('MASTER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     @PostMapping("/users/{userId}/points/grant")
     @Transactional
     public ResponseEntity<Map<String, Object>> grantPointsToUser(
@@ -287,7 +287,7 @@ public class AdminController {
      * 관리자 수동 포인트 차감
      */
     @Operation(summary = "사용자 포인트 수동 차감", description = "관리자가 특정 사용자의 포인트를 차감합니다.")
-    @PreAuthorize("hasRole('MASTER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     @PostMapping("/users/{userId}/points/revoke")
     @Transactional
     public ResponseEntity<Map<String, Object>> revokePointsFromUser(
@@ -686,7 +686,7 @@ public class AdminController {
      * 메시지 목록 조회
      */
     @Operation(summary = "메시지 목록 조회", description = "발송된 메시지 목록을 조회합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     @GetMapping("/messages")
     public ResponseEntity<List<Map<String, Object>>> getMessages() {
         List<Message> messages = messageRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -710,7 +710,7 @@ public class AdminController {
      * 메시지 발송
      */
     @Operation(summary = "메시지 발송", description = "사용자에게 메시지를 발송합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     @PostMapping("/messages")
     @Transactional
     public ResponseEntity<Map<String, Object>> sendMessage(

@@ -26,13 +26,10 @@ export const AdminLayout = () => {
   const navigate = useNavigate();
   const { user, logout } = useAdminAuth();
 
-  const visibleMenu = useMemo(
-    () => adminMenu.filter((m) => m.roles.includes(user?.role ?? 'USER')),
-    [user?.role],
-  );
+  const visibleMenu = useMemo(() => adminMenu, []);
 
   const drawer = (
-    <Box sx={{ width: drawerWidth, height: '100%', bgcolor: '#16233d', color: '#d8dfec' }}>
+    <Box sx={{ width: drawerWidth, height: '100%', bgcolor: '#16233d', color: '#d8dfec', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 2.6, borderBottom: '1px solid rgba(255,255,255,0.11)' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
           <AdminPanelSettingsIcon />
@@ -44,7 +41,7 @@ export const AdminLayout = () => {
           운영/정책/감사 관리
         </Typography>
       </Box>
-      <List sx={{ px: 1.2, py: 1.5 }}>
+      <List sx={{ px: 1.2, py: 1.5, flex: 1, overflowY: 'auto' }}>
         {visibleMenu.map((item) => {
           const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
           return (
@@ -103,27 +100,57 @@ export const AdminLayout = () => {
                 <Typography key={`${crumb}-${idx}`}>{crumb}</Typography>
               ))}
           </Breadcrumbs>
-          <Typography sx={{ mr: 2, fontWeight: 600 }}>{user?.name}</Typography>
-          <Link
-            component="button"
-            underline="hover"
-            onClick={async () => {
-              await logout();
-              navigate('/login');
-            }}
-          >
-            로그아웃
-          </Link>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+            <Typography sx={{ fontWeight: 600, fontSize: 14, lineHeight: 1 }}>{user?.name}</Typography>
+            <Typography
+              component="span"
+              sx={{
+                px: 1,
+                py: 0.25,
+                borderRadius: '5px',
+                fontSize: 11,
+                fontWeight: 600,
+                lineHeight: 1.4,
+                letterSpacing: 0.3,
+                border: '1px solid',
+                borderColor:
+                  user?.role === 'MASTER_ADMIN' ? 'rgba(124,58,237,0.35)' :
+                    user?.role === 'REVIEW_ADMIN' ? 'rgba(37,99,235,0.35)' : 'rgba(22,163,74,0.35)',
+                bgcolor:
+                  user?.role === 'MASTER_ADMIN' ? 'rgba(124,58,237,0.08)' :
+                    user?.role === 'REVIEW_ADMIN' ? 'rgba(37,99,235,0.08)' : 'rgba(22,163,74,0.08)',
+                color:
+                  user?.role === 'MASTER_ADMIN' ? '#7c3aed' :
+                    user?.role === 'REVIEW_ADMIN' ? '#2563eb' : '#16a34a',
+              }}
+            >
+              {user?.role === 'MASTER_ADMIN' ? '최고관리자' :
+                user?.role === 'REVIEW_ADMIN' ? '심사관리자' :
+                  user?.role === 'OPERATOR' ? '상담사' : user?.role}
+            </Typography>
+            <Box sx={{ width: '1px', height: 16, bgcolor: '#d0d5dd' }} />
+            <Link
+              component="button"
+              underline="hover"
+              sx={{ fontSize: 13, lineHeight: 1 }}
+              onClick={async () => {
+                await logout();
+                navigate('/login');
+              }}
+            >
+              로그아웃
+            </Link>
+          </Box>
         </Toolbar>
       </AppBar>
 
-      <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth } }}>
+      <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth, bgcolor: '#16233d' } }}>
         {drawer}
       </Drawer>
       <Drawer
         open={open}
         onClose={() => setOpen(false)}
-        sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth } }}
+        sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth, bgcolor: '#16233d' } }}
       >
         {drawer}
       </Drawer>

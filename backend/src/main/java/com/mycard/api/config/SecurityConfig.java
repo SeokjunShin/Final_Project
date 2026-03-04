@@ -90,16 +90,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/events", "/events/{eventId}").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
 
-                        // Admin endpoints (separated roles)
-                        .requestMatchers("/admin/users/**").hasRole("MASTER_ADMIN")
-                        .requestMatchers("/admin/merchants/**").hasRole("MASTER_ADMIN")
-                        .requestMatchers("/admin/point-policies/**").hasRole("MASTER_ADMIN")
-                        .requestMatchers("/admin/audit-logs/**").hasRole("MASTER_ADMIN")
-                        .requestMatchers("/admin/events/**").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN")
-                        .requestMatchers("/admin/reissue-requests").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN")
-                        .requestMatchers("/admin/cards/**").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN")
-                        .requestMatchers("/admin/loans/**").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN", "OPERATOR")
-                        .requestMatchers("/admin/documents/**").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN")
+                        // Admin endpoints (모든 관리자 역할 허용)
+                        .requestMatchers("/admin/**").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN", "OPERATOR")
 
                         // Operator + Admin endpoints
                         .requestMatchers("/operator/**").hasAnyRole("OPERATOR", "MASTER_ADMIN", "REVIEW_ADMIN")

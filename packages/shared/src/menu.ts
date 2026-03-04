@@ -32,7 +32,6 @@ export const adminMenu: MenuItemDef[] = [
   { label: '문서 검토', path: '/documents', roles: ['REVIEW_ADMIN'] },
   { label: '사용자 관리', path: '/users', roles: ['MASTER_ADMIN'] },
   { label: '가맹점 관리', path: '/merchants', roles: ['MASTER_ADMIN'] },
-  { label: '혜택 정책', path: '/benefits', roles: ['MASTER_ADMIN'] },
   { label: '이벤트 관리', path: '/events', roles: ['MASTER_ADMIN'] },
   { label: '포인트 정책', path: '/policies/points', roles: ['MASTER_ADMIN'] },
   { label: '감사로그', path: '/audit-logs', roles: ['MASTER_ADMIN'] },

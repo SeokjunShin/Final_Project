@@ -1,13 +1,15 @@
 ﻿import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Box, Button, Card, CardContent, Stack, TextField, Typography, Dialog, DialogTitle, DialogContent, Avatar, Divider, Chip } from '@mui/material';
+import { Box, Button, Card, CardContent, Stack, TextField, Typography, Dialog, DialogTitle, DialogContent, Avatar, Divider, Chip, DialogActions, Alert } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { apiClient } from '@/api/client';
 import { authApi } from '@/api';
 import { useSnackbar } from '@/contexts/SnackbarContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { SecureKeypad } from '@/components/common/SecureKeypad';
+import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { ResetSecondPasswordModal } from '@/components/profile/ResetSecondPasswordModal';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
@@ -40,6 +42,7 @@ type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
 
 export const MyProfilePage = () => {
   const { show } = useSnackbar();
+  const { logout } = useAuth();
 
   const queryClient = useQueryClient();
   const { data } = useQuery({
@@ -55,8 +58,15 @@ export const MyProfilePage = () => {
   const [authTarget, setAuthTarget] = useState<'profile' | 'password'>('profile');
   const [isPwdModalOpen, setIsPwdModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [isWithdrawSecondAuthOpen, setIsWithdrawSecondAuthOpen] = useState(false);
   const [secondPwd, setSecondPwd] = useState('');
   const [secondAuthError, setSecondAuthError] = useState('');
+  const [withdrawForm, setWithdrawForm] = useState({
+    currentPassword: '',
+    secondaryPassword: '',
+    reason: '',
+  });
 
   useEffect(() => {
     if (secondPwd.length === 6 && isAuthModalOpen) {
@@ -114,6 +124,19 @@ export const MyProfilePage = () => {
     },
     onError: (err: any) => {
       show(err.response?.data?.message || '비밀번호 변경에 실패했습니다.', 'error');
+    },
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: () => authApi.withdraw(withdrawForm),
+    onSuccess: async () => {
+      show('회원 탈퇴가 예약되었습니다. 15분 후 최종 탈퇴 처리됩니다.', 'success');
+      setIsWithdrawModalOpen(false);
+      setWithdrawForm({ currentPassword: '', secondaryPassword: '', reason: '' });
+      await logout();
+    },
+    onError: (err: any) => {
+      show(err.response?.data?.message || '회원 탈퇴 처리에 실패했습니다.', 'error');
     },
   });
 
@@ -256,6 +279,15 @@ export const MyProfilePage = () => {
                     2차 비밀번호 재설정
                   </Button>
                 </Box>
+
+                <Button
+                  color="error"
+                  variant="text"
+                  onClick={() => setIsWithdrawModalOpen(true)}
+                  sx={{ width: 'fit-content', mx: 'auto', textDecoration: 'underline' }}
+                >
+                  회원 탈퇴
+                </Button>
               </Stack>
             )}
           </Box>
@@ -379,6 +411,81 @@ export const MyProfilePage = () => {
         open={isResetModalOpen}
         onClose={() => setIsResetModalOpen(false)}
       />
+
+      <SecondAuthDialog
+        open={isWithdrawSecondAuthOpen}
+        onClose={() => setIsWithdrawSecondAuthOpen(false)}
+        onSuccess={(verifiedSecondPassword) => {
+          setIsWithdrawSecondAuthOpen(false);
+          setWithdrawForm((prev) => ({ ...prev, secondaryPassword: verifiedSecondPassword ?? '' }));
+        }}
+      />
+
+      <Dialog
+        open={isWithdrawModalOpen}
+        onClose={() => {
+          setIsWithdrawModalOpen(false);
+          setWithdrawForm({ currentPassword: '', secondaryPassword: '', reason: '' });
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>회원 탈퇴</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Alert severity="warning">
+              탈퇴 요청 후 계정은 즉시 로그아웃되며, 15분 후 최종 탈퇴 처리됩니다.
+            </Alert>
+            <TextField
+              label="현재 로그인 비밀번호"
+              type="password"
+              value={withdrawForm.currentPassword}
+              onChange={(e) => setWithdrawForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
+              fullWidth
+            />
+            <Stack spacing={1}>
+              <Button
+                variant={withdrawForm.secondaryPassword ? 'contained' : 'outlined'}
+                color={withdrawForm.secondaryPassword ? 'success' : 'inherit'}
+                onClick={() => setIsWithdrawSecondAuthOpen(true)}
+              >
+                {withdrawForm.secondaryPassword ? '2차 비밀번호 인증 완료' : '2차 비밀번호 인증'}
+              </Button>
+            </Stack>
+            <TextField
+              label="탈퇴 사유"
+              value={withdrawForm.reason}
+              onChange={(e) => setWithdrawForm((prev) => ({ ...prev, reason: e.target.value }))}
+              multiline
+              minRows={3}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setIsWithdrawModalOpen(false);
+              setWithdrawForm({ currentPassword: '', secondaryPassword: '', reason: '' });
+            }}
+            disabled={withdrawMutation.isPending}
+          >
+            취소
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={
+              withdrawMutation.isPending ||
+              !withdrawForm.currentPassword ||
+              !withdrawForm.secondaryPassword
+            }
+            onClick={() => withdrawMutation.mutate()}
+          >
+            탈퇴하기
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

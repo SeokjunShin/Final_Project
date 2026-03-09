@@ -7,6 +7,7 @@ import com.mycard.api.repository.AttachmentRepository;
 import com.mycard.api.repository.DocumentRepository;
 import com.mycard.api.repository.UserRepository;
 import com.mycard.api.security.UserPrincipal;
+import com.mycard.api.service.UploadValidationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class UserDocumentController {
     private final DocumentRepository documentRepository;
     private final AttachmentRepository attachmentRepository;
     private final UserRepository userRepository;
+    private final UploadValidationService uploadValidationService;
 
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
@@ -92,6 +94,7 @@ public class UserDocumentController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
 
         // 1. Document 엔트리 생성
+        String originalFilename = uploadValidationService.validateDefaultUpload(file);
         User user = userRepository.getReferenceById(currentUser.getId());
         Document document = new Document();
         document.setUser(user);
@@ -106,7 +109,6 @@ public class UserDocumentController {
         document = documentRepository.save(document);
 
         // 2. 파일을 디스크에 저장
-        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
         String storedFilename = UUID.randomUUID() + "_" + originalFilename;
         Path uploadPath = Paths.get(uploadDir);
         Path targetPath = uploadPath.resolve(storedFilename);

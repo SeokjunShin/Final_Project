@@ -16,4 +16,6 @@ public interface AttachmentRepository extends JpaRepository<Attachment, Long> {
     Optional<Attachment> findByStoredFilename(@Param("storedFilename") String storedFilename);
 
     List<Attachment> findByDocumentId(Long documentId);
+
+    Optional<Attachment> findFirstByDocumentId(Long documentId);
 }

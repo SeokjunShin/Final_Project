@@ -23,4 +23,7 @@ public class CardResponse {
     private Card.CardStatus status;
     private Boolean overseasPaymentEnabled;
     private LocalDateTime lastUsedAt;
+    private Long linkedBankAccountId;
+    private String linkedBankName;
+    private String linkedAccountNumberMasked;
 }

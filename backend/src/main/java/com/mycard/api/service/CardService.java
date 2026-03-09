@@ -121,6 +121,12 @@ public class CardService {
                                 .status(card.getStatus())
                                 .overseasPaymentEnabled(card.getOverseasPaymentEnabled())
                                 .lastUsedAt(card.getLastUsedAt())
+                                .linkedBankAccountId(card.getBankAccount() != null ? card.getBankAccount().getId() : null)
+                                .linkedBankName(card.getBankAccount() != null ? card.getBankAccount().getBankName() : null)
+                                .linkedAccountNumberMasked(
+                                                card.getBankAccount() != null
+                                                                ? card.getBankAccount().getAccountNumberMasked()
+                                                                : null)
                                 .build();
         }
 }

@@ -1,10 +1,10 @@
 import { Box, Button, Card, CardContent, Chip, Dialog, DialogContent, DialogTitle, FormControl, InputAdornment, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TableSection } from '@/components/common/TableSection';
 import { useSnackbar } from '@/contexts/SnackbarContext';
-import { loansApi } from '@/api';
+import { bankAccountApi, cardsApi, loansApi, type BankAccount } from '@/api';
 import type { LoanType } from '@/types';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 
@@ -27,6 +27,19 @@ const formatDate = (iso: string | null) => {
   return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 
+const maskCardNumber = (cardNumber: string | null | undefined) => {
+  if (!cardNumber) return '****-****-****-****';
+  const parts = cardNumber.split('-');
+  if (parts.length === 4) {
+    return `${parts[0]}-${parts[1]}-****-****`;
+  }
+  const digits = cardNumber.replace(/\D/g, '');
+  if (digits.length >= 8) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 8)}-****-****`;
+  }
+  return '****-****-****-****';
+};
+
 export const LoansPage = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { show } = useSnackbar();
@@ -35,7 +48,19 @@ export const LoansPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [amount, setAmount] = useState('');
   const [loanType, setLoanType] = useState<LoanType>('CARD_LOAN');
+  const [selectedCardId, setSelectedCardId] = useState<number | ''>('');
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<number | ''>('');
   const [detailLoanId, setDetailLoanId] = useState<number | null>(null);
+
+  const { data: cards = [] } = useQuery({
+    queryKey: ['cards'],
+    queryFn: () => cardsApi.list(),
+  });
+
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ['bank-accounts'],
+    queryFn: () => bankAccountApi.list(),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['loans', page, pageSize],
@@ -43,12 +68,14 @@ export const LoansPage = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: { loanType: LoanType; principalAmount: number }) =>
+    mutationFn: (payload: { cardId: number; bankAccountId: number; loanType: LoanType; principalAmount: number }) =>
       loansApi.create({ ...payload, interestRate: 0 }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loans'] });
       show('대출 신청이 접수되었습니다.', 'success');
       setAmount('');
+      setSelectedCardId('');
+      setSelectedBankAccountId('');
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message ?? err?.message ?? '대출 신청에 실패했습니다.';
@@ -62,14 +89,45 @@ export const LoansPage = () => {
       show('신청 금액을 입력해 주세요.', 'error');
       return;
     }
+    if (!selectedCardId) {
+      show('대출에 연결할 카드를 선택해 주세요.', 'error');
+      return;
+    }
+    if (!selectedBankAccountId) {
+      show('대출금을 입금받을 계좌를 선택해 주세요.', 'error');
+      return;
+    }
 
     setIsAuthModalOpen(true); // 2차 인증 팝업 유도
   };
 
   const executeLoan = () => {
     const num = Number(amount?.replace(/,/g, ''));
-    createMutation.mutate({ loanType, principalAmount: num });
+    createMutation.mutate({
+      cardId: Number(selectedCardId),
+      bankAccountId: Number(selectedBankAccountId),
+      loanType,
+      principalAmount: num,
+    });
   };
+
+  useEffect(() => {
+    if (!selectedCardId) {
+      setSelectedBankAccountId('');
+      return;
+    }
+
+    const selectedCard = cards.find((card: { id: number; linkedBankAccountId?: number }) => card.id === Number(selectedCardId));
+    if (selectedCard?.linkedBankAccountId) {
+      setSelectedBankAccountId(selectedCard.linkedBankAccountId);
+      return;
+    }
+
+    const defaultAccount = bankAccounts.find((account: BankAccount) => account.isDefault);
+    if (defaultAccount) {
+      setSelectedBankAccountId(defaultAccount.id);
+    }
+  }, [selectedCardId, cards, bankAccounts]);
 
   const rows = data?.content ?? [];
   const totalElements = data?.totalElements ?? 0;
@@ -105,6 +163,38 @@ export const LoansPage = () => {
               >
                 <MenuItem value="CARD_LOAN">{LOAN_TYPE_LABELS.CARD_LOAN}</MenuItem>
                 <MenuItem value="CASH_ADVANCE">{LOAN_TYPE_LABELS.CASH_ADVANCE}</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <InputLabel>연결 카드</InputLabel>
+              <Select
+                value={selectedCardId}
+                label="연결 카드"
+                onChange={(e) => setSelectedCardId(e.target.value as number)}
+              >
+                {cards.map((card: any) => (
+                  <MenuItem key={card.id} value={card.id}>
+                    {(card.cardAlias || card.cardType || 'MyCard')} / {maskCardNumber(card.cardNumber)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 240 }}>
+              <InputLabel>입금 계좌</InputLabel>
+              <Select
+                value={selectedBankAccountId}
+                label="입금 계좌"
+                onChange={(e) => setSelectedBankAccountId(e.target.value as number)}
+              >
+                {bankAccounts.map((account: BankAccount) => {
+                  const selectedCard = cards.find((card: { id: number; linkedBankAccountId?: number }) => card.id === Number(selectedCardId));
+                  const isCardLinkedAccount = selectedCard?.linkedBankAccountId === account.id;
+                  return (
+                    <MenuItem key={account.id} value={account.id}>
+                      {account.bankName} / {account.accountNumberMasked}{isCardLinkedAccount ? ' (결제계좌)' : ''}{account.isDefault ? ' (기본)' : ''}
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
             <TextField
@@ -148,10 +238,24 @@ export const LoansPage = () => {
                   valueGetter: (_: unknown, row: { loanType: LoanType }) => LOAN_TYPE_LABELS[row.loanType] ?? row.loanType,
                 },
                 {
+                  field: 'cardAlias',
+                  headerName: '연결 카드',
+                  flex: 1.2,
+                  renderCell: (params: { row: { cardAlias?: string; cardNumberMasked?: string } }) =>
+                    params.row.cardAlias ? `${params.row.cardAlias} / ${maskCardNumber(params.row.cardNumberMasked)}` : '-',
+                },
+                {
                   field: 'principalAmount',
                   headerName: '원금',
                   flex: 1,
                   valueFormatter: (v: number) => `${Number(v ?? 0).toLocaleString('ko-KR')}원`,
+                },
+                {
+                  field: 'depositBankName',
+                  headerName: '입금 계좌',
+                  flex: 1.2,
+                  valueGetter: (_: unknown, row: { depositBankName?: string; depositAccountNumberMasked?: string }) =>
+                    row.depositBankName ? `${row.depositBankName} / ${row.depositAccountNumberMasked}` : '-',
                 },
                 {
                   field: 'status',
@@ -208,6 +312,14 @@ export const LoansPage = () => {
               <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
                 <Typography variant="subtitle1" color="text.secondary">원금</Typography>
                 <Typography fontWeight={600}>{Number(detailData.principalAmount).toLocaleString('ko-KR')}원</Typography>
+              </Stack>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+                <Typography variant="subtitle1" color="text.secondary">연결 카드</Typography>
+                <Typography>{detailData.cardAlias ? `${detailData.cardAlias} / ${maskCardNumber(detailData.cardNumberMasked)}` : '-'}</Typography>
+              </Stack>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+                <Typography variant="subtitle1" color="text.secondary">입금 계좌</Typography>
+                <Typography>{detailData.depositBankName ? `${detailData.depositBankName} / ${detailData.depositAccountNumberMasked}` : '-'}</Typography>
               </Stack>
               <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
                 <Typography variant="subtitle1" color="text.secondary">이자율</Typography>

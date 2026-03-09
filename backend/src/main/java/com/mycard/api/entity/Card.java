@@ -30,6 +30,10 @@ public class Card {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bank_account_id")
+    private UserBankAccount bankAccount;
+
     @Column(name = "masked_pan", nullable = false, length = 25)
     private String cardNumber;
 
@@ -81,8 +85,21 @@ public class Card {
     }
 
     public String getMaskedCardNumber() {
-        // 카드번호 그대로 반환 (DB에 저장된 형식 그대로)
-        return cardNumber;
+        if (cardNumber == null || cardNumber.isBlank()) {
+            return "****-****-****-****";
+        }
+
+        String[] parts = cardNumber.split("-");
+        if (parts.length == 4) {
+            return parts[0] + "-" + parts[1] + "-****-****";
+        }
+
+        String digits = cardNumber.replaceAll("\\D", "");
+        if (digits.length() >= 8) {
+            return digits.substring(0, 4) + "-" + digits.substring(4, 8) + "-****-****";
+        }
+
+        return "****-****-****-****";
     }
 
     public boolean isOwnedBy(Long userId) {

@@ -5,7 +5,7 @@ import { authApi } from '@/api';
 
 interface Props {
     open: boolean;
-    onSuccess: () => void;
+    onSuccess: (verifiedSecondPassword?: string) => void;
     onClose: () => void;
 }
 
@@ -25,8 +25,9 @@ export const SecondAuthDialog = ({ open, onSuccess, onClose }: Props) => {
             authApi.verifySecondPassword(secondPwd)
                 .then(() => {
                     sessionStorage.setItem('second_auth_passed', 'true');
+                    const verifiedSecondPassword = secondPwd;
                     setSecondPwd('');
-                    onSuccess();
+                    onSuccess(verifiedSecondPassword);
                 })
                 .catch((err) => {
                     setError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');

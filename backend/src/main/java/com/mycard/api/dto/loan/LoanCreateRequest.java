@@ -14,6 +14,11 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 public class LoanCreateRequest {
 
+    @NotNull(message = "카드를 선택해주세요.")
+    private Long cardId;
+
+    private Long bankAccountId;
+
     @NotNull(message = "대출 유형은 필수입니다.")
     private Loan.LoanType loanType;
 

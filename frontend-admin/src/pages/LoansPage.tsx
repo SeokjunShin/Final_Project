@@ -36,6 +36,19 @@ const formatDate = (iso: string | null) => {
   return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 
+const maskCardNumber = (cardNumber: string | null | undefined) => {
+  if (!cardNumber) return '****-****-****-****';
+  const parts = cardNumber.split('-');
+  if (parts.length === 4) {
+    return `${parts[0]}-${parts[1]}-****-****`;
+  }
+  const digits = cardNumber.replace(/\D/g, '');
+  if (digits.length >= 8) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 8)}-****-****`;
+  }
+  return '****-****-****-****';
+};
+
 export const LoansPage = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -159,6 +172,18 @@ export const LoansPage = () => {
             columns={[
               { field: 'userName', headerName: '회원', flex: 1, valueGetter: (_: unknown, row: LoanListItem) => row.userName ?? '-' },
               { field: 'loanType', headerName: '유형', flex: 1, valueGetter: (_: unknown, row: LoanListItem) => LOAN_TYPE_LABELS[row.loanType] ?? row.loanType },
+              {
+                field: 'cardAlias',
+                headerName: '연결 카드',
+                flex: 1.2,
+                renderCell: (params: { row: LoanListItem }) => params.row.cardAlias ? `${params.row.cardAlias} / ${maskCardNumber(params.row.cardNumberMasked)}` : '-',
+              },
+              {
+                field: 'depositBankName',
+                headerName: '입금 계좌',
+                flex: 1.2,
+                valueGetter: (_: unknown, row: LoanListItem) => row.depositBankName ? `${row.depositBankName} / ${row.depositAccountNumberMasked}` : '-',
+              },
               { field: 'principalAmount', headerName: '원금', flex: 1, valueGetter: (_: unknown, row: LoanListItem) => `${Number(row.principalAmount ?? 0).toLocaleString('ko-KR')}원` },
               { field: 'status', headerName: '상태', flex: 1, valueGetter: (_: unknown, row: LoanListItem) => STATUS_LABELS[row.status] ?? row.status },
               { field: 'requestedAt', headerName: '신청일', flex: 1, valueGetter: (_: unknown, row: LoanListItem) => formatDate(row.requestedAt) },
@@ -211,6 +236,14 @@ export const LoansPage = () => {
               <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
                 <Typography variant="subtitle1" color="text.secondary">원금</Typography>
                 <Typography fontWeight={600}>{Number(detailData.principalAmount).toLocaleString('ko-KR')}원</Typography>
+              </Stack>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+                <Typography variant="subtitle1" color="text.secondary">연결 카드</Typography>
+                <Typography>{detailData.cardAlias ? `${detailData.cardAlias} / ${maskCardNumber(detailData.cardNumberMasked)}` : '-'}</Typography>
+              </Stack>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+                <Typography variant="subtitle1" color="text.secondary">입금 계좌</Typography>
+                <Typography>{detailData.depositBankName ? `${detailData.depositBankName} / ${detailData.depositAccountNumberMasked}` : '-'}</Typography>
               </Stack>
               <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
                 <Typography variant="subtitle1" color="text.secondary">이자율</Typography>

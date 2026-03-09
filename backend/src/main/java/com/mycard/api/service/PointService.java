@@ -27,6 +27,7 @@ public class PointService {
     private final PointPolicyRepository pointPolicyRepository;
     private final UserRepository userRepository;
     private final UserBankAccountRepository bankAccountRepository;
+    private final BankAccountLedgerService bankAccountLedgerService;
     private final AuditService auditService;
 
     @Transactional(readOnly = true)
@@ -132,6 +133,8 @@ public class PointService {
         ledger.setReferenceType("PointWithdrawal");
         ledger.setReferenceId(withdrawal.getId());
         pointLedgerRepository.save(ledger);
+        bankAccountLedgerService.deposit(account, null, cashAmount,
+                "포인트 전환 입금");
 
         auditService.log(AuditLog.ActionType.CREATE, "PointWithdrawal", withdrawal.getId(),
                 "포인트 전환 요청: " + request.getPoints() + "P -> " + cashAmount + "원 (" + account.getBankName() + ")");

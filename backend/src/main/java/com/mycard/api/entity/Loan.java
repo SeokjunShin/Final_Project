@@ -32,6 +32,14 @@ public class Loan {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "card_id")
+    private Card card;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bank_account_id")
+    private UserBankAccount bankAccount;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "loan_type", nullable = false, length = 20)
     private LoanType loanType;
@@ -65,8 +73,10 @@ public class Loan {
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
 
-    public Loan(User user, LoanType loanType, BigDecimal principalAmount, BigDecimal interestRate, Integer termMonths) {
+    public Loan(User user, Card card, UserBankAccount bankAccount, LoanType loanType, BigDecimal principalAmount, BigDecimal interestRate, Integer termMonths) {
         this.user = user;
+        this.card = card;
+        this.bankAccount = bankAccount;
         this.loanType = loanType;
         this.principalAmount = principalAmount;
         this.interestRate = interestRate != null ? interestRate : BigDecimal.ZERO;

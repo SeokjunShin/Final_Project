@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { useState } from 'react';
-import { pointsApi, bankAccountApi, type BankAccount } from '@/api';
+import { pointsApi, bankAccountApi, type BankAccount, type BankAccountTransaction } from '@/api';
 import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +22,8 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StarIcon from '@mui/icons-material/Star';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 // 포인트 전환 스키마
 const convertSchema = z.object({
@@ -32,8 +34,7 @@ const convertSchema = z.object({
 // 계좌 등록 스키마
 const accountSchema = z.object({
   bankCode: z.string().min(1, '은행을 선택하세요.'),
-  accountNumber: z.string().regex(/^[0-9-]{10,20}$/, '유효한 계좌번호를 입력하세요.'),
-  accountHolder: z.string().min(1, '예금주명을 입력하세요.'),
+  accountHolder: z.string().optional(),
   setAsDefault: z.boolean().optional(),
 });
 
@@ -50,12 +51,46 @@ const getTypeInfo = (type: string) => {
   }
 };
 
+const COUPON_LABELS: Record<number, string> = {
+  1: 'GS25 모바일 상품권 5천원',
+  2: 'CU 모바일 상품권 1만원',
+  3: '이마트24 모바일 상품권 5천원',
+  4: '스타벅스 아메리카노 T',
+  5: '투썸플레이스 아이스 아메리카노 R',
+  6: '메가MGC커피 아메리카노 L',
+  7: 'BBQ 황금올리브 치킨 교환권',
+  8: '맥도날드 빅맥세트 교환권',
+  9: '신세계백화점 상품권 5만원',
+  10: '올리브영 모바일 상품권 1만원',
+  11: '현대백화점 상품권 3만원',
+  12: 'S-OIL 주유 상품권 3만원',
+  13: 'GS칼텍스 주유 상품권 5만원',
+  14: '해피머니 온라인 상품권 1만원',
+  15: '문화상품권 모바일 5천원',
+};
+
+const formatLedgerDescription = (description?: string | null, memo?: string | null) => {
+  const baseText = description || memo || '';
+  const couponMatch = baseText.match(/couponId=(\d+),\s*quantity=(\d+)/);
+
+  if (couponMatch) {
+    const couponId = Number(couponMatch[1]);
+    const quantity = Number(couponMatch[2]);
+    const couponLabel = COUPON_LABELS[couponId] ?? `쿠폰 #${couponId}`;
+    return `쿠폰 교환: ${couponLabel}${quantity > 1 ? ` ${quantity}개` : ''}`;
+  }
+
+  return baseText;
+};
+
 export const PointsPage = () => {
   const { show } = useSnackbar();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [revealedAccountIds, setRevealedAccountIds] = useState<Set<number>>(new Set());
+  const [pendingRevealAccountId, setPendingRevealAccountId] = useState<number | null>(null);
 
   const [secondAuthOpen, setSecondAuthOpen] = useState(false);
   const [pendingConvertData, setPendingConvertData] = useState<{ points: number, accountId: number } | null>(null);
@@ -104,6 +139,7 @@ export const PointsPage = () => {
       convertForm.reset();
       queryClient.invalidateQueries({ queryKey: ['points-balance'] });
       queryClient.invalidateQueries({ queryKey: ['points-ledger'] });
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
     },
     onError: (error: any) => {
       show(error?.response?.data?.message || '포인트 전환에 실패했습니다.', 'error');
@@ -113,8 +149,8 @@ export const PointsPage = () => {
   // 계좌 등록 Mutation
   const addAccountMutation = useMutation({
     mutationFn: bankAccountApi.add,
-    onSuccess: () => {
-      show('계좌가 등록되었습니다.', 'success');
+    onSuccess: (account) => {
+      show(`${account.bankName} 출금 계좌가 개설되었습니다.`, 'success');
       setAccountDialogOpen(false);
       accountForm.reset({ accountHolder: user?.name || '' });
       queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
@@ -167,6 +203,26 @@ export const PointsPage = () => {
   const pointBalance = balance?.availablePoints ?? 0;
   const transactions = ledger?.content ?? [];
   const defaultAccount = accounts.find((a: BankAccount) => a.isDefault);
+
+  const toggleAccountVisibility = (accountId: number) => {
+    if (revealedAccountIds.has(accountId)) {
+      setRevealedAccountIds((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+      return;
+    }
+    setPendingRevealAccountId(accountId);
+    setSecondAuthOpen(true);
+  };
+
+  const formatAccountTransaction = (transaction: BankAccountTransaction) => {
+    const isDeposit = transaction.transactionType === 'DEPOSIT';
+    const prefix = isDeposit ? '+' : '-';
+    const label = isDeposit ? '입금' : '출금';
+    return `${label} ${prefix}${Number(transaction.amount ?? 0).toLocaleString('ko-KR')}원`;
+  };
 
   return (
     <Box>
@@ -321,11 +377,39 @@ export const PointsPage = () => {
                             )}
                           </Stack>
                           <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                            {account.accountNumberMasked} · {account.accountHolder}
+                            {revealedAccountIds.has(account.id) ? account.accountNumber : account.accountNumberMasked} · {account.accountHolder}
                           </Typography>
+                          <Typography variant="caption" sx={{ display: 'block', mt: 0.4, fontWeight: 700, color: '#1b5e20' }}>
+                            현재 잔액 {Number(account.currentBalance ?? 0).toLocaleString('ko-KR')}원
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.4 }}>
+                            개설일 {formatDateTime(account.createdAt)}
+                          </Typography>
+                          {(account.recentTransactions?.length ?? 0) > 0 && (
+                            <Stack spacing={0.35} sx={{ mt: 0.7 }}>
+                              {account.recentTransactions!.slice(0, 2).map((transaction) => (
+                                <Typography
+                                  key={transaction.id}
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ display: 'block' }}
+                                >
+                                  최근 거래 · {formatAccountTransaction(transaction)} · {transaction.description || '계좌 거래'} · 거래 후 잔액 {Number(transaction.balanceAfter ?? 0).toLocaleString('ko-KR')}원 · {formatDateTime(transaction.createdAt)}
+                                </Typography>
+                              ))}
+                            </Stack>
+                          )}
                         </Box>
                       </Stack>
                       <Stack direction="row" spacing={0.5}>
+                        <Tooltip title={revealedAccountIds.has(account.id) ? '계좌번호 숨기기' : '계좌번호 보기'}>
+                          <IconButton
+                            size="small"
+                            onClick={() => toggleAccountVisibility(account.id)}
+                          >
+                            {revealedAccountIds.has(account.id) ? <VisibilityOffIcon sx={{ fontSize: 18 }} /> : <VisibilityIcon sx={{ fontSize: 18 }} />}
+                          </IconButton>
+                        </Tooltip>
                         {!account.isDefault && (
                           <Tooltip title="기본 계좌로 설정">
                             <IconButton
@@ -404,7 +488,7 @@ export const PointsPage = () => {
                           <Box>
                             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.3 }}>
                               <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                                {item.description || item.memo || typeInfo.label}
+                                {formatLedgerDescription(item.description, item.memo) || typeInfo.label}
                               </Typography>
                               <Chip
                                 label={typeInfo.label}
@@ -441,11 +525,11 @@ export const PointsPage = () => {
 
       {/* 계좌 등록 다이얼로그 */}
       <Dialog open={accountDialogOpen} onClose={() => setAccountDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>출금 계좌 등록</DialogTitle>
+        <DialogTitle>출금 계좌 개설</DialogTitle>
         <form onSubmit={accountForm.handleSubmit((data) => addAccountMutation.mutate(data))}>
           <DialogContent>
             <Alert severity="info" sx={{ mb: 3 }}>
-              본인 명의 계좌만 등록 가능합니다. 예금주명은 회원 이름과 일치해야 합니다.
+              제휴 은행 출금 계좌를 즉시 개설합니다. 계좌번호는 선택한 은행 기준으로 자동 발급됩니다.
             </Alert>
 
             <Stack spacing={2.5}>
@@ -472,21 +556,24 @@ export const PointsPage = () => {
               />
 
               <TextField
-                label="계좌번호"
-                placeholder="숫자만 입력 (예: 1234567890123)"
-                {...accountForm.register('accountNumber')}
-                error={!!accountForm.formState.errors.accountNumber}
-                helperText={accountForm.formState.errors.accountNumber?.message}
+                label="예금주명"
+                value={user?.name || ''}
+                helperText="회원 정보 기준으로 본인 명의 계좌가 개설됩니다."
                 fullWidth
+                disabled
               />
 
               <TextField
-                label="예금주명"
-                {...accountForm.register('accountHolder')}
-                error={!!accountForm.formState.errors.accountHolder}
-                helperText={accountForm.formState.errors.accountHolder?.message || `회원명: ${user?.name}`}
+                label="계좌번호"
+                value="개설 시 자동 생성"
+                helperText="은행 선택 후 계좌 개설을 완료하면 고유 계좌번호가 즉시 발급됩니다."
                 fullWidth
+                disabled
               />
+
+              <Alert severity="success">
+                개설 완료 후 2차 비밀번호 인증을 거치면 전체 계좌번호를 확인할 수 있습니다.
+              </Alert>
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
@@ -497,7 +584,7 @@ export const PointsPage = () => {
               disabled={addAccountMutation.isPending}
               sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}
             >
-              {addAccountMutation.isPending ? '등록 중...' : '등록'}
+              {addAccountMutation.isPending ? '개설 중...' : '계좌 개설'}
             </Button>
           </DialogActions>
         </form>
@@ -505,9 +592,18 @@ export const PointsPage = () => {
 
       <SecondAuthDialog
         open={secondAuthOpen}
-        onClose={() => { setSecondAuthOpen(false); setPendingConvertData(null); }}
+        onClose={() => {
+          setSecondAuthOpen(false);
+          setPendingConvertData(null);
+          setPendingRevealAccountId(null);
+        }}
         onSuccess={() => {
           setSecondAuthOpen(false);
+          if (pendingRevealAccountId !== null) {
+            setRevealedAccountIds((prev) => new Set(prev).add(pendingRevealAccountId));
+            setPendingRevealAccountId(null);
+            return;
+          }
           if (pendingConvertData) {
             convertMutation.mutate(pendingConvertData);
             setPendingConvertData(null);

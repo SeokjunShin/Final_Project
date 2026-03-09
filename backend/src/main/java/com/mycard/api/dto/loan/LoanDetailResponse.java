@@ -18,6 +18,12 @@ public class LoanDetailResponse {
     private Integer termMonths;
     private Loan.LoanStatus status;
     private LocalDateTime requestedAt;
+    private Long cardId;
+    private String cardAlias;
+    private String cardNumberMasked;
+    private Long depositBankAccountId;
+    private String depositBankName;
+    private String depositAccountNumberMasked;
     private LocalDateTime approvedAt;
     private LocalDateTime disbursedAt;
     private LocalDateTime repaidAt;

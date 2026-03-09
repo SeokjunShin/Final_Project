@@ -3,13 +3,20 @@ package com.mycard.api.service;
 import com.mycard.api.dto.bank.BankAccountRequest;
 import com.mycard.api.dto.bank.BankAccountResponse;
 import com.mycard.api.dto.bank.BankCodeResponse;
+import com.mycard.api.dto.bank.BankAccountTransactionResponse;
 import com.mycard.api.entity.AuditLog;
 import com.mycard.api.entity.BankCode;
+import com.mycard.api.entity.BankAccountTransaction;
+import com.mycard.api.entity.Card;
+import com.mycard.api.entity.CardApplication;
 import com.mycard.api.entity.User;
 import com.mycard.api.entity.UserBankAccount;
 import com.mycard.api.exception.BadRequestException;
 import com.mycard.api.exception.ResourceNotFoundException;
 import com.mycard.api.repository.BankCodeRepository;
+import com.mycard.api.repository.BankAccountTransactionRepository;
+import com.mycard.api.repository.CardApplicationRepository;
+import com.mycard.api.repository.CardRepository;
 import com.mycard.api.repository.UserBankAccountRepository;
 import com.mycard.api.repository.UserRepository;
 import com.mycard.api.security.UserPrincipal;
@@ -18,7 +25,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.List;
+import java.util.Collections;
 
 @Slf4j
 @Service
@@ -26,10 +35,14 @@ import java.util.List;
 public class BankAccountService {
 
     private static final int MAX_ACCOUNTS_PER_USER = 5;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserBankAccountRepository bankAccountRepository;
     private final BankCodeRepository bankCodeRepository;
     private final UserRepository userRepository;
+    private final CardRepository cardRepository;
+    private final CardApplicationRepository cardApplicationRepository;
+    private final BankAccountTransactionRepository bankAccountTransactionRepository;
     private final AuditService auditService;
 
     /**
@@ -71,28 +84,24 @@ public class BankAccountService {
         BankCode bankCode = bankCodeRepository.findById(request.getBankCode())
                 .orElseThrow(() -> new BadRequestException("유효하지 않은 은행 코드입니다."));
 
-        // 중복 계좌 체크
-        String cleanedAccountNumber = request.getAccountNumber().replace("-", "");
-        if (bankAccountRepository.existsByUserIdAndBankCodeAndAccountNumber(
-                userId, request.getBankCode(), cleanedAccountNumber)) {
-            throw new BadRequestException("이미 등록된 계좌입니다.");
-        }
-
-        // 본인 명의 검증 (예금주명 = 회원명)
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
-        
-        if (!user.getFullName().equals(request.getAccountHolder())) {
-            throw new BadRequestException("본인 명의 계좌만 등록 가능합니다. (예금주: " + request.getAccountHolder() + ", 회원명: " + user.getFullName() + ")");
+
+        String accountHolder = user.getFullName();
+        if (request.getAccountHolder() != null
+                && !request.getAccountHolder().isBlank()
+                && !user.getFullName().equals(request.getAccountHolder())) {
+            throw new BadRequestException("본인 명의 계좌만 개설 가능합니다.");
         }
 
-        // 계좌 생성
+        String generatedAccountNumber = generateIssuedAccountNumber(request.getBankCode());
+
         UserBankAccount account = new UserBankAccount(
                 user,
                 request.getBankCode(),
                 bankCode.getName(),
-                cleanedAccountNumber,
-                request.getAccountHolder()
+                generatedAccountNumber,
+                accountHolder
         );
 
         // 첫 번째 계좌이거나 기본 계좌로 설정 요청 시
@@ -109,9 +118,9 @@ public class BankAccountService {
         bankAccountRepository.save(account);
 
         auditService.log(AuditLog.ActionType.CREATE, "BankAccount", account.getId(),
-                "계좌 등록: " + bankCode.getName() + " " + account.getAccountNumberMasked());
+                "계좌 개설: " + bankCode.getName() + " " + account.getAccountNumberMasked());
 
-        log.info("Bank account registered: userId={}, bank={}, masked={}", 
+        log.info("Bank account issued: userId={}, bank={}, masked={}",
                 userId, bankCode.getName(), account.getAccountNumberMasked());
 
         return toResponse(account);
@@ -125,6 +134,25 @@ public class BankAccountService {
         UserBankAccount account = bankAccountRepository.findByIdAndUserId(accountId, currentUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("계좌를 찾을 수 없습니다."));
 
+        List<Card> linkedCards = cardRepository.findByUserIdAndBankAccount_Id(currentUser.getId(), accountId);
+        List<CardApplication> linkedApplications = cardApplicationRepository.findByUserIdAndBankAccount_Id(currentUser.getId(), accountId);
+        boolean hasLinkedProducts = !linkedCards.isEmpty() || !linkedApplications.isEmpty();
+
+        UserBankAccount replacementAccount = bankAccountRepository
+                .findByUserIdOrderByIsDefaultDescCreatedAtDesc(currentUser.getId())
+                .stream()
+                .filter(candidate -> !candidate.getId().equals(accountId))
+                .findFirst()
+                .orElse(null);
+
+        if (hasLinkedProducts && replacementAccount == null) {
+            throw new BadRequestException("이 계좌는 카드 결제계좌로 연결되어 있어 삭제할 수 없습니다. 다른 계좌를 먼저 개설한 뒤 다시 시도해주세요.");
+        }
+
+        if (hasLinkedProducts) {
+            relinkCardsAndApplications(linkedCards, linkedApplications, replacementAccount, currentUser.getId());
+        }
+
         boolean wasDefault = account.getIsDefault();
         String masked = account.getAccountNumberMasked();
         String bankName = account.getBankName();
@@ -132,7 +160,7 @@ public class BankAccountService {
         bankAccountRepository.delete(account);
 
         // 기본 계좌가 삭제된 경우, 다른 계좌를 기본으로 설정
-        if (wasDefault) {
+        if (wasDefault && replacementAccount == null) {
             bankAccountRepository.findByUserIdOrderByIsDefaultDescCreatedAtDesc(currentUser.getId())
                     .stream()
                     .findFirst()
@@ -199,8 +227,32 @@ public class BankAccountService {
                 .accountHolder(account.getAccountHolder())
                 .isVerified(account.getIsVerified())
                 .isDefault(account.getIsDefault())
+                .currentBalance(account.getCurrentBalance())
                 .verifiedAt(account.getVerifiedAt())
                 .createdAt(account.getCreatedAt())
+                .recentTransactions(toTransactionResponses(account.getId()))
+                .build();
+    }
+
+    private List<BankAccountTransactionResponse> toTransactionResponses(Long accountId) {
+        if (accountId == null) {
+            return Collections.emptyList();
+        }
+        return bankAccountTransactionRepository.findTop5ByBankAccountIdOrderByCreatedAtDesc(accountId)
+                .stream()
+                .map(this::toTransactionResponse)
+                .toList();
+    }
+
+    private BankAccountTransactionResponse toTransactionResponse(BankAccountTransaction transaction) {
+        return BankAccountTransactionResponse.builder()
+                .id(transaction.getId())
+                .transactionType(transaction.getTransactionType())
+                .amount(transaction.getAmount())
+                .balanceAfter(transaction.getBalanceAfter())
+                .description(transaction.getDescription())
+                .relatedLoanId(transaction.getLoan() != null ? transaction.getLoan().getId() : null)
+                .createdAt(transaction.getCreatedAt())
                 .build();
     }
 
@@ -209,5 +261,35 @@ public class BankAccountService {
                 .code(bankCode.getCode())
                 .name(bankCode.getName())
                 .build();
+    }
+
+    private String generateIssuedAccountNumber(String bankCode) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(bankCode);
+        builder.append(String.format("%03d", RANDOM.nextInt(1000)));
+        while (builder.length() < 13) {
+            builder.append(RANDOM.nextInt(10));
+        }
+        return builder.substring(0, 13);
+    }
+
+    private void relinkCardsAndApplications(
+            List<Card> linkedCards,
+            List<CardApplication> linkedApplications,
+            UserBankAccount replacementAccount,
+            Long userId) {
+        bankAccountRepository.clearDefaultExcept(userId, replacementAccount.getId());
+        replacementAccount.setAsDefault();
+        bankAccountRepository.save(replacementAccount);
+
+        for (Card card : linkedCards) {
+            card.setBankAccount(replacementAccount);
+            cardRepository.save(card);
+        }
+
+        for (CardApplication application : linkedApplications) {
+            application.setBankAccount(replacementAccount);
+            cardApplicationRepository.save(application);
+        }
     }
 }

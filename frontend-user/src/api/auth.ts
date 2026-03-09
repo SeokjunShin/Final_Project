@@ -28,6 +28,15 @@ export const authApi = {
     localStorage.setItem('user_profile', JSON.stringify(data.user));
     return data;
   },
+  cancelWithdrawalAndLogin: async (payload: LoginRequest & { secondaryPassword: string }) => {
+    const { data } = await apiClient.post<LoginResponse>('/auth/withdrawal/cancel', payload);
+    tokenStorage.setAccessToken(data.accessToken);
+    if (data.refreshToken) {
+      tokenStorage.setRefreshToken(data.refreshToken);
+    }
+    localStorage.setItem('user_profile', JSON.stringify(data.user));
+    return data;
+  },
   logout: async () => {
     await apiClient.post('/auth/logout');
     tokenStorage.clear();
@@ -37,5 +46,14 @@ export const authApi = {
     const { data } = await apiClient.get<AuthUser>('/auth/me');
     localStorage.setItem('user_profile', JSON.stringify(data));
     return data;
+  },
+  requestPasswordReset: async (email: string) => {
+    await apiClient.post('/auth/password/reset/request', { email });
+  },
+  verifyPasswordResetCode: async (payload: { email: string; code: string }) => {
+    await apiClient.post('/auth/password/reset/verify', payload);
+  },
+  confirmPasswordReset: async (payload: { email: string; code: string; newPassword: string }) => {
+    await apiClient.post('/auth/password/reset/confirm', payload);
   },
 };

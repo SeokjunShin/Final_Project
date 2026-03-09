@@ -3,12 +3,18 @@ package com.mycard.api.service;
 import com.mycard.api.dto.loan.LoanCreateRequest;
 import com.mycard.api.dto.loan.LoanDetailResponse;
 import com.mycard.api.dto.loan.LoanListResponse;
+import com.mycard.api.entity.Card;
 import com.mycard.api.entity.Loan;
+import com.mycard.api.entity.Message;
 import com.mycard.api.entity.User;
+import com.mycard.api.entity.UserBankAccount;
 import com.mycard.api.exception.AccessDeniedException;
 import com.mycard.api.exception.BadRequestException;
 import com.mycard.api.exception.ResourceNotFoundException;
+import com.mycard.api.repository.CardRepository;
 import com.mycard.api.repository.LoanRepository;
+import com.mycard.api.repository.MessageRepository;
+import com.mycard.api.repository.UserBankAccountRepository;
 import com.mycard.api.repository.UserRepository;
 import com.mycard.api.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +33,10 @@ public class LoanService {
 
     private final LoanRepository loanRepository;
     private final UserRepository userRepository;
+    private final CardRepository cardRepository;
+    private final UserBankAccountRepository userBankAccountRepository;
+    private final BankAccountLedgerService bankAccountLedgerService;
+    private final MessageRepository messageRepository;
     private final OwnerCheckService ownerCheckService;
 
     @Transactional(readOnly = true)
@@ -54,11 +64,19 @@ public class LoanService {
     @Transactional
     public LoanDetailResponse createLoan(UserPrincipal currentUser, LoanCreateRequest request) {
         User user = userRepository.getReferenceById(currentUser.getId());
+        Card card = cardRepository.findByIdAndUserId(request.getCardId(), currentUser.getId())
+                .orElseThrow(() -> new BadRequestException("선택한 카드를 찾을 수 없습니다."));
+        if (card.getStatus() != Card.CardStatus.ACTIVE) {
+            throw new BadRequestException("정상 상태의 카드만 대출 서비스에 연결할 수 있습니다.");
+        }
+        UserBankAccount depositAccount = resolveDepositAccount(currentUser.getId(), card, request.getBankAccountId());
 
         BigDecimal interestRate = request.getInterestRate() != null ? request.getInterestRate() : BigDecimal.ZERO;
 
         Loan loan = new Loan(
                 user,
+                card,
+                depositAccount,
                 request.getLoanType(),
                 request.getPrincipalAmount(),
                 interestRate,
@@ -101,6 +119,8 @@ public class LoanService {
         }
         Loan loan = loanRepository.findByIdWithUser(loanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan", loanId));
+        createLoanDisbursementTransaction(loan);
+        sendDisbursementNotification(loan);
         return toDetailResponse(loan);
     }
 
@@ -130,7 +150,13 @@ public class LoanService {
                 .loanType(loan.getLoanType())
                 .principalAmount(loan.getPrincipalAmount())
                 .status(loan.getStatus())
-                .requestedAt(loan.getRequestedAt());
+                .requestedAt(loan.getRequestedAt())
+                .cardId(loan.getCard() != null ? loan.getCard().getId() : null)
+                .cardAlias(loan.getCard() != null ? loan.getCard().getCardAlias() : null)
+                .cardNumberMasked(loan.getCard() != null ? maskCardNumber(loan.getCard().getCardNumber()) : null)
+                .depositBankAccountId(loan.getBankAccount() != null ? loan.getBankAccount().getId() : null)
+                .depositBankName(loan.getBankAccount() != null ? loan.getBankAccount().getBankName() : null)
+                .depositAccountNumberMasked(loan.getBankAccount() != null ? loan.getBankAccount().getAccountNumberMasked() : null);
         if (includeUser && loan.getUser() != null) {
             b.userId(loan.getUser().getId()).userName(loan.getUser().getFullName());
         }
@@ -146,10 +172,72 @@ public class LoanService {
                 .termMonths(loan.getTermMonths())
                 .status(loan.getStatus())
                 .requestedAt(loan.getRequestedAt())
+                .cardId(loan.getCard() != null ? loan.getCard().getId() : null)
+                .cardAlias(loan.getCard() != null ? loan.getCard().getCardAlias() : null)
+                .cardNumberMasked(loan.getCard() != null ? maskCardNumber(loan.getCard().getCardNumber()) : null)
+                .depositBankAccountId(loan.getBankAccount() != null ? loan.getBankAccount().getId() : null)
+                .depositBankName(loan.getBankAccount() != null ? loan.getBankAccount().getBankName() : null)
+                .depositAccountNumberMasked(loan.getBankAccount() != null ? loan.getBankAccount().getAccountNumberMasked() : null)
                 .approvedAt(loan.getApprovedAt())
                 .disbursedAt(loan.getDisbursedAt())
                 .repaidAt(loan.getRepaidAt())
                 .canceledAt(loan.getCanceledAt())
                 .build();
+    }
+
+    private UserBankAccount resolveDepositAccount(Long userId, Card card, Long requestedBankAccountId) {
+        if (requestedBankAccountId != null) {
+            return userBankAccountRepository.findByIdAndUserId(requestedBankAccountId, userId)
+                    .orElseThrow(() -> new BadRequestException("선택한 입금 계좌를 찾을 수 없습니다."));
+        }
+
+        if (card.getBankAccount() != null) {
+            return card.getBankAccount();
+        }
+
+        return userBankAccountRepository.findByUserIdAndIsDefaultTrue(userId)
+                .orElseThrow(() -> new BadRequestException("입금받을 계좌를 선택해 주세요."));
+    }
+
+    private String maskCardNumber(String cardNumber) {
+        if (cardNumber == null || cardNumber.isBlank()) {
+            return null;
+        }
+        String[] parts = cardNumber.split("-");
+        if (parts.length == 4) {
+            return parts[0] + "-" + parts[1] + "-****-****";
+        }
+
+        String digits = cardNumber.replaceAll("\\D", "");
+        if (digits.length() >= 8) {
+            return digits.substring(0, 4) + "-" + digits.substring(4, 8) + "-****-****";
+        }
+        return "****-****-****-****";
+    }
+
+    private void createLoanDisbursementTransaction(Loan loan) {
+        if (loan.getBankAccount() == null) {
+            return;
+        }
+        String description = (loan.getLoanType() == Loan.LoanType.CARD_LOAN ? "카드대출" : "현금서비스")
+                + " 입금";
+        bankAccountLedgerService.deposit(loan.getBankAccount(), loan, loan.getPrincipalAmount(), description);
+    }
+
+    private void sendDisbursementNotification(Loan loan) {
+        if (loan.getUser() == null || loan.getBankAccount() == null) {
+            return;
+        }
+        User recipient = loan.getUser();
+        User sender = userRepository.findById(1L).orElse(recipient);
+        String loanLabel = loan.getLoanType() == Loan.LoanType.CARD_LOAN ? "카드대출" : "현금서비스";
+        String content = "%s %s원이 %s %s 계좌로 입금되었습니다."
+                .formatted(
+                        loanLabel,
+                        loan.getPrincipalAmount().toPlainString(),
+                        loan.getBankAccount().getBankName(),
+                        loan.getBankAccount().getAccountNumberMasked()
+                );
+        messageRepository.save(new Message(sender, recipient, Message.MessageType.SYSTEM, "대출금이 입금되었습니다.", content));
     }
 }

@@ -107,10 +107,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDisabledException(
             DisabledException ex, WebRequest request) {
         log.debug("Account disabled");
+        String message = (ex.getMessage() != null && !ex.getMessage().isBlank())
+                ? ex.getMessage()
+                : "계정이 비활성화되었습니다. 관리자에게 문의하시거나 활성화 요청 페이지에서 요청해 주세요.";
+        String code = message.contains("회원 탈퇴가 예약")
+                ? "WITHDRAWAL_PENDING"
+                : "ACCOUNT_DISABLED";
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
-                "ACCOUNT_DISABLED",
-                "계정이 비활성화되었습니다. 관리자에게 문의하시거나 활성화 요청 페이지에서 요청해 주세요.",
+                code,
+                message,
                 getPath(request)
         );
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
@@ -151,8 +157,7 @@ public class GlobalExceptionHandler {
                 ErrorResponse error = new ErrorResponse(
                                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                                 "INTERNAL_ERROR",
-                                "서버 내부 오류가 발생했습니다: " + ex.getMessage() + " | "
-                                                + (ex.getCause() != null ? ex.getCause().getMessage() : ""),
+                                "서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
                                 getPath(request));
                 return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
         }

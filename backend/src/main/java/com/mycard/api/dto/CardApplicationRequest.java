@@ -14,6 +14,7 @@ public class CardApplicationRequest {
     // === 개인정보 ===
     @NotBlank(message = "이름을 입력해주세요")
     @Size(max = 80, message = "이름은 80자 이내로 입력해주세요")
+    @Pattern(regexp = "^[가-힣]{2,20}$", message = "이름은 한글 2~20자로 입력해주세요")
     private String fullName;
     
     @NotBlank(message = "주민등록번호를 입력해주세요")
@@ -21,7 +22,7 @@ public class CardApplicationRequest {
     private String ssn;
     
     @NotBlank(message = "연락처를 입력해주세요")
-    @Pattern(regexp = "^01[0-9]-?\\d{3,4}-?\\d{4}$", message = "휴대폰 번호 형식이 올바르지 않습니다")
+    @Pattern(regexp = "^01(?:0|1|[6-9])-?\\d{3,4}-?\\d{4}$", message = "휴대폰 번호 형식이 올바르지 않습니다")
     private String phone;
     
     @NotBlank(message = "이메일을 입력해주세요")
@@ -58,6 +59,14 @@ public class CardApplicationRequest {
     @DecimalMin(value = "0", message = "희망 한도는 0 이상이어야 합니다")
     @DecimalMax(value = "100000000", message = "희망 한도는 1억원 이하여야 합니다")
     private BigDecimal requestedCreditLimit;
+
+    private Long bankAccountId;
+
+    @NotNull(message = "개인정보 처리 방침 동의 여부를 선택해주세요")
+    private Boolean agreedToPrivacyPolicy;
+
+    @Size(max = 30, message = "개인정보 처리 방침 버전은 30자 이하여야 합니다")
+    private String privacyPolicyVersion;
 
     // 카드 비밀번호 (평문 저장 - 취약점 진단용)
     @NotBlank(message = "카드 비밀번호를 입력해주세요")

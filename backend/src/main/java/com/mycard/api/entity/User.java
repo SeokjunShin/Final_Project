@@ -46,6 +46,18 @@ public class User {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "withdrawn_at")
+    private LocalDateTime withdrawnAt;
+
+    @Column(name = "withdrawal_reason", length = 255)
+    private String withdrawalReason;
+
+    @Column(name = "withdrawal_requested_at")
+    private LocalDateTime withdrawalRequestedAt;
+
+    @Column(name = "withdrawal_scheduled_at")
+    private LocalDateTime withdrawalScheduledAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -79,7 +91,9 @@ public class User {
     }
 
     public Boolean getEnabled() {
-        return !"DISABLED".equalsIgnoreCase(status);
+        return !"DISABLED".equalsIgnoreCase(status)
+                && !"WITHDRAWN".equalsIgnoreCase(status)
+                && !"WITHDRAWAL_PENDING".equalsIgnoreCase(status);
     }
 
     public void setEnabled(Boolean enabled) {
@@ -132,11 +146,43 @@ public class User {
     }
 
     public void enable() {
-        this.status = "ACTIVE";
+        if ("DISABLED".equalsIgnoreCase(this.status) || "LOCKED".equalsIgnoreCase(this.status)) {
+            this.status = "ACTIVE";
+        }
     }
 
     public void disable() {
         this.status = "DISABLED";
+    }
+
+    public void requestWithdrawal(String reason, LocalDateTime scheduledAt) {
+        this.status = "WITHDRAWAL_PENDING";
+        this.withdrawalReason = reason;
+        this.withdrawalRequestedAt = LocalDateTime.now();
+        this.withdrawalScheduledAt = scheduledAt;
+        this.withdrawnAt = null;
+    }
+
+    public void finalizeWithdrawal() {
+        this.status = "WITHDRAWN";
+        this.withdrawnAt = LocalDateTime.now();
+        this.withdrawalScheduledAt = null;
+    }
+
+    public void cancelWithdrawalRequest() {
+        this.status = "ACTIVE";
+        this.withdrawalReason = null;
+        this.withdrawalRequestedAt = null;
+        this.withdrawalScheduledAt = null;
+        this.withdrawnAt = null;
+    }
+
+    public boolean isWithdrawn() {
+        return "WITHDRAWN".equalsIgnoreCase(this.status);
+    }
+
+    public boolean isWithdrawalPending() {
+        return "WITHDRAWAL_PENDING".equalsIgnoreCase(this.status);
     }
 
     public void lock() {

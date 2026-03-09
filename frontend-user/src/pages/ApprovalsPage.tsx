@@ -6,6 +6,19 @@ import { TableSection } from '@/components/common/TableSection';
 import { formatDateTime } from '@/utils/dateUtils';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 
+const maskCardNumber = (cardNumber: string | undefined) => {
+  if (!cardNumber) return '****-****-****-****';
+  const parts = cardNumber.split('-');
+  if (parts.length === 4) {
+    return `${parts[0]}-${parts[1]}-****-****`;
+  }
+  const digits = cardNumber.replace(/\D/g, '');
+  if (digits.length >= 8) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 8)}-****-****`;
+  }
+  return '****-****-****-****';
+};
+
 const getStatusInfo = (status: string) => {
   switch (status) {
     case 'APPROVED':
@@ -70,7 +83,13 @@ export const ApprovalsPage = () => {
             valueFormatter: (v: string) => formatDateTime(v),
           },
           { field: 'merchantName', headerName: '가맹점', flex: 1 },
-          { field: 'cardMasked', headerName: '카드번호', flex: 1 },
+          {
+            field: 'cardMasked',
+            headerName: '카드번호',
+            flex: 1,
+            renderCell: (params: { row: { cardMasked?: string; cardMaskedNumber?: string } }) =>
+              maskCardNumber(params.row.cardMasked ?? params.row.cardMaskedNumber),
+          },
           {
             field: 'amount',
             headerName: '금액',

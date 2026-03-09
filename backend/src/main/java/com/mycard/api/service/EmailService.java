@@ -21,6 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class EmailService {
 
+    private static final String PURPOSE_SECOND_PASSWORD = "SECOND_PASSWORD";
+    private static final String PURPOSE_LOGIN_PASSWORD = "LOGIN_PASSWORD";
+
     private final JavaMailSender emailSender;
 
     // 이메일 - (인증코드, 만료시간)을 임시 저장 (운영 환경에서는 Redis 권장)
@@ -38,10 +41,30 @@ public class EmailService {
     }
 
     public void sendResetCode(String toEmail) {
+        sendCode(toEmail, PURPOSE_SECOND_PASSWORD, "MyCard - 2차 비밀번호 재설정 인증코드");
+    }
+
+    public void sendLoginPasswordResetCode(String toEmail) {
+        sendCode(toEmail, PURPOSE_LOGIN_PASSWORD, "MyCard - 로그인 비밀번호 재설정 인증코드");
+    }
+
+    public boolean verifyCode(String email, String inputCode) {
+        return verifyCode(email, inputCode, PURPOSE_SECOND_PASSWORD);
+    }
+
+    public boolean verifyLoginPasswordResetCode(String email, String inputCode) {
+        return verifyCode(email, inputCode, PURPOSE_LOGIN_PASSWORD);
+    }
+
+    public boolean checkLoginPasswordResetCode(String email, String inputCode) {
+        return checkCode(email, inputCode, PURPOSE_LOGIN_PASSWORD);
+    }
+
+    private void sendCode(String toEmail, String purpose, String subject) {
         String code = generateCode();
 
         // 유효시간 5분 설정
-        verificationCodes.put(toEmail, new VerificationInfo(code, LocalDateTime.now().plusMinutes(5)));
+        verificationCodes.put(buildKey(toEmail, purpose), new VerificationInfo(code, LocalDateTime.now().plusMinutes(5)));
 
         log.info("==========================================================");
         log.info("[EmailService] 2차 비밀번호 재설정 인증코드 요청 수신");
@@ -55,9 +78,9 @@ public class EmailService {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(toEmail);
-            message.setSubject("MyCard - 2차 비밀번호 재설정 인증코드");
+            message.setSubject(subject);
             message.setText("안녕하세요. MyCard 입니다.\n\n" +
-                    "요청하신 2차 비밀번호 재설정 인증코드는 다음과 같습니다:\n\n" +
+                    "요청하신 인증코드는 다음과 같습니다:\n\n" +
                     "[" + code + "]\n\n" +
                     "5분 이내에 인증을 완료해 주세요.");
 
@@ -69,20 +92,31 @@ public class EmailService {
         }
     }
 
-    public boolean verifyCode(String email, String inputCode) {
-        VerificationInfo info = verificationCodes.get(email);
+    private boolean verifyCode(String email, String inputCode, String purpose) {
+        return verifyCode(email, inputCode, purpose, true);
+    }
+
+    private boolean checkCode(String email, String inputCode, String purpose) {
+        return verifyCode(email, inputCode, purpose, false);
+    }
+
+    private boolean verifyCode(String email, String inputCode, String purpose, boolean consumeOnSuccess) {
+        String key = buildKey(email, purpose);
+        VerificationInfo info = verificationCodes.get(key);
 
         if (info == null) {
             return false; // 코드가 발급된 적 없음
         }
 
         if (LocalDateTime.now().isAfter(info.expiryTime)) {
-            verificationCodes.remove(email); // 만료됨
+            verificationCodes.remove(key); // 만료됨
             return false;
         }
 
         if (info.code.equals(inputCode)) {
-            verificationCodes.remove(email); // 인증 성공시 코드 폐기
+            if (consumeOnSuccess) {
+                verificationCodes.remove(key); // 최종 인증 성공시 코드 폐기
+            }
             return true;
         }
 
@@ -102,5 +136,9 @@ public class EmailService {
         } catch (Exception e) {
             log.error("파일에 인증코드를 저장하는데 실패했습니다: {}", e.getMessage());
         }
+    }
+
+    private String buildKey(String email, String purpose) {
+        return purpose + ":" + email;
     }
 }

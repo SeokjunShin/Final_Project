@@ -58,7 +58,7 @@ export const bankAccountApi = {
     apiClient.get<{ code: string; name: string }[]>('/bank-accounts/banks').then((r) => r.data),
   list: () =>
     apiClient.get<BankAccount[]>('/bank-accounts').then((r) => r.data),
-  add: (payload: { bankCode: string; accountNumber: string; accountHolder: string; setAsDefault?: boolean }) =>
+  add: (payload: { bankCode: string; accountHolder?: string; setAsDefault?: boolean }) =>
     apiClient.post<BankAccount>('/bank-accounts', payload).then((r) => r.data),
   delete: (accountId: number) =>
     apiClient.delete(`/bank-accounts/${accountId}`),
@@ -71,11 +71,24 @@ export interface BankAccount {
   id: number;
   bankCode: string;
   bankName: string;
+  accountNumber: string;
   accountNumberMasked: string;
   accountHolder: string;
   isVerified: boolean;
   isDefault: boolean;
+  currentBalance: number;
   verifiedAt: string | null;
+  createdAt: string;
+  recentTransactions?: BankAccountTransaction[];
+}
+
+export interface BankAccountTransaction {
+  id: number;
+  transactionType: 'DEPOSIT' | 'WITHDRAWAL';
+  amount: number;
+  balanceAfter: number;
+  description?: string;
+  relatedLoanId?: number | null;
   createdAt: string;
 }
 
@@ -124,6 +137,12 @@ export const cardApplicationApi = {
   create: (payload: CardApplicationRequest) =>
     apiClient.post<CardApplication>('/card-applications', payload).then((r) => r.data),
   cancel: (id: number) => apiClient.delete(`/card-applications/${id}`),
+  uploadDocument: (applicationId: number, form: FormData) =>
+    apiClient.post(`/card-applications/${applicationId}/documents`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data),
+  deleteDocument: (applicationId: number, documentId: number) =>
+    apiClient.delete(`/card-applications/${applicationId}/documents/${documentId}`),
 };
 
 export const loansApi = {
@@ -151,4 +170,6 @@ export const authApi = {
     apiClient.post('/auth/second-password/reset/confirm', payload).then((r) => r.data),
   changePassword: (payload: any) =>
     apiClient.post('/me/password', payload).then((r) => r.data),
+  withdraw: (payload: { currentPassword: string; secondaryPassword: string; reason?: string }) =>
+    apiClient.post('/me/withdraw', payload).then((r) => r.data),
 };

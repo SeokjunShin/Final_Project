@@ -10,6 +10,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 카드 신청 엔티티
@@ -95,6 +97,19 @@ public class CardApplication {
     @Column(name = "requested_limit", precision = 12, scale = 2)
     private BigDecimal requestedCreditLimit;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bank_account_id")
+    private UserBankAccount bankAccount;
+
+    @Column(name = "privacy_consent_yn", nullable = false)
+    private Boolean privacyConsented = false;
+
+    @Column(name = "privacy_consented_at")
+    private LocalDateTime privacyConsentedAt;
+
+    @Column(name = "privacy_policy_version", length = 30)
+    private String privacyPolicyVersion;
+
     // 카드 비밀번호 (평문 저장 - 취약점 진단용)
     @Column(name = "card_password", length = 10)
     private String cardPassword;
@@ -128,6 +143,12 @@ public class CardApplication {
     // 메모 (관리자용)
     @Column(name = "admin_notes", length = 1000)
     private String adminNotes;
+
+    @Column(name = "retention_until")
+    private LocalDateTime retentionUntil;
+
+    @OneToMany(mappedBy = "cardApplication", cascade = CascadeType.ALL, orphanRemoval = false)
+    private List<Document> documents = new ArrayList<>();
     
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

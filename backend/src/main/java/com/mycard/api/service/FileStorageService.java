@@ -23,8 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -35,21 +33,14 @@ public class FileStorageService {
     private final AttachmentRepository attachmentRepository;
     private final UserRepository userRepository;
     private final OwnerCheckService ownerCheckService;
+    private final UploadValidationService uploadValidationService;
 
     @Value("${app.upload.base-path}")
     private String uploadBasePath;
 
-    @Value("${app.upload.allowed-extensions}")
-    private String allowedExtensions;
-
-    @Value("${app.upload.max-file-size}")
-    private long maxFileSize;
-
     @Transactional
     public Attachment storeFile(MultipartFile file, UserPrincipal currentUser) {
-        validateFile(file);
-
-        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+        String originalFilename = uploadValidationService.validateDefaultUpload(file);
         String storedFilename = generateStoredFilename(originalFilename);
         Path targetPath = getUploadPath().resolve(storedFilename);
 
@@ -115,43 +106,9 @@ public class FileStorageService {
         attachmentRepository.delete(attachment);
     }
 
-    private void validateFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BadRequestException("파일이 비어 있습니다.");
-        }
-
-        if (file.getSize() > maxFileSize) {
-            throw new BadRequestException("파일 크기가 허용 범위를 초과했습니다.");
-        }
-
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null || originalFilename.isBlank()) {
-            throw new BadRequestException("파일명이 올바르지 않습니다.");
-        }
-
-        String extension = getFileExtension(originalFilename).toLowerCase();
-        List<String> allowed = Arrays.asList(allowedExtensions.split(","));
-        if (!allowed.contains(extension)) {
-            throw new BadRequestException("허용되지 않은 파일 형식입니다.");
-        }
-
-        String contentType = file.getContentType();
-        if (contentType == null || contentType.isBlank()) {
-            throw new BadRequestException("파일 형식을 확인할 수 없습니다.");
-        }
-    }
-
     private String generateStoredFilename(String originalFilename) {
-        String extension = getFileExtension(originalFilename);
+        String extension = uploadValidationService.extractExtension(originalFilename);
         return UUID.randomUUID() + "." + extension;
-    }
-
-    private String getFileExtension(String filename) {
-        int lastDotIndex = filename.lastIndexOf('.');
-        if (lastDotIndex == -1) {
-            return "";
-        }
-        return filename.substring(lastDotIndex + 1);
     }
 
     private Path getUploadPath() {

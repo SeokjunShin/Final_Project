@@ -1,12 +1,16 @@
 package com.mycard.api.controller;
 
 import com.mycard.api.dto.auth.AuthUserResponse;
+import com.mycard.api.dto.auth.CancelWithdrawalRequest;
 import com.mycard.api.dto.auth.LoginRequest;
 import com.mycard.api.dto.auth.LoginResponse;
 import com.mycard.api.dto.auth.RefreshTokenRequest;
 import com.mycard.api.dto.auth.RegisterRequest;
 import com.mycard.api.dto.auth.SendResetCodeRequest;
 import com.mycard.api.dto.auth.ConfirmResetPasswordRequest;
+import com.mycard.api.dto.auth.RequestPasswordResetRequest;
+import com.mycard.api.dto.auth.ConfirmPasswordResetRequest;
+import com.mycard.api.dto.auth.VerifyPasswordResetCodeRequest;
 import com.mycard.api.dto.auth.TokenResponse;
 import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
@@ -57,6 +61,13 @@ public class AuthController {
     @PostMapping("/login/reactivate")
     public ResponseEntity<LoginResponse> loginAndReactivate(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.loginAndReactivate(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "회원 탈퇴 예약 취소 후 로그인")
+    @PostMapping("/withdrawal/cancel")
+    public ResponseEntity<LoginResponse> cancelWithdrawalAndLogin(@Valid @RequestBody CancelWithdrawalRequest request) {
+        LoginResponse response = authService.cancelWithdrawalAndLogin(request);
         return ResponseEntity.ok(response);
     }
 
@@ -114,6 +125,30 @@ public class AuthController {
             @CurrentUser UserPrincipal user,
             @Valid @RequestBody SendResetCodeRequest request) {
         authService.sendResetCode(user, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "로그인 비밀번호 재설정용 인증 코드 메일 발송")
+    @PostMapping("/password/reset/request")
+    public ResponseEntity<Void> requestPasswordReset(
+            @Valid @RequestBody RequestPasswordResetRequest request) {
+        authService.requestPasswordReset(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "로그인 비밀번호 재설정 확정")
+    @PostMapping("/password/reset/confirm")
+    public ResponseEntity<Void> confirmPasswordReset(
+            @Valid @RequestBody ConfirmPasswordResetRequest request) {
+        authService.confirmPasswordReset(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "로그인 비밀번호 재설정 인증 코드 확인")
+    @PostMapping("/password/reset/verify")
+    public ResponseEntity<Void> verifyPasswordResetCode(
+            @Valid @RequestBody VerifyPasswordResetCodeRequest request) {
+        authService.verifyPasswordResetCode(request);
         return ResponseEntity.ok().build();
     }
 

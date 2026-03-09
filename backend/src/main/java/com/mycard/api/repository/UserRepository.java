@@ -48,4 +48,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** 일정 기간 미접속인 활성(ACTIVE) 사용자 조회 (비활성 처리 대상) */
     @Query("SELECT u FROM User u WHERE u.status = 'ACTIVE' AND (u.lastLoginAt IS NULL OR u.lastLoginAt < :cutoff)")
     List<User> findActiveUsersWithLastLoginBeforeOrNull(@Param("cutoff") LocalDateTime cutoff);
+
+    @Query("SELECT u FROM User u WHERE u.status = 'WITHDRAWAL_PENDING' AND u.withdrawalScheduledAt IS NOT NULL AND u.withdrawalScheduledAt <= :now")
+    List<User> findWithdrawalPendingUsersDueBefore(@Param("now") LocalDateTime now);
 }

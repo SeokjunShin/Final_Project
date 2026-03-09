@@ -2,12 +2,16 @@ package com.mycard.api.service;
 
 import com.mycard.api.dto.auth.LoginRequest;
 import com.mycard.api.dto.auth.LoginResponse;
+import com.mycard.api.dto.auth.CancelWithdrawalRequest;
 import com.mycard.api.dto.auth.RegisterRequest;
 import com.mycard.api.dto.auth.RegisterSecondPasswordRequest;
 import com.mycard.api.dto.auth.SendResetCodeRequest;
 import com.mycard.api.dto.auth.ConfirmResetPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
+import com.mycard.api.dto.auth.RequestPasswordResetRequest;
+import com.mycard.api.dto.auth.ConfirmPasswordResetRequest;
+import com.mycard.api.dto.auth.VerifyPasswordResetCodeRequest;
 import com.mycard.api.dto.auth.TokenResponse;
 import com.mycard.api.entity.AuditLog;
 import com.mycard.api.entity.LoginAttempt;
@@ -27,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -74,6 +79,9 @@ public class AuthService {
 
         // 계정 잠금 확인
         User user = userRepository.findByEmail(email).orElse(null);
+        if (user != null && user.isWithdrawalPending()) {
+            throw new DisabledException("회원 탈퇴가 예약되었습니다. 15분 후 최종 탈퇴 처리됩니다.");
+        }
         if (user != null && user.getLocked() && user.getLockExpiryTime() != null) {
             if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
                 logLoginAttempt(email, ipAddress, userAgent, false, "Account locked");
@@ -159,6 +167,13 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다."));
 
+        if (user.isWithdrawalPending()) {
+            throw new DisabledException("회원 탈퇴가 예약되었습니다. 15분 후 최종 탈퇴 처리됩니다.");
+        }
+        if (user.isWithdrawn()) {
+            throw new DisabledException("이미 탈퇴 처리된 계정입니다.");
+        }
+
         // 잠금 계정은 여기서도 동일하게 막기
         if (user.getLocked() && user.getLockExpiryTime() != null) {
             if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
@@ -197,6 +212,68 @@ public class AuthService {
         // 로그인 성공 로깅
         logLoginAttempt(email, ipAddress, userAgent, true, "Reactivated disabled account");
         auditService.log(AuditLog.ActionType.LOGIN, "User", userPrincipal.getId(), "User reactivated and logged in");
+
+        List<String> roles = userPrincipal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
+
+        String primaryRole = roles.stream()
+                .map(r -> r.replace("ROLE_", ""))
+                .filter(r -> !r.equals("USER"))
+                .findFirst()
+                .orElse("USER");
+
+        LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
+                .id(userPrincipal.getId())
+                .name(userPrincipal.getFullName())
+                .email(userPrincipal.getUsername())
+                .role(primaryRole)
+                .hasSecondaryPassword(user.getSecondaryPassword() != null && !user.getSecondaryPassword().isBlank())
+                .build();
+
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(userInfo)
+                .roles(roles)
+                .build();
+    }
+
+    @Transactional
+    public LoginResponse cancelWithdrawalAndLogin(CancelWithdrawalRequest request) {
+        String email = request.getEmail();
+        HttpServletRequest httpRequest = getCurrentHttpRequest();
+        String ipAddress = getClientIp(httpRequest);
+        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다."));
+
+        if (!user.isWithdrawalPending()) {
+            throw new BadRequestException("탈퇴 예약 상태의 계정이 아닙니다.");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            handleFailedLogin(email, ipAddress, userAgent);
+            throw new BadCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        }
+
+        if (user.getSecondaryPassword() == null || !passwordEncoder.matches(request.getSecondaryPassword(), user.getSecondaryPassword())) {
+            throw new BadRequestException("2차 비밀번호가 올바르지 않습니다.");
+        }
+
+        user.cancelWithdrawalRequest();
+        user.setFailedLoginAttempts(0);
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        UserPrincipal userPrincipal = UserPrincipal.create(user);
+        String accessToken = tokenProvider.generateAccessToken(userPrincipal);
+        String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
+        saveRefreshToken(userPrincipal.getId(), refreshToken, ipAddress, userAgent);
+
+        logLoginAttempt(email, ipAddress, userAgent, true, "Canceled withdrawal reservation and logged in");
+        auditService.log(AuditLog.ActionType.UPDATE, "USER_ACCOUNT", userPrincipal.getId(), "회원 탈퇴 예약 취소");
 
         List<String> roles = userPrincipal.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -431,5 +508,41 @@ public class AuthService {
 
         auditService.log(AuditLog.ActionType.UPDATE, "User", targetUser.getId(),
                 "User resetted secondary password via email verification");
+    }
+
+    @Transactional
+    public void requestPasswordReset(RequestPasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("해당 이메일로 가입된 사용자를 찾을 수 없습니다."));
+        emailService.sendLoginPasswordResetCode(user.getEmail());
+    }
+
+    @Transactional
+    public void confirmPasswordReset(ConfirmPasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("해당 이메일로 가입된 사용자를 찾을 수 없습니다."));
+
+        boolean isValid = emailService.verifyLoginPasswordResetCode(request.getEmail(), request.getCode());
+        if (!isValid) {
+            throw new BadRequestException("인증 코드가 올바르지 않거나 만료되었습니다.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        logoutAll(user.getId());
+
+        auditService.log(AuditLog.ActionType.UPDATE, "User", user.getId(),
+                "User reset login password via email verification");
+    }
+
+    @Transactional(readOnly = true)
+    public void verifyPasswordResetCode(VerifyPasswordResetCodeRequest request) {
+        userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("해당 이메일로 가입된 사용자를 찾을 수 없습니다."));
+
+        boolean isValid = emailService.checkLoginPasswordResetCode(request.getEmail(), request.getCode());
+        if (!isValid) {
+            throw new BadRequestException("인증 코드가 올바르지 않거나 만료되었습니다.");
+        }
     }
 }

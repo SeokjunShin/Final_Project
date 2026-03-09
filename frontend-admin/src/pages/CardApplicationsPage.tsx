@@ -230,16 +230,17 @@ export const CardApplicationsPage = () => {
                   <TableCell>신청자</TableCell>
                   <TableCell>카드상품</TableCell>
                   <TableCell>직업</TableCell>
-                  <TableCell>희망한도</TableCell>
-                  <TableCell>상태</TableCell>
-                  <TableCell>신청일</TableCell>
-                  <TableCell>관리</TableCell>
+                      <TableCell>희망한도</TableCell>
+                      <TableCell>증빙</TableCell>
+                      <TableCell>상태</TableCell>
+                      <TableCell>신청일</TableCell>
+                      <TableCell>관리</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {applications.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={9} align="center">
                       <Typography color="text.secondary" sx={{ py: 4 }}>
                         카드 신청 내역이 없습니다.
                       </Typography>
@@ -262,6 +263,7 @@ export const CardApplicationsPage = () => {
                       <TableCell>
                         {app.requestedCreditLimit ? `${app.requestedCreditLimit.toLocaleString()}만원` : '-'}
                       </TableCell>
+                      <TableCell>{app.evidenceDocuments?.length ?? 0}건</TableCell>
                       <TableCell>
                         <Chip
                           label={statusMap[app.status]?.label || app.status}
@@ -422,6 +424,18 @@ export const CardApplicationsPage = () => {
                       {selectedApp.requestedCreditLimit ? `${selectedApp.requestedCreditLimit.toLocaleString()}만원` : '-'}
                     </Typography>
                   </Grid>
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="text.secondary">연결 계좌</Typography>
+                    <Typography>
+                      {selectedApp.linkedBankName ? `${selectedApp.linkedBankName} / ${selectedApp.linkedAccountNumberMasked}` : '-'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="text.secondary">개인정보 동의</Typography>
+                    <Typography>
+                      {selectedApp.privacyConsentedAt ? new Date(selectedApp.privacyConsentedAt).toLocaleString('ko-KR') : '미동의'}
+                    </Typography>
+                  </Grid>
                 </Grid>
               </Grid>
 
@@ -464,6 +478,12 @@ export const CardApplicationsPage = () => {
                       <Typography color="error.main">{selectedApp.rejectionReason}</Typography>
                     </Grid>
                   )}
+                  {selectedApp.retentionUntil && (
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="text.secondary">보관 만료일</Typography>
+                      <Typography>{new Date(selectedApp.retentionUntil).toLocaleDateString('ko-KR')}</Typography>
+                    </Grid>
+                  )}
                   {selectedApp.issuedCardNumber && (
                     <Grid item xs={12}>
                       <Typography variant="body2" color="text.secondary">발급 카드</Typography>
@@ -471,6 +491,36 @@ export const CardApplicationsPage = () => {
                     </Grid>
                   )}
                 </Grid>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  증빙 서류
+                </Typography>
+                {!selectedApp.evidenceDocuments || selectedApp.evidenceDocuments.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">업로드된 증빙 서류가 없습니다.</Typography>
+                ) : (
+                  <List dense>
+                    {selectedApp.evidenceDocuments.map((document) => (
+                      <ListItem
+                        key={document.id}
+                        secondaryAction={
+                          document.fileName ? (
+                            <Button size="small" onClick={() => adminApi.documentDownload(document.id, document.fileName ?? 'evidence')}>
+                              다운로드
+                            </Button>
+                          ) : null
+                        }
+                      >
+                        <ListItemText
+                          primary={`${document.docType}${document.fileName ? ` / ${document.fileName}` : ''}`}
+                          secondary={`${document.status} · ${new Date(document.submittedAt).toLocaleString('ko-KR')}${document.rejectionReason ? ` · ${document.rejectionReason}` : ''}`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
               </Grid>
             </Grid>
           ) : null}

@@ -36,6 +36,8 @@ public interface CardApplicationRepository extends JpaRepository<CardApplication
     
     // 사용자별 신청 조회 (소유권 확인용)
     Optional<CardApplication> findByIdAndUser(Long id, User user);
+
+    List<CardApplication> findByUserIdAndBankAccount_Id(Long userId, Long bankAccountId);
     
     // 전체 목록 (관리자용)
     @Query("SELECT c FROM CardApplication c ORDER BY " +

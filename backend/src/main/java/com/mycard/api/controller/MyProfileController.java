@@ -4,6 +4,7 @@ import com.mycard.api.dto.user.ChangePasswordRequest;
 import com.mycard.api.dto.user.SecuritySettingsRequest;
 import com.mycard.api.dto.user.UpdateProfileRequest;
 import com.mycard.api.dto.user.UserProfileResponse;
+import com.mycard.api.dto.user.WithdrawRequest;
 import com.mycard.api.security.UserPrincipal;
 import com.mycard.api.service.UserSecurityService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,6 +52,16 @@ public class MyProfileController {
             @Valid @RequestBody ChangePasswordRequest request
     ) {
         userSecurityService.changePassword(principal, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "회원 탈퇴", description = "현재 비밀번호와 2차 비밀번호를 확인한 뒤 탈퇴 처리합니다.")
+    @PostMapping("/withdraw")
+    public ResponseEntity<Void> withdraw(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody WithdrawRequest request
+    ) {
+        userSecurityService.withdrawMyAccount(principal, request);
         return ResponseEntity.ok().build();
     }
 

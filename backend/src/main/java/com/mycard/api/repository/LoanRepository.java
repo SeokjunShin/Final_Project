@@ -15,14 +15,15 @@ import java.util.Optional;
 @Repository
 public interface LoanRepository extends JpaRepository<Loan, Long> {
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"card", "bankAccount"})
     Page<Loan> findByUser_IdOrderByRequestedAtDesc(Long userId, Pageable pageable);
 
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"user"})
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"user", "card", "bankAccount"})
     Page<Loan> findAllByOrderByRequestedAtDesc(Pageable pageable);
 
     Optional<Loan> findByIdAndUser_Id(Long id, Long userId);
 
-    @Query("SELECT l FROM Loan l JOIN FETCH l.user WHERE l.id = :id")
+    @Query("SELECT l FROM Loan l JOIN FETCH l.user LEFT JOIN FETCH l.card LEFT JOIN FETCH l.bankAccount WHERE l.id = :id")
     Optional<Loan> findByIdWithUser(@Param("id") Long id);
 
     /** DB에 직접 UPDATE - 승인 (목록/상세 조회 시 반영 보장) */

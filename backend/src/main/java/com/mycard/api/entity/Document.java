@@ -42,6 +42,10 @@ public class Document {
     @JoinColumn(name = "reviewer_id")
     private User reviewedBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "card_application_id")
+    private CardApplication cardApplication;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "doc_type", length = 30)
     private DocumentType documentType;

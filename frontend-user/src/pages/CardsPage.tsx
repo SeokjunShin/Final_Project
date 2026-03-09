@@ -236,6 +236,15 @@ export const CardsPage = () => {
                   </Box>
                 </Stack>
 
+                <Box sx={{ mb: 2, textAlign: 'center' }}>
+                  <Typography variant="caption" color="text.secondary">결제계좌</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {card.linkedBankName
+                      ? `${card.linkedBankName} / ${card.linkedAccountNumberMasked}`
+                      : '연결된 계좌 없음'}
+                  </Typography>
+                </Box>
+
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ pt: 2, borderTop: '1px solid #eee' }}>
                   <FormControlLabel
                     control={

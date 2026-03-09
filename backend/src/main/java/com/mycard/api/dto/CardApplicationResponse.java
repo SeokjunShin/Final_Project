@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 카드 신청 응답 DTO
@@ -31,12 +32,20 @@ public class CardApplicationResponse {
     private String cardType;
     private String cardProduct;
     private BigDecimal requestedCreditLimit;
-    
+    private Long linkedBankAccountId;
+    private String linkedBankName;
+    private String linkedAccountNumberMasked;
+    private Boolean privacyConsented;
+    private LocalDateTime privacyConsentedAt;
+    private String privacyPolicyVersion;
+
     // 상태
     private String status;
     private LocalDateTime reviewedAt;
     private String rejectionReason;
     private BigDecimal approvedCreditLimit;
+    private LocalDateTime retentionUntil;
+    private List<CardApplicationDocumentResponse> evidenceDocuments;
     
     // 관리자용 추가 정보
     private String adminNotes;

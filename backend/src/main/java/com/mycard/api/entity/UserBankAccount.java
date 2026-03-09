@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -47,6 +48,9 @@ public class UserBankAccount {
     @Column(name = "is_default", nullable = false)
     private Boolean isDefault = false;
 
+    @Column(name = "current_balance", nullable = false, precision = 12, scale = 2)
+    private BigDecimal currentBalance = BigDecimal.ZERO;
+
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
 
@@ -78,6 +82,24 @@ public class UserBankAccount {
 
     public void unsetDefault() {
         this.isDefault = false;
+    }
+
+    public void deposit(BigDecimal amount) {
+        if (amount == null) {
+            return;
+        }
+        this.currentBalance = getCurrentBalance().add(amount);
+    }
+
+    public void withdraw(BigDecimal amount) {
+        if (amount == null) {
+            return;
+        }
+        this.currentBalance = getCurrentBalance().subtract(amount);
+    }
+
+    public BigDecimal getCurrentBalance() {
+        return currentBalance != null ? currentBalance : BigDecimal.ZERO;
     }
 
     private String maskAccountNumber(String accountNumber) {

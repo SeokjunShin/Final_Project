@@ -10,6 +10,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (payload: LoginRequest) => Promise<void>;
   loginReactivate: (payload: LoginRequest) => Promise<void>;
+  cancelWithdrawalAndLogin: (payload: LoginRequest & { secondaryPassword: string }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -45,6 +46,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(result.user);
   };
 
+  const cancelWithdrawalAndLogin = async (payload: LoginRequest & { secondaryPassword: string }) => {
+    const result = await authApi.cancelWithdrawalAndLogin(payload);
+    setUser(result.user);
+  };
+
   const logout = async () => {
     await authApi.logout();
     setUser(null);
@@ -57,6 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isAuthenticated: Boolean(user && tokenStorage.getAccessToken()),
       login,
       loginReactivate,
+      cancelWithdrawalAndLogin,
       logout,
     }),
     [ready, user],

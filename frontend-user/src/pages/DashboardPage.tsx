@@ -143,6 +143,11 @@ export const DashboardPage = () => {
                         </Typography>
                       </Box>
                     </Stack>
+                    {card.linkedBankName && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                        결제계좌 {card.linkedBankName} / {card.linkedAccountNumberMasked}
+                      </Typography>
+                    )}
                   </Box>
                 </Card>
               </Grid>

@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -63,5 +64,26 @@ public class CardApplicationController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         cardApplicationService.cancelApplication(currentUser.getId(), applicationId);
         return ResponseEntity.ok(Map.of("message", "신청이 취소되었습니다."));
+    }
+
+    @Operation(summary = "카드 신청 증빙 서류 업로드")
+    @PostMapping(value = "/{applicationId}/documents", consumes = "multipart/form-data")
+    public ResponseEntity<com.mycard.api.dto.CardApplicationDocumentResponse> uploadEvidenceDocument(
+            @PathVariable Long applicationId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "docType", defaultValue = "OTHER") String docType,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(cardApplicationService.uploadEvidenceDocument(currentUser.getId(), applicationId, docType, file));
+    }
+
+    @Operation(summary = "카드 신청 증빙 서류 삭제")
+    @DeleteMapping("/{applicationId}/documents/{documentId}")
+    public ResponseEntity<Map<String, String>> deleteEvidenceDocument(
+            @PathVariable Long applicationId,
+            @PathVariable Long documentId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        cardApplicationService.deleteEvidenceDocument(currentUser.getId(), applicationId, documentId);
+        return ResponseEntity.ok(Map.of("message", "증빙 서류가 삭제되었습니다."));
     }
 }

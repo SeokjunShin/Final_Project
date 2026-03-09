@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, Long> {
@@ -32,6 +33,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 
     @Query("SELECT d FROM Document d ORDER BY d.createdAt DESC")
     Page<Document> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    @Query("SELECT d FROM Document d WHERE d.cardApplication.id = :cardApplicationId ORDER BY d.createdAt DESC")
+    List<Document> findByCardApplicationIdOrderByCreatedAtDesc(@Param("cardApplicationId") Long cardApplicationId);
 
     default Page<Document> findByIsPublicTrueAndCategory(Document.DocumentCategory category, Pageable pageable) {
         return findByIsPublicTrue(pageable);

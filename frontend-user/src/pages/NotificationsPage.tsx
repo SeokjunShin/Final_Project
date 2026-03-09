@@ -14,7 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { notificationsApi } from '@/api';
+import { cardApplicationApi, notificationsApi } from '@/api';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import EmailIcon from '@mui/icons-material/Email';
@@ -42,6 +42,19 @@ const getCategoryInfo = (category: string) => {
   }
 };
 
+const formatNotificationText = (
+  text: string | undefined,
+  applicationNames: Map<number, string>,
+) => {
+  if (!text) return '';
+
+  return text.replace(/카드 신청\s*#(\d+)(에 대한 증빙 서류가 접수되었습니다\.)/g, (_, rawId, suffix) => {
+    const applicationId = Number(rawId);
+    const cardName = applicationNames.get(applicationId);
+    return cardName ? `${cardName} 카드 신청${suffix}` : `카드 신청 #${applicationId}${suffix}`;
+  });
+};
+
 export const NotificationsPage = () => {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState(0);
@@ -56,7 +69,17 @@ export const NotificationsPage = () => {
     },
   });
 
+  const { data: applications = [] } = useQuery({
+    queryKey: ['card-applications-for-notifications'],
+    queryFn: () => cardApplicationApi.list().catch(() => []),
+  });
+
   const notifications = data ?? [];
+  const applicationNames = new Map<number, string>(
+    applications
+      .filter((app: { id?: number; cardProduct?: string }) => app.id != null && app.cardProduct)
+      .map((app: { id?: number; cardProduct?: string }) => [Number(app.id), String(app.cardProduct)]),
+  );
   
   // isRead 또는 read 필드를 모두 처리
   const isUnread = (n: NotificationItem) => !(n.isRead ?? n.read);
@@ -170,7 +193,7 @@ export const NotificationsPage = () => {
                         )}
                       </Stack>
                       <Typography sx={{ fontWeight: (notification.isRead ?? notification.read) ? 400 : 600, mb: 0.5 }}>
-                        {notification.title}
+                        {formatNotificationText(notification.title, applicationNames)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {formatDateTime(notification.createdAt)}
@@ -210,7 +233,7 @@ export const NotificationsPage = () => {
                 {formatDateTime(selectedNotification.createdAt)}
               </Typography>
               <Typography sx={{ lineHeight: 1.8 }}>
-                {selectedNotification.content || selectedNotification.title}
+                {formatNotificationText(selectedNotification.content || selectedNotification.title, applicationNames)}
               </Typography>
             </DialogContent>
             <DialogActions>

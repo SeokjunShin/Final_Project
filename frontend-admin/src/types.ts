@@ -44,10 +44,26 @@ export interface CardApplication {
   cardType: string;
   cardProduct: string;
   requestedCreditLimit?: number;
+  linkedBankAccountId?: number;
+  linkedBankName?: string;
+  linkedAccountNumberMasked?: string;
+  privacyConsented?: boolean;
+  privacyConsentedAt?: string;
+  privacyPolicyVersion?: string;
   status: 'PENDING' | 'REVIEWING' | 'APPROVED' | 'REJECTED';
   reviewedAt?: string;
   rejectionReason?: string;
   approvedCreditLimit?: number;
+  retentionUntil?: string;
+  evidenceDocuments?: Array<{
+    id: number;
+    attachmentId?: number;
+    docType: string;
+    fileName?: string;
+    status: 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
+    rejectionReason?: string;
+    submittedAt: string;
+  }>;
   adminNotes?: string;
   userName?: string;
   userEmail?: string;
@@ -69,6 +85,12 @@ export interface LoanListItem {
   principalAmount: number;
   status: LoanStatus;
   requestedAt: string;
+  cardId?: number;
+  cardAlias?: string;
+  cardNumberMasked?: string;
+  depositBankAccountId?: number;
+  depositBankName?: string;
+  depositAccountNumberMasked?: string;
   userId?: number;
   userName?: string;
 }

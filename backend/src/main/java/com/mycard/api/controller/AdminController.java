@@ -157,9 +157,10 @@ public class AdminController {
                     map.put("id", u.getId());
                     map.put("name", u.getFullName() != null ? u.getFullName() : u.getEmail());
                     map.put("email", u.getEmail());
-                    // 잠금(비정상 계정) > 비활성(장기 미접속) > 활성
-                    map.put("status", Boolean.TRUE.equals(u.getLocked()) ? "LOCKED"
-                            : (Boolean.TRUE.equals(u.getEnabled()) ? "ACTIVE" : "INACTIVE"));
+                    map.put("status", u.isWithdrawalPending() ? "WITHDRAWAL_PENDING"
+                            : u.isWithdrawn() ? "WITHDRAWN"
+                            : (Boolean.TRUE.equals(u.getLocked()) ? "LOCKED"
+                            : (Boolean.TRUE.equals(u.getEnabled()) ? "ACTIVE" : "INACTIVE")));
                     map.put("lastLoginAt", u.getLastLoginAt() != null ? u.getLastLoginAt().toString() : null);
                     return map;
                 })

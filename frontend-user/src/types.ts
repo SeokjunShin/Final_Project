@@ -64,10 +64,19 @@ export interface Approval {
 
 export interface CardItem {
   id: number;
-  name: string;
-  maskedNumber: string;
-  overseasEnabled: boolean;
-  reissueStatus: 'NONE' | 'REQUESTED' | 'COMPLETED';
+  cardNumber: string;
+  cardNumberMasked: string;
+  cardAlias?: string;
+  cardType: string;
+  expiryDate?: string;
+  creditLimit?: number;
+  availableLimit?: number;
+  status: 'ACTIVE' | 'SUSPENDED' | 'LOST' | 'REISSUE_REQUESTED' | 'REISSUED';
+  overseasPaymentEnabled: boolean;
+  lastUsedAt?: string | null;
+  linkedBankAccountId?: number;
+  linkedBankName?: string;
+  linkedAccountNumberMasked?: string;
 }
 
 export interface PointLedger {
@@ -127,7 +136,20 @@ export interface CardApplicationRequest {
   cardType: string;
   cardProduct: string;
   requestedCreditLimit?: number;
+  bankAccountId?: number;
+  agreedToPrivacyPolicy: boolean;
+  privacyPolicyVersion?: string;
   cardPassword: string; // 카드 비밀번호 (4~6자리 숫자)
+}
+
+export interface CardApplicationDocument {
+  id: number;
+  attachmentId?: number;
+  docType: string;
+  fileName?: string;
+  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
+  submittedAt: string;
 }
 
 // 카드 신청 응답
@@ -145,10 +167,18 @@ export interface CardApplication {
   cardType: string;
   cardProduct: string;
   requestedCreditLimit?: number;
+  linkedBankAccountId?: number;
+  linkedBankName?: string;
+  linkedAccountNumberMasked?: string;
+  privacyConsented?: boolean;
+  privacyConsentedAt?: string;
+  privacyPolicyVersion?: string;
   status: 'PENDING' | 'REVIEWING' | 'APPROVED' | 'REJECTED';
   reviewedAt?: string;
   rejectionReason?: string;
   approvedCreditLimit?: number;
+  retentionUntil?: string;
+  evidenceDocuments?: CardApplicationDocument[];
   issuedCardNumber?: string;
   createdAt: string;
   updatedAt: string;
@@ -165,6 +195,12 @@ export interface LoanListItem {
   principalAmount: number;
   status: LoanStatus;
   requestedAt: string;
+  cardId?: number;
+  cardAlias?: string;
+  cardNumberMasked?: string;
+  depositBankAccountId?: number;
+  depositBankName?: string;
+  depositAccountNumberMasked?: string;
   /** 관리자 목록에서만 내려옴: 대출 신청 회원 ID */
   userId?: number;
   /** 관리자 목록에서만 내려옴: 대출 신청 회원명 */
@@ -181,6 +217,8 @@ export interface LoanDetail extends LoanListItem {
 }
 
 export interface LoanCreatePayload {
+  cardId: number;
+  bankAccountId?: number;
   loanType: LoanType;
   principalAmount: number;
   interestRate?: number;

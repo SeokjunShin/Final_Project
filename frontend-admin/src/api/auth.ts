@@ -14,8 +14,9 @@ export const adminAuthApi = {
   },
   me: () => adminApiClient.get<AuthUser>('/auth/me').then((r) => r.data),
   logout: async () => {
+    const refreshToken = adminTokenStorage.getRefreshToken();
     try {
-      await adminApiClient.post('/auth/logout');
+      await adminApiClient.post('/auth/logout', refreshToken ? { refreshToken } : undefined);
     } catch {
       // 이미 만료되었거나 권한 없는 토큰이라도 무시
     } finally {

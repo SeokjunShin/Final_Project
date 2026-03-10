@@ -78,18 +78,23 @@ public class SecurityConfig {
                         // CORS preflight (OPTIONS) - 인증 없이 허용하여 PATCH/POST 등이 차단되지 않도록
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public endpoints
-                        .requestMatchers("/auth/login").permitAll()
-                        .requestMatchers("/auth/login/reactivate").permitAll()
-                        .requestMatchers("/auth/withdrawal/cancel").permitAll()
-                        .requestMatchers("/auth/register").permitAll()
-                        .requestMatchers("/auth/check-email").permitAll()
-                        .requestMatchers("/auth/refresh").permitAll()
-                        .requestMatchers("/auth/logout").permitAll()
-                        .requestMatchers("/auth/password/reset/request").permitAll()
-                        .requestMatchers("/auth/password/reset/verify").permitAll()
-                        .requestMatchers("/auth/password/reset/confirm").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers(
+                                "/auth/login",
+                                "/auth/login/reactivate",
+                                "/auth/withdrawal/cancel",
+                                "/auth/register",
+                                "/auth/check-email",
+                                "/auth/refresh",
+                                "/auth/logout",
+                                "/auth/password/reset/request",
+                                "/auth/password/reset/verify",
+                                "/auth/password/reset/confirm",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/actuator/health",
+                                "/actuator/info"
+                        ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/events", "/events/{eventId}").permitAll()
                         .requestMatchers("/uploads/**").permitAll()

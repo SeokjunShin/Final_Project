@@ -57,7 +57,7 @@ export const DocsPage = () => {
     queryFn: () => docsApi.list(),
   });
 
-  const documents = data ?? [];
+  const documents = Array.isArray(data) ? data : [];
 
   const upload = async () => {
     if (!file) return;

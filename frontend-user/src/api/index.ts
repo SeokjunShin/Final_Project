@@ -100,7 +100,16 @@ export const supportApi = {
 };
 
 export const docsApi = {
-  list: () => apiClient.get<DocumentItem[]>('/docs').then((r) => r.data),
+  list: () => apiClient.get<DocumentItem[] | { content?: DocumentItem[] }>('/docs').then((r) => {
+    const data = r.data as any;
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (Array.isArray(data?.content)) {
+      return data.content;
+    }
+    return [];
+  }),
   upload: (form: FormData) =>
     apiClient.post('/docs', form, {
       headers: { 'Content-Type': 'multipart/form-data' },

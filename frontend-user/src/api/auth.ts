@@ -38,9 +38,13 @@ export const authApi = {
     return data;
   },
   logout: async () => {
-    await apiClient.post('/auth/logout');
-    tokenStorage.clear();
-    sessionStorage.removeItem('second_auth_passed');
+    const refreshToken = tokenStorage.getRefreshToken();
+    try {
+      await apiClient.post('/auth/logout', refreshToken ? { refreshToken } : undefined);
+    } finally {
+      tokenStorage.clear();
+      sessionStorage.removeItem('second_auth_passed');
+    }
   },
   me: async () => {
     const { data } = await apiClient.get<AuthUser>('/auth/me');

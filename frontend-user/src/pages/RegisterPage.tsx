@@ -14,13 +14,17 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  FormControl,
   FormControlLabel,
   IconButton,
+  InputLabel,
   Link,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -104,6 +108,10 @@ export const RegisterPage = () => {
   const [emailCheckResult, setEmailCheckResult] = useState<'available' | 'duplicate' | null>(null);
   const [emailChecking, setEmailChecking] = useState(false);
   const [checkedEmail, setCheckedEmail] = useState(''); // 중복확인 완료된 이메일
+
+  /* ─── 보안 질문 상태 ─── */
+  const [securityQuestion, setSecurityQuestion] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
 
   /* ─── 약관 동의 상태 ─── */
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -220,6 +228,10 @@ export const RegisterPage = () => {
       show('2차 비밀번호를 설정해주세요.', 'error');
       return;
     }
+    if (!securityQuestion || !securityAnswer.trim()) {
+      show('보안 질문을 선택하고 답변을 입력해주세요.', 'error');
+      return;
+    }
     if (!agreeTerms || !agreePrivacy) {
       show('이용약관 및 개인정보처리방침에 동의해주세요.', 'error');
       return;
@@ -232,6 +244,8 @@ export const RegisterPage = () => {
         name: value.name,
         phone: value.phone || undefined,
         secondaryPin,
+        securityQuestion,
+        securityAnswer: securityAnswer.trim(),
       });
       show('회원가입이 완료되었습니다. 로그인해주세요.', 'success');
       navigate('/login');
@@ -397,6 +411,47 @@ export const RegisterPage = () => {
               error={!!errors.phone}
               helperText={errors.phone?.message}
             />
+
+            {/* ─── 보안 질문 ─── */}
+            <Box
+              sx={{
+                border: '1px solid',
+                borderColor: securityQuestion && securityAnswer.trim() ? '#4caf50' : '#e0e0e0',
+                borderRadius: 2,
+                p: 2,
+                bgcolor: securityQuestion && securityAnswer.trim() ? '#f1f8e9' : '#fafbfc',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', mb: 1.5 }}>
+                🔐 보안 질문 (비밀번호 분실 시 본인 확인)
+              </Typography>
+              <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+                <InputLabel>보안 질문 선택</InputLabel>
+                <Select
+                  value={securityQuestion}
+                  label="보안 질문 선택"
+                  onChange={(e) => setSecurityQuestion(e.target.value)}
+                >
+                  <MenuItem value="내가 다녔던 초등학교 이름은?">내가 다녔던 초등학교 이름은?</MenuItem>
+                  <MenuItem value="어머니의 성함은?">어머니의 성함은?</MenuItem>
+                  <MenuItem value="첫 번째 반려동물의 이름은?">첫 번째 반려동물의 이름은?</MenuItem>
+                  <MenuItem value="내가 태어난 도시 이름은?">내가 태어난 도시 이름은?</MenuItem>
+                  <MenuItem value="좋아하는 음식은?">좋아하는 음식은?</MenuItem>
+                  <MenuItem value="가장 친한 친구의 이름은?">가장 친한 친구의 이름은?</MenuItem>
+                  <MenuItem value="첫 직장의 이름은?">첫 직장의 이름은?</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="보안 답변"
+                value={securityAnswer}
+                onChange={(e) => setSecurityAnswer(e.target.value)}
+                fullWidth
+                size="small"
+                placeholder="답변은 대소문자 구분 없이 저장됩니다"
+                helperText="비밀번호 분실 시 본인 확인에 사용됩니다."
+              />
+            </Box>
 
             {/* ─── 약관 동의 ─── */}
             <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 2, p: 2, bgcolor: '#fafbfc' }}>

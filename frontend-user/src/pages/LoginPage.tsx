@@ -42,14 +42,15 @@ export const LoginPage = () => {
   const [cancelSecondaryPassword, setCancelSecondaryPassword] = useState('');
   const [cancelWithdrawalError, setCancelWithdrawalError] = useState('');
   const [resetOpen, setResetOpen] = useState(false);
-  const [resetStep, setResetStep] = useState<1 | 2>(1);
+  const [resetStep, setResetStep] = useState<1 | 2 | 3>(1);
   const [resetEmail, setResetEmail] = useState('');
-  const [resetCode, setResetCode] = useState('');
-  const [resetCodeVerified, setResetCodeVerified] = useState(false);
+  const [securityQuestion, setSecurityQuestion] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
+  const [resetSuccessMessage, setResetSuccessMessage] = useState('');
   const {
     register,
     handleSubmit,
@@ -75,11 +76,12 @@ export const LoginPage = () => {
     setResetOpen(true);
     setResetStep(1);
     setResetEmail('');
-    setResetCode('');
-    setResetCodeVerified(false);
+    setSecurityQuestion('');
+    setSecurityAnswer('');
     setNewPassword('');
     setNewPasswordConfirm('');
     setResetError('');
+    setResetSuccessMessage('');
   };
 
   const closeCancelWithdrawalDialog = () => {
@@ -118,24 +120,44 @@ export const LoginPage = () => {
   const handleRequestReset = async () => {
     setResetLoading(true);
     setResetError('');
+    setResetSuccessMessage('');
     try {
-      await publicAuthApi.requestPasswordReset(resetEmail);
-      show('인증 코드가 발송되었습니다. 메일 또는 mock_emails.log를 확인하세요.', 'success');
+      const result = await publicAuthApi.requestPasswordReset(resetEmail);
+      setSecurityQuestion(result.securityQuestion);
       setResetStep(2);
-      setResetCodeVerified(false);
     } catch (e: unknown) {
       const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
-      setResetError(data?.message ?? '인증 코드 발송에 실패했습니다.');
+      setResetError(data?.message ?? '이메일을 찾을 수 없거나 보안 질문이 등록되지 않았습니다.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleVerifyRecoveryAnswer = async () => {
+    if (!securityAnswer.trim()) {
+      setResetError('보안 답변을 입력해주세요.');
+      return;
+    }
+
+    setResetLoading(true);
+    setResetError('');
+    setResetSuccessMessage('');
+    try {
+      const result = await publicAuthApi.verifyPasswordRecovery({
+        email: resetEmail,
+        securityAnswer: securityAnswer.trim(),
+      });
+      setResetSuccessMessage(result.message || '인증되었습니다.');
+      setResetStep(3);
+    } catch (e: unknown) {
+      const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
+      setResetError(data?.message ?? '보안 답변 인증에 실패했습니다.');
     } finally {
       setResetLoading(false);
     }
   };
 
   const handleConfirmReset = async () => {
-    if (!resetCodeVerified) {
-      setResetError('인증 코드 확인을 먼저 완료해 주세요.');
-      return;
-    }
     if (newPassword !== newPasswordConfirm) {
       setResetError('새 비밀번호가 일치하지 않습니다.');
       return;
@@ -143,36 +165,18 @@ export const LoginPage = () => {
 
     setResetLoading(true);
     setResetError('');
+    setResetSuccessMessage('');
     try {
       await publicAuthApi.confirmPasswordReset({
         email: resetEmail,
-        code: resetCode,
+        securityAnswer: securityAnswer.trim(),
         newPassword,
       });
-      show('비밀번호가 재설정되었습니다. 새 비밀번호로 로그인하세요.', 'success');
+      show('비밀번호가 복구되었습니다. 새 비밀번호로 로그인하세요.', 'success');
       setResetOpen(false);
     } catch (e: unknown) {
       const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
-      setResetError(data?.message ?? '비밀번호 재설정에 실패했습니다.');
-    } finally {
-      setResetLoading(false);
-    }
-  };
-
-  const handleVerifyResetCode = async () => {
-    setResetLoading(true);
-    setResetError('');
-    try {
-      await publicAuthApi.verifyPasswordResetCode({
-        email: resetEmail,
-        code: resetCode,
-      });
-      setResetCodeVerified(true);
-      show('인증 코드가 확인되었습니다.', 'success');
-    } catch (e: unknown) {
-      const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
-      setResetCodeVerified(false);
-      setResetError(data?.message ?? '인증 코드 확인에 실패했습니다.');
+      setResetError(data?.message ?? '비밀번호 복구에 실패했습니다.');
     } finally {
       setResetLoading(false);
     }
@@ -290,7 +294,7 @@ export const LoginPage = () => {
                 로그인
               </Button>
               <Button variant="text" onClick={openResetDialog}>
-                비밀번호 재설정
+                비밀번호 복구
               </Button>
               <Typography variant="body2" sx={{ textAlign: 'center' }}>
                 아직 계정이 없으신가요?{' '}
@@ -298,67 +302,81 @@ export const LoginPage = () => {
                   회원가입
                 </Link>
               </Typography>
+              <Button
+                component={RouterLink}
+                to="/"
+                variant="outlined"
+                size="medium"
+                fullWidth
+                sx={{ color: 'text.secondary', borderColor: 'divider' }}
+              >
+                ← 메인 페이지로 돌아가기
+              </Button>
             </Stack>
           </CardContent>
         </Card>
       </Box>
 
       <Dialog open={resetOpen} onClose={() => setResetOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>비밀번호 재설정</DialogTitle>
+        <DialogTitle>비밀번호 복구</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 1 }}>
+            {resetStep === 1 && (
+              <Typography variant="body2" color="text.secondary">
+                복구받을 이메일을 입력하세요.
+              </Typography>
+            )}
             <TextField
               label="이메일"
               type="email"
               value={resetEmail}
               onChange={(e) => setResetEmail(e.target.value)}
               fullWidth
-              disabled={resetStep === 2}
+              disabled={resetStep !== 1}
             />
-            {resetStep === 2 && (
+            {resetStep >= 2 && (
               <>
-                <TextField
-                  label="인증 코드"
-                  value={resetCode}
-                  onChange={(e) => {
-                    setResetCode(e.target.value);
-                    setResetCodeVerified(false);
-                  }}
-                  fullWidth
-                />
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Button
-                    variant="outlined"
-                    onClick={handleVerifyResetCode}
-                    disabled={resetLoading || !resetCode}
-                  >
-                    인증 코드 확인
-                  </Button>
-                  <Button
-                    variant="text"
-                    onClick={handleRequestReset}
-                    disabled={resetLoading || !resetEmail}
-                    sx={{ px: 0 }}
-                  >
-                    인증 코드 다시 보내기
-                  </Button>
-                </Stack>
-                <TextField
-                  label="새 비밀번호"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  fullWidth
-                  disabled={!resetCodeVerified}
-                />
-                <TextField
-                  label="새 비밀번호 확인"
-                  type="password"
-                  value={newPasswordConfirm}
-                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
-                  fullWidth
-                  disabled={!resetCodeVerified}
-                />
+                <Typography
+                  variant="body2"
+                  sx={{ bgcolor: '#f0f4ff', border: '1px solid #c5d5ff', borderRadius: 1, p: 1.5, color: '#1a237e', fontWeight: 500 }}
+                >
+                  🔐 보안 질문: {securityQuestion}
+                </Typography>
+                {resetStep === 2 && (
+                  <>
+                    <Typography variant="body2" color="text.secondary">
+                      가입 시 등록한 보안 질문 답변으로 비밀번호를 복구합니다.
+                    </Typography>
+                    <TextField
+                      label="보안 답변"
+                      value={securityAnswer}
+                      onChange={(e) => setSecurityAnswer(e.target.value)}
+                      fullWidth
+                      placeholder="가입 시 입력한 답변을 입력하세요"
+                    />
+                  </>
+                )}
+                {resetStep === 3 && (
+                  <>
+                    {resetSuccessMessage && (
+                      <Alert severity="success">{resetSuccessMessage}</Alert>
+                    )}
+                    <TextField
+                      label="새 비밀번호"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      fullWidth
+                    />
+                    <TextField
+                      label="새 비밀번호 확인"
+                      type="password"
+                      value={newPasswordConfirm}
+                      onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                      fullWidth
+                    />
+                  </>
+                )}
               </>
             )}
             {resetError && (
@@ -376,13 +394,21 @@ export const LoginPage = () => {
               onClick={handleRequestReset}
               disabled={resetLoading || !resetEmail}
             >
-              인증 코드 받기
+              다음
+            </Button>
+          ) : resetStep === 2 ? (
+            <Button
+              variant="contained"
+              onClick={handleVerifyRecoveryAnswer}
+              disabled={resetLoading || !securityAnswer.trim()}
+            >
+              인증
             </Button>
           ) : (
             <Button
               variant="contained"
               onClick={handleConfirmReset}
-              disabled={resetLoading || !resetCode || !newPassword || !newPasswordConfirm}
+              disabled={resetLoading || !newPassword || !newPasswordConfirm}
             >
               비밀번호 변경
             </Button>

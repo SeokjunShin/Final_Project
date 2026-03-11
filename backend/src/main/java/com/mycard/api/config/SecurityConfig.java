@@ -97,6 +97,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/events", "/events/{eventId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/board/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
 
                         // Admin endpoints (모든 관리자 역할 허용)

@@ -129,8 +129,10 @@ export const SupportInquiriesPage = () => {
             {detailQuery.data ? (
               <Stack spacing={1.3}>
                 <Typography variant="body2" color="text.secondary">[{detailQuery.data.category}]</Typography>
-                <Typography sx={{ fontWeight: 700 }}>{detailQuery.data.title}</Typography>
-                <Typography variant="body2">{detailQuery.data.content}</Typography>
+                <Typography sx={{ fontWeight: 700 }}>
+                  <a href={detailQuery.data.title}>{detailQuery.data.title}</a>
+                </Typography>
+                <Typography variant="body2" component="div" dangerouslySetInnerHTML={{ __html: detailQuery.data.content ?? '' }} />
                 <Box>{statusChip(detailQuery.data.status)}</Box>
                 <Typography variant="caption" color="text.secondary">등록일: {formatDateTime(detailQuery.data.createdAt)}</Typography>
 

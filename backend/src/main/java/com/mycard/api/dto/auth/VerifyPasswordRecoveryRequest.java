@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ConfirmPasswordResetRequest {
+public class VerifyPasswordRecoveryRequest {
 
     @NotBlank(message = "이메일을 입력해주세요.")
     @Email(message = "유효한 이메일 형식이 아닙니다.")
@@ -17,8 +17,4 @@ public class ConfirmPasswordResetRequest {
     @NotBlank(message = "보안 답변을 입력해주세요.")
     @Size(min = 1, max = 100, message = "보안 답변은 100자 이하로 입력해주세요.")
     private String securityAnswer;
-
-    @NotBlank(message = "새 비밀번호를 입력해주세요.")
-    @Size(min = 8, max = 100, message = "비밀번호는 8자 이상 100자 이하여야 합니다.")
-    private String newPassword;
 }

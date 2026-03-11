@@ -19,7 +19,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 윈도우 경로 처리 (file:///)
         String resourceLocation = "file:///" + uploadDir.replace("\\", "/") + "/";
 
-        // /api/uploads/** 경로로 요청이 오면 실제 로컬 파일 시스템의 폴더에서 서빙
+        // 애플리케이션 context-path(/api) 하위에서 /uploads/** 를 실제 업로드 폴더로 서빙한다.
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(resourceLocation);
     }

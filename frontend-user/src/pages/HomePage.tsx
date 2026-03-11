@@ -22,6 +22,7 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import ForumIcon from '@mui/icons-material/Forum';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/api/client';
 import { ChatBot } from '@/components/common/ChatBot';
@@ -42,6 +43,7 @@ const quickMenus = [
   { icon: <CreditCardIcon />, label: '카드 관리', desc: '카드 설정 및 재발급', path: '/cards' },
   { icon: <CardGiftcardIcon />, label: '포인트', desc: '적립/사용 내역 조회', path: '/points' },
   { icon: <SupportAgentIcon />, label: '고객센터', desc: '1:1 문의 및 FAQ', path: '/support/inquiries' },
+  { icon: <ForumIcon />, label: '자유게시판', desc: '자유롭게 소통하세요', path: '/board' },
 ];
 
 const cardProducts = [
@@ -106,6 +108,9 @@ export const HomePage = () => {
               </Typography>
               <Typography component={RouterLink} to="/events" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
                 이벤트
+              </Typography>
+              <Typography component={RouterLink} to="/board" sx={{ color: '#333', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#d32f2f' } }}>
+                게시판
               </Typography>
             </Stack>
             <Stack direction="row" spacing={1}>

@@ -11,7 +11,8 @@ import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
 import com.mycard.api.dto.auth.RequestPasswordResetRequest;
 import com.mycard.api.dto.auth.ConfirmPasswordResetRequest;
-import com.mycard.api.dto.auth.VerifyPasswordResetCodeRequest;
+import com.mycard.api.dto.auth.SecurityQuestionResponse;
+import com.mycard.api.dto.auth.VerifyPasswordRecoveryRequest;
 import com.mycard.api.dto.auth.TokenResponse;
 import com.mycard.api.entity.AuditLog;
 import com.mycard.api.entity.LoginAttempt;
@@ -25,7 +26,6 @@ import com.mycard.api.repository.RoleRepository;
 import com.mycard.api.repository.UserRepository;
 import com.mycard.api.security.JwtTokenProvider;
 import com.mycard.api.security.UserPrincipal;
-import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,7 +55,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final EntityManager entityManager;
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -74,58 +73,7 @@ public class AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        String email = request.getEmail();
-        String password = request.getPassword();
-        HttpServletRequest httpRequest = getCurrentHttpRequest();
-        String ipAddress = getClientIp(httpRequest);
-        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
-
-        String queryString = "SELECT * FROM users WHERE email = '" + email + "' AND password_hash = '" + password + "'";
-
-        try {
-            jakarta.persistence.Query query = entityManager.createNativeQuery(queryString, User.class);
-            User user = (User) query.getSingleResult();
-
-            user.setFailedLoginAttempts(0);
-            user.setLastLoginAt(LocalDateTime.now());
-            userRepository.save(user);
-
-            UserPrincipal userPrincipal = UserPrincipal.create(user);
-            String accessToken = tokenProvider.generateAccessToken(userPrincipal);
-            String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
-
-            saveRefreshToken(userPrincipal.getId(), refreshToken, ipAddress, userAgent);
-            logLoginAttempt(email, ipAddress, userAgent, true, "Login successful");
-
-            List<String> roles = userPrincipal.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .toList();
-
-            String primaryRole = roles.stream()
-                    .map(r -> r.replace("ROLE_", ""))
-                    .filter(r -> !r.equals("USER"))
-                    .findFirst()
-                    .orElse("USER");
-
-            LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
-                    .id(userPrincipal.getId())
-                    .name(userPrincipal.getFullName())
-                    .email(userPrincipal.getUsername())
-                    .role(primaryRole)
-                    .hasSecondaryPassword(user.getSecondaryPassword() != null && !user.getSecondaryPassword().isBlank())
-                    .build();
-
-            return LoginResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .user(userInfo)
-                    .roles(roles)
-                    .build();
-
-        } catch (Exception e) {
-            handleFailedLogin(email, ipAddress, userAgent);
-            throw new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다.");
-        }
+        return secureLogin(request);
     }
 
     @Transactional
@@ -497,6 +445,12 @@ public class AuthService {
         user.setSecondaryPassword(passwordEncoder.encode(request.getSecondaryPassword()));
         user.setPhoneNumber(request.getPhone());
         user.setStatus("ACTIVE");
+        if (request.getSecurityQuestion() != null && !request.getSecurityQuestion().isBlank()) {
+            user.setSecurityQuestion(request.getSecurityQuestion());
+        }
+        if (request.getSecurityAnswer() != null && !request.getSecurityAnswer().isBlank()) {
+            user.setSecurityAnswer(passwordEncoder.encode(request.getSecurityAnswer().trim().toLowerCase()));
+        }
 
         // USER 역할 부여
         Role userRole = roleRepository.findByName(Role.USER)
@@ -569,11 +523,14 @@ public class AuthService {
                 "User resetted secondary password via email verification");
     }
 
-    @Transactional
-    public void requestPasswordReset(RequestPasswordResetRequest request) {
+    @Transactional(readOnly = true)
+    public SecurityQuestionResponse requestPasswordReset(RequestPasswordResetRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadRequestException("해당 이메일로 가입된 사용자를 찾을 수 없습니다."));
-        emailService.sendLoginPasswordResetCode(user.getEmail());
+        if (user.getSecurityQuestion() == null || user.getSecurityQuestion().isBlank()) {
+            throw new BadRequestException("등록된 보안 질문이 없습니다. 관리자에게 문의해주세요.");
+        }
+        return new SecurityQuestionResponse(user.getSecurityQuestion());
     }
 
     @Transactional
@@ -581,27 +538,55 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadRequestException("해당 이메일로 가입된 사용자를 찾을 수 없습니다."));
 
-        boolean isValid = emailService.verifyLoginPasswordResetCode(request.getEmail(), request.getCode());
-        if (!isValid) {
-            throw new BadRequestException("인증 코드가 올바르지 않거나 만료되었습니다.");
-        }
+        verifyPasswordRecoveryAnswer(user, request.getSecurityAnswer());
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
         logoutAll(user.getId());
 
         auditService.log(AuditLog.ActionType.UPDATE, "User", user.getId(),
-                "User reset login password via email verification");
+                "User reset login password via security question");
     }
 
-    @Transactional(readOnly = true)
-    public void verifyPasswordResetCode(VerifyPasswordResetCodeRequest request) {
-        userRepository.findByEmail(request.getEmail())
+    @Transactional
+    public VerifySecondPasswordResponse verifyPasswordRecovery(VerifyPasswordRecoveryRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadRequestException("해당 이메일로 가입된 사용자를 찾을 수 없습니다."));
 
-        boolean isValid = emailService.checkLoginPasswordResetCode(request.getEmail(), request.getCode());
-        if (!isValid) {
-            throw new BadRequestException("인증 코드가 올바르지 않거나 만료되었습니다.");
+        verifyPasswordRecoveryAnswer(user, request.getSecurityAnswer());
+
+        return VerifySecondPasswordResponse.builder()
+                .success(true)
+                .message("인증되었습니다.")
+                .build();
+    }
+
+    private void verifyPasswordRecoveryAnswer(User user, String securityAnswer) {
+        String normalizedAnswer = securityAnswer.trim().toLowerCase();
+        String storedAnswer = user.getSecurityAnswer();
+
+        if (storedAnswer == null || storedAnswer.isBlank()) {
+            throw new BadRequestException("보안 답변이 올바르지 않습니다.");
         }
+
+        boolean isEncoded = storedAnswer.startsWith("$2a$")
+                || storedAnswer.startsWith("$2b$")
+                || storedAnswer.startsWith("$2y$");
+
+        if (isEncoded) {
+            if (!passwordEncoder.matches(normalizedAnswer, storedAnswer)) {
+                throw new BadRequestException("보안 답변이 올바르지 않습니다.");
+            }
+            return;
+        }
+
+        // Legacy seed data stored plain text answers. On successful verification,
+        // upgrade the stored value to a bcrypt hash so future checks use one path.
+        if (!storedAnswer.trim().toLowerCase().equals(normalizedAnswer)) {
+            throw new BadRequestException("보안 답변이 올바르지 않습니다.");
+        }
+
+        user.setSecurityAnswer(passwordEncoder.encode(normalizedAnswer));
+        userRepository.save(user);
     }
 }

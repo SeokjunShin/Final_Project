@@ -10,8 +10,9 @@ import com.mycard.api.dto.auth.SendResetCodeRequest;
 import com.mycard.api.dto.auth.ConfirmResetPasswordRequest;
 import com.mycard.api.dto.auth.RequestPasswordResetRequest;
 import com.mycard.api.dto.auth.ConfirmPasswordResetRequest;
-import com.mycard.api.dto.auth.VerifyPasswordResetCodeRequest;
+import com.mycard.api.dto.auth.SecurityQuestionResponse;
 import com.mycard.api.dto.auth.TokenResponse;
+import com.mycard.api.dto.auth.VerifyPasswordRecoveryRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
 import com.mycard.api.security.CurrentUser;
@@ -128,27 +129,27 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "로그인 비밀번호 재설정용 인증 코드 메일 발송")
+    @Operation(summary = "로그인 비밀번호 복구용 보안 질문 조회")
     @PostMapping("/password/reset/request")
-    public ResponseEntity<Void> requestPasswordReset(
+    public ResponseEntity<SecurityQuestionResponse> requestPasswordReset(
             @Valid @RequestBody RequestPasswordResetRequest request) {
-        authService.requestPasswordReset(request);
-        return ResponseEntity.ok().build();
+        SecurityQuestionResponse response = authService.requestPasswordReset(request);
+        return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "로그인 비밀번호 재설정 확정")
+    @Operation(summary = "로그인 비밀번호 복구용 보안 답변 검증")
+    @PostMapping("/password/reset/verify")
+    public ResponseEntity<VerifySecondPasswordResponse> verifyPasswordRecovery(
+            @Valid @RequestBody VerifyPasswordRecoveryRequest request) {
+        VerifySecondPasswordResponse response = authService.verifyPasswordRecovery(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "로그인 비밀번호 복구 확정 (보안 질문 답변 검증)")
     @PostMapping("/password/reset/confirm")
     public ResponseEntity<Void> confirmPasswordReset(
             @Valid @RequestBody ConfirmPasswordResetRequest request) {
         authService.confirmPasswordReset(request);
-        return ResponseEntity.ok().build();
-    }
-
-    @Operation(summary = "로그인 비밀번호 재설정 인증 코드 확인")
-    @PostMapping("/password/reset/verify")
-    public ResponseEntity<Void> verifyPasswordResetCode(
-            @Valid @RequestBody VerifyPasswordResetCodeRequest request) {
-        authService.verifyPasswordResetCode(request);
         return ResponseEntity.ok().build();
     }
 

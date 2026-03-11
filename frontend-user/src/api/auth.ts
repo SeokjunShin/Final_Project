@@ -51,13 +51,15 @@ export const authApi = {
     localStorage.setItem('user_profile', JSON.stringify(data));
     return data;
   },
-  requestPasswordReset: async (email: string) => {
-    await apiClient.post('/auth/password/reset/request', { email });
+  requestPasswordReset: async (email: string): Promise<{ securityQuestion: string }> => {
+    const { data } = await apiClient.post<{ securityQuestion: string }>('/auth/password/reset/request', { email });
+    return data;
   },
-  verifyPasswordResetCode: async (payload: { email: string; code: string }) => {
-    await apiClient.post('/auth/password/reset/verify', payload);
+  verifyPasswordRecovery: async (payload: { email: string; securityAnswer: string }): Promise<{ success: boolean; message: string }> => {
+    const { data } = await apiClient.post<{ success: boolean; message: string }>('/auth/password/reset/verify', payload);
+    return data;
   },
-  confirmPasswordReset: async (payload: { email: string; code: string; newPassword: string }) => {
+  confirmPasswordReset: async (payload: { email: string; securityAnswer: string; newPassword: string }) => {
     await apiClient.post('/auth/password/reset/confirm', payload);
   },
 };

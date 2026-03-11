@@ -1,0 +1,2 @@
+ALTER TABLE boards ADD COLUMN category VARCHAR(100) DEFAULT '사이트 문의';
+ALTER TABLE boards ADD COLUMN allowed_users TEXT DEFAULT NULL;

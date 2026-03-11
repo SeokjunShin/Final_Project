@@ -35,6 +35,7 @@ import { MerchantsPage } from '@/pages/MerchantsPage';
 import { EventsPage } from '@/pages/EventsPage';
 import { PointPolicyPage } from '@/pages/PointPolicyPage';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
+import { AdminInquiryBoardPage } from '@/pages/AdminInquiryBoardPage';
 import { CardApplicationsPage } from '@/pages/CardApplicationsPage';
 import { ReissueRequestsPage } from '@/pages/ReissueRequestsPage';
 import { LoansPage } from '@/pages/LoansPage';
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { path: '/dashboard', element: <AdminDashboardPage /> },
+          { path: '/board-inquiries', element: <AdminInquiryBoardPage /> },
           { path: '/support/inquiries', element: <InquiriesPage /> },
           { path: '/inquiries', element: <Navigate to="/support/inquiries" replace /> },
           { path: '/card-applications', element: <CardApplicationsPage /> },

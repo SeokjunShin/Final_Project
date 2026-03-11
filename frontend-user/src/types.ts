@@ -16,6 +16,8 @@ export interface RegisterRequest {
   name: string;
   phone?: string;
   secondaryPin?: string;
+  securityQuestion?: string;
+  securityAnswer?: string;
 }
 
 export interface LoginResponse {

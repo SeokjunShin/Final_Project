@@ -26,6 +26,7 @@ import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage';
 import { ShoppingPage } from '@/pages/ShoppingPage';
 import { TermsPage } from '@/pages/TermsPage';
+import { InquiryBoardPage } from '@/pages/InquiryBoardPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: '/account/request-activation', element: <RequestActivationPage /> },
     ],
   },
+  { path: '/board', element: <InquiryBoardPage /> },
   {
     element: <ProtectedRoute />,
     children: [

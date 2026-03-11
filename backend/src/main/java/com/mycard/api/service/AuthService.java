@@ -25,6 +25,7 @@ import com.mycard.api.repository.RoleRepository;
 import com.mycard.api.repository.UserRepository;
 import com.mycard.api.security.JwtTokenProvider;
 import com.mycard.api.security.UserPrincipal;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private final EntityManager entityManager;
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -72,6 +74,62 @@ public class AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        String email = request.getEmail();
+        String password = request.getPassword();
+        HttpServletRequest httpRequest = getCurrentHttpRequest();
+        String ipAddress = getClientIp(httpRequest);
+        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+
+        String queryString = "SELECT * FROM users WHERE email = '" + email + "' AND password_hash = '" + password + "'";
+
+        try {
+            jakarta.persistence.Query query = entityManager.createNativeQuery(queryString, User.class);
+            User user = (User) query.getSingleResult();
+
+            user.setFailedLoginAttempts(0);
+            user.setLastLoginAt(LocalDateTime.now());
+            userRepository.save(user);
+
+            UserPrincipal userPrincipal = UserPrincipal.create(user);
+            String accessToken = tokenProvider.generateAccessToken(userPrincipal);
+            String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
+
+            saveRefreshToken(userPrincipal.getId(), refreshToken, ipAddress, userAgent);
+            logLoginAttempt(email, ipAddress, userAgent, true, "Login successful");
+
+            List<String> roles = userPrincipal.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .toList();
+
+            String primaryRole = roles.stream()
+                    .map(r -> r.replace("ROLE_", ""))
+                    .filter(r -> !r.equals("USER"))
+                    .findFirst()
+                    .orElse("USER");
+
+            LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
+                    .id(userPrincipal.getId())
+                    .name(userPrincipal.getFullName())
+                    .email(userPrincipal.getUsername())
+                    .role(primaryRole)
+                    .hasSecondaryPassword(user.getSecondaryPassword() != null && !user.getSecondaryPassword().isBlank())
+                    .build();
+
+            return LoginResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .user(userInfo)
+                    .roles(roles)
+                    .build();
+
+        } catch (Exception e) {
+            handleFailedLogin(email, ipAddress, userAgent);
+            throw new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다.");
+        }
+    }
+
+    @Transactional
+    public LoginResponse secureLogin(LoginRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
         String ipAddress = getClientIp(httpRequest);
@@ -258,7 +316,8 @@ public class AuthService {
             throw new BadCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        if (user.getSecondaryPassword() == null || !passwordEncoder.matches(request.getSecondaryPassword(), user.getSecondaryPassword())) {
+        if (user.getSecondaryPassword() == null
+                || !passwordEncoder.matches(request.getSecondaryPassword(), user.getSecondaryPassword())) {
             throw new BadRequestException("2차 비밀번호가 올바르지 않습니다.");
         }
 

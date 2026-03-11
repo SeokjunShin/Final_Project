@@ -93,8 +93,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/actuator/health",
-                                "/actuator/info"
-                        ).permitAll()
+                                "/actuator/info")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/events", "/events/{eventId}").permitAll()
                         .requestMatchers("/uploads/**").permitAll()

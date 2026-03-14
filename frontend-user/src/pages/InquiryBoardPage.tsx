@@ -250,7 +250,6 @@ export const InquiryBoardPage = () => {
                             </DialogActions>
                         </Dialog>
 
-                        {/* 상세조회 다이얼로그 (XSS 취약점) */}
                         <Dialog open={openDetail} onClose={() => setOpenDetail(false)} fullWidth maxWidth="sm">
                             {selectedBoard && (
                                 <>
@@ -260,7 +259,6 @@ export const InquiryBoardPage = () => {
                                             작성자: {selectedBoard.authorName} | 작성일: {new Date(selectedBoard.createdAt).toLocaleString()}
                                         </Typography>
                                         <Box sx={{ mt: 2, p: 2, bgcolor: '#f9f9f9', borderRadius: 1, minHeight: 100 }}>
-                                            {/* 의도적인 XSS 취약점: dangerouslySetInnerHTML 사용 */}
                                             <div dangerouslySetInnerHTML={{ __html: selectedBoard.content }} />
                                         </Box>
 

@@ -25,33 +25,12 @@ public class LoginSecurityService {
     private final LoginAttemptRepository loginAttemptRepository;
 
     @Transactional(readOnly = true)
-    public boolean hasTooManyRecentFailuresForEmail(String email, int loginAttemptLimit, int lockoutDurationMinutes) {
-        LocalDateTime since = LocalDateTime.now().minusMinutes(lockoutDurationMinutes);
-        return loginAttemptRepository.countFailedAttemptsSince(email, since) >= loginAttemptLimit;
-    }
-
-    @Transactional(readOnly = true)
     public boolean hasTooManyRecentFailuresForIp(String ipAddress, int ipAttemptLimit, int lockoutDurationMinutes) {
         if (ipAddress == null || ipAddress.isBlank() || "unknown".equalsIgnoreCase(ipAddress)) {
             return false;
         }
         LocalDateTime since = LocalDateTime.now().minusMinutes(lockoutDurationMinutes);
         return loginAttemptRepository.countFailedAttemptsByIpSince(ipAddress, since) >= ipAttemptLimit;
-    }
-
-    @Transactional(readOnly = true)
-    public long getRetryAfterSecondsForEmail(String email, int loginAttemptLimit, int lockoutDurationMinutes) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime since = now.minusMinutes(lockoutDurationMinutes);
-        long count = loginAttemptRepository.countFailedAttemptsSince(email, since);
-        if (count < loginAttemptLimit) {
-            return 0;
-        }
-        LocalDateTime earliest = loginAttemptRepository.findEarliestFailedAttemptSince(email, since);
-        if (earliest == null) {
-            return 0;
-        }
-        return Math.max(1, Duration.between(now, earliest.plusMinutes(lockoutDurationMinutes)).getSeconds());
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +53,7 @@ public class LoginSecurityService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public FailedLoginResult recordFailedLogin(String email, String ipAddress, String userAgent,
-                                               int loginAttemptLimit, int lockoutDurationMinutes) {
+                                               int ipAttemptLimit, int lockoutDurationMinutes) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime since = now.minusMinutes(lockoutDurationMinutes);
         LoginAttempt attempt = new LoginAttempt(email, ipAddress, userAgent, false, "Invalid credentials");
@@ -82,32 +61,11 @@ public class LoginSecurityService {
         long currentIpAttempts = (ipAddress == null || ipAddress.isBlank() || "unknown".equalsIgnoreCase(ipAddress))
                 ? 0
                 : loginAttemptRepository.countFailedAttemptsByIpSince(ipAddress, since) + 1;
-        long currentEmailAttempts = loginAttemptRepository.countFailedAttemptsSince(email, since) + 1;
-        int remainingAttempts = Math.max(0, loginAttemptLimit - (int) currentIpAttempts);
-        boolean blocked = currentIpAttempts >= loginAttemptLimit;
+        int remainingAttempts = Math.max(0, ipAttemptLimit - (int) currentIpAttempts);
+        boolean blocked = currentIpAttempts >= ipAttemptLimit;
         LocalDateTime lockExpiryTime = null;
         if (user != null) {
             attempt.setUser(user);
-            int attempts = (user.getFailedLoginAttempts() != null ? user.getFailedLoginAttempts() : 0) + 1;
-            user.setFailedLoginAttempts(attempts);
-            user.setLastFailedLoginAt(now);
-            remainingAttempts = Math.min(
-                    Math.max(0, loginAttemptLimit - attempts),
-                    Math.max(0, loginAttemptLimit - (int) currentIpAttempts));
-
-            if (attempts >= loginAttemptLimit) {
-                user.lock();
-                lockExpiryTime = now.plusMinutes(lockoutDurationMinutes);
-                user.setLockExpiryTime(lockExpiryTime);
-                blocked = true;
-                log.warn("Account locked due to {} failed attempts: {}", attempts, email);
-            }
-
-            userRepository.save(user);
-        } else {
-            remainingAttempts = Math.min(
-                    Math.max(0, loginAttemptLimit - (int) currentEmailAttempts),
-                    Math.max(0, loginAttemptLimit - (int) currentIpAttempts));
         }
         loginAttemptRepository.save(attempt);
 
@@ -123,7 +81,7 @@ public class LoginSecurityService {
         return new FailedLoginResult(remainingAttempts, blocked, lockExpiryTime);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void recordSuccessfulLogin(Long userId, String email, String ipAddress, String userAgent, String reason) {
         LoginAttempt attempt = new LoginAttempt(email, ipAddress, userAgent, true, reason);
         userRepository.findById(userId).ifPresent(attempt::setUser);

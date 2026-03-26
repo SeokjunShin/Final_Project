@@ -49,7 +49,6 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -70,9 +69,6 @@ public class AuthService {
     private final EmailService emailService;
     private final LoginSecurityService loginSecurityService;
     private final TotpService totpService;
-
-    @Value("${app.security.login-attempt-limit:5}")
-    private int loginAttemptLimit;
 
     @Value("${app.security.login-lockout-duration-minutes:30}")
     private int lockoutDurationMinutes;
@@ -95,38 +91,11 @@ public class AuthService {
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
 
-        if (loginSecurityService.hasTooManyRecentFailuresForIp(ipAddress, ipAttemptLimit, lockoutDurationMinutes)) {
-            loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "IP rate limit exceeded");
-            long retryAfterSeconds = loginSecurityService.getRetryAfterSecondsForIp(
-                    ipAddress,
-                    ipAttemptLimit,
-                    lockoutDurationMinutes);
-            throw buildLoginBlockedException("TOO_MANY_LOGIN_ATTEMPTS", "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.", retryAfterSeconds);
-        }
+        enforceIpRateLimit(email, ipAddress, userAgent, "IP rate limit exceeded");
 
         User user = userRepository.findByEmail(email).orElse(null);
-        if (user == null
-                && loginSecurityService.hasTooManyRecentFailuresForEmail(email, loginAttemptLimit, lockoutDurationMinutes)) {
-            loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "Email rate limit exceeded");
-            long retryAfterSeconds = loginSecurityService.getRetryAfterSecondsForEmail(
-                    email,
-                    loginAttemptLimit,
-                    lockoutDurationMinutes);
-            throw buildLoginBlockedException("TOO_MANY_LOGIN_ATTEMPTS", "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.", retryAfterSeconds);
-        }
-        if (user != null && user.isWithdrawalPending()) {
-            throw new DisabledException("회원 탈퇴가 예약되었습니다. 15분 후 최종 탈퇴 처리됩니다.");
-        }
-        if (user != null && user.getLocked() && user.getLockExpiryTime() != null) {
-            if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
-                loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "Account locked");
-                throw buildAccountLockedException(user.getLockExpiryTime());
-            } else {
-                user.setLocked(false);
-                user.setLockExpiryTime(null);
-                user.setFailedLoginAttempts(0);
-                userRepository.save(user);
-            }
+        if (user != null) {
+            clearLegacyLoginLock(user);
         }
 
         try {
@@ -136,8 +105,7 @@ public class AuthService {
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
             if (user != null) {
-                user.setFailedLoginAttempts(0);
-                user.setLockExpiryTime(null);
+                user.setLastFailedLoginAt(null);
                 user.setLastLoginAt(LocalDateTime.now());
                 userRepository.save(user);
             }
@@ -149,7 +117,7 @@ public class AuthService {
 
             return buildLoginResponse(user, userPrincipal, sessionTokens.accessToken(), sessionTokens.refreshToken());
 
-        } catch (BadCredentialsException e) {
+        } catch (BadCredentialsException | LockedException | DisabledException e) {
             throw handleFailedLogin(email, ipAddress, userAgent);
         }
     }
@@ -160,27 +128,18 @@ public class AuthService {
         HttpServletRequest httpRequest = getCurrentHttpRequest();
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+        enforceIpRateLimit(email, ipAddress, userAgent, "IP rate limit exceeded (reactivate)");
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다."));
+
+        clearLegacyLoginLock(user);
 
         if (user.isWithdrawalPending()) {
             throw new DisabledException("회원 탈퇴가 예약되었습니다. 15분 후 최종 탈퇴 처리됩니다.");
         }
         if (user.isWithdrawn()) {
             throw new DisabledException("이미 탈퇴 처리된 계정입니다.");
-        }
-
-        if (user.getLocked() && user.getLockExpiryTime() != null) {
-            if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
-                loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "Account locked (reactivate)");
-                throw buildAccountLockedException(user.getLockExpiryTime());
-            } else {
-                user.setLocked(false);
-                user.setLockExpiryTime(null);
-                user.setFailedLoginAttempts(0);
-                userRepository.save(user);
-            }
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -190,8 +149,7 @@ public class AuthService {
         if (!user.getEnabled()) {
             user.enable();
         }
-        user.setFailedLoginAttempts(0);
-        user.setLockExpiryTime(null);
+        user.setLastFailedLoginAt(null);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -215,6 +173,7 @@ public class AuthService {
         HttpServletRequest httpRequest = getCurrentHttpRequest();
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+        enforceIpRateLimit(email, ipAddress, userAgent, "IP rate limit exceeded (cancel withdrawal)");
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다."));
@@ -233,8 +192,7 @@ public class AuthService {
         }
 
         user.cancelWithdrawalRequest();
-        user.setFailedLoginAttempts(0);
-        user.setLockExpiryTime(null);
+        user.setLastFailedLoginAt(null);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -353,16 +311,34 @@ public class AuthService {
                 email,
                 ipAddress,
                 userAgent,
-                loginAttemptLimit,
+                ipAttemptLimit,
                 lockoutDurationMinutes);
 
         if (result.blocked() && result.lockExpiryTime() != null) {
-            return buildAccountLockedException(result.lockExpiryTime());
+            return buildLoginBlockedException(
+                    "TOO_MANY_LOGIN_ATTEMPTS",
+                    "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.",
+                    Math.max(1, java.time.Duration.between(LocalDateTime.now(), result.lockExpiryTime()).getSeconds()));
         }
 
         return new InvalidLoginCredentialsException(
                 "아이디 또는 비밀번호가 일치하지 않습니다.",
                 result.remainingAttempts());
+    }
+
+    private void enforceIpRateLimit(String email, String ipAddress, String userAgent, String reason) {
+        if (!loginSecurityService.hasTooManyRecentFailuresForIp(ipAddress, ipAttemptLimit, lockoutDurationMinutes)) {
+            return;
+        }
+        loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, reason);
+        long retryAfterSeconds = loginSecurityService.getRetryAfterSecondsForIp(
+                ipAddress,
+                ipAttemptLimit,
+                lockoutDurationMinutes);
+        throw buildLoginBlockedException(
+                "TOO_MANY_LOGIN_ATTEMPTS",
+                "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.",
+                retryAfterSeconds);
     }
 
     private void saveRefreshToken(Long userId, String refreshToken, String ipAddress, String userAgent,
@@ -666,12 +642,15 @@ public class AuthService {
     private record SessionTokens(String accessToken, String refreshToken) {
     }
 
-    private LoginBlockedException buildAccountLockedException(LocalDateTime lockExpiryTime) {
-        long retryAfterSeconds = Math.max(1, Duration.between(LocalDateTime.now(), lockExpiryTime).getSeconds());
-        return buildLoginBlockedException(
-                "ACCOUNT_LOCKED",
-                "계정이 잠겨있습니다. 잠시 후 다시 시도해주세요.",
-                retryAfterSeconds);
+    private void clearLegacyLoginLock(User user) {
+        if (!Boolean.TRUE.equals(user.getLocked()) || user.getLockExpiryTime() == null) {
+            return;
+        }
+        user.setLocked(false);
+        user.setFailedLoginAttempts(0);
+        user.setLockExpiryTime(null);
+        user.setLastFailedLoginAt(null);
+        userRepository.save(user);
     }
 
     private LoginBlockedException buildLoginBlockedException(String code, String message, long retryAfterSeconds) {

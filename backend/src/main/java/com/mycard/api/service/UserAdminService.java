@@ -6,6 +6,7 @@ import com.mycard.api.entity.Role;
 import com.mycard.api.entity.User;
 import com.mycard.api.exception.ResourceNotFoundException;
 import com.mycard.api.repository.UserRepository;
+import com.mycard.api.util.MaskingUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -84,15 +85,16 @@ public class UserAdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자", userId));
         user.unlock();
+        userRepository.save(user);
     }
 
     private UserAdminResponse toResponse(User user) {
         return UserAdminResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .phoneNumber(user.getPhoneNumber())
+                .email(MaskingUtils.maskEmail(user.getEmail()))
+                .fullName(MaskingUtils.maskName(user.getFullName()))
+                .phoneNumber(MaskingUtils.maskPhone(user.getPhoneNumber()))
                 .enabled(user.getEnabled())
                 .locked(user.getLocked())
                 .lastLoginAt(user.getLastLoginAt())

@@ -95,12 +95,12 @@ public class GlobalExceptionHandler {
             LockedException ex, WebRequest request) {
         log.debug("Account locked");
         ErrorResponse error = new ErrorResponse(
-                HttpStatus.UNAUTHORIZED.value(),
+                423,
                 "ACCOUNT_LOCKED",
-                "계정이 잠금 처리되었습니다. 관리자에게 문의해 주세요.",
+                ex.getMessage() != null ? ex.getMessage() : "계정이 잠겼습니다. 잠시 후 다시 시도해주세요.",
                 getPath(request)
         );
-        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+        return new ResponseEntity<>(error, HttpStatus.valueOf(423));
     }
 
     @ExceptionHandler(DisabledException.class)

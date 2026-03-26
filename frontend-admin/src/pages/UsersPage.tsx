@@ -5,6 +5,7 @@ import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
 import { useAdminSnackbar } from '@/contexts/SnackbarContext';
 import { formatDateTime } from '@/utils/dateUtils';
+import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 
 const INACTIVE_DAYS = 90;
 
@@ -40,6 +41,10 @@ export const UsersPage = () => {
   const [grantReason, setGrantReason] = useState('');
   const [revokePoints, setRevokePoints] = useState<number | ''>('');
   const [revokeReason, setRevokeReason] = useState('');
+  
+  const [secondAuthOpen, setSecondAuthOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'grant'|'revoke'|null>(null);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-users'],
     queryFn: () => adminApi.users(),
@@ -65,8 +70,8 @@ export const UsersPage = () => {
   });
 
   const grantPointsMutation = useMutation({
-    mutationFn: (payload: { userId: number; points: number; reason: string }) =>
-      adminApi.grantPoints(payload.userId, { points: payload.points, reason: payload.reason }),
+    mutationFn: (payload: { userId: number; points: number; reason: string; pass: string }) =>
+      adminApi.grantPoints(payload.userId, { points: payload.points, reason: payload.reason }, payload.pass),
     onSuccess: () => {
       show('포인트 지급이 완료되었습니다.', 'success');
       setPointModalOpen(false);
@@ -79,8 +84,8 @@ export const UsersPage = () => {
   });
 
   const revokePointsMutation = useMutation({
-    mutationFn: (payload: { userId: number; points: number; reason: string }) =>
-      adminApi.revokePoints(payload.userId, { points: payload.points, reason: payload.reason }),
+    mutationFn: (payload: { userId: number; points: number; reason: string; pass: string }) =>
+      adminApi.revokePoints(payload.userId, { points: payload.points, reason: payload.reason }, payload.pass),
     onSuccess: () => {
       show('포인트 차감이 완료되었습니다.', 'success');
       setRevokeModalOpen(false);
@@ -106,28 +111,41 @@ export const UsersPage = () => {
     setRevokeModalOpen(true);
   };
 
-  const handleGrantPointsSubmit = () => {
+  const attemptGrantPoints = () => {
     if (!selectedUserId || !grantPoints || !grantReason.trim()) {
-      show('금액과 사유를 모두 입력해주세요.', 'error');
+      show('요청 정보를 모두 입력해주세요.', 'error');
       return;
     }
-    grantPointsMutation.mutate({
-      userId: selectedUserId,
-      points: Number(grantPoints),
-      reason: grantReason.trim()
-    });
+    setPendingAction('grant');
+    setSecondAuthOpen(true);
   };
 
-  const handleRevokePointsSubmit = () => {
+  const attemptRevokePoints = () => {
     if (!selectedUserId || !revokePoints || !revokeReason.trim()) {
-      show('금액과 사유를 모두 입력해주세요.', 'error');
+      show('요청 정보를 모두 입력해주세요.', 'error');
       return;
     }
-    revokePointsMutation.mutate({
-      userId: selectedUserId,
-      points: Number(revokePoints),
-      reason: revokeReason.trim()
-    });
+    setPendingAction('revoke');
+    setSecondAuthOpen(true);
+  };
+
+  const executeActionWithPin = (pin: string) => {
+    if (pendingAction === 'grant' && selectedUserId && grantPoints) {
+      grantPointsMutation.mutate({
+        userId: selectedUserId,
+        points: Number(grantPoints),
+        reason: grantReason.trim(),
+        pass: pin,
+      });
+    } else if (pendingAction === 'revoke' && selectedUserId && revokePoints) {
+      revokePointsMutation.mutate({
+        userId: selectedUserId,
+        points: Number(revokePoints),
+        reason: revokeReason.trim(),
+        pass: pin,
+      });
+    }
+    setPendingAction(null);
   };
 
   if (isLoading) {
@@ -258,7 +276,7 @@ export const UsersPage = () => {
         <DialogActions>
           <Button onClick={() => setPointModalOpen(false)} color="inherit">취소</Button>
           <Button
-            onClick={handleGrantPointsSubmit}
+            onClick={attemptGrantPoints}
             variant="contained"
             color="primary"
             disabled={grantPointsMutation.isPending}
@@ -293,7 +311,7 @@ export const UsersPage = () => {
         <DialogActions>
           <Button onClick={() => setRevokeModalOpen(false)} color="inherit">취소</Button>
           <Button
-            onClick={handleRevokePointsSubmit}
+            onClick={attemptRevokePoints}
             variant="contained"
             color="error"
             disabled={revokePointsMutation.isPending}
@@ -302,6 +320,16 @@ export const UsersPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* 2차 비밀번호 모달 (가상 키패드) */}
+      <SecondAuthDialog
+        open={secondAuthOpen}
+        onClose={() => { setSecondAuthOpen(false); setPendingAction(null); }}
+        onComplete={(pin) => {
+          setSecondAuthOpen(false);
+          executeActionWithPin(pin);
+        }}
+      />
     </Box>
   );
 };

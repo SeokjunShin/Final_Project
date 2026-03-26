@@ -15,8 +15,8 @@ export const adminApi = {
   inquiryResolve: (id: number) => adminApiClient.post(`/operator/inquiries/${id}/resolve`),
   documents: (params: Record<string, unknown>) =>
     adminApiClient.get<Paged<QueueItem>>('/admin/documents', { params }).then((r) => r.data),
-  documentTransition: (id: number, status: 'APPROVED' | 'REJECTED', rejectionReason?: string) =>
-    adminApiClient.patch(`/admin/documents/${id}/status`, { status, rejectionReason }),
+  documentTransition: (id: number, status: 'APPROVED' | 'REJECTED', rejectionReason?: string, secondaryPassword?: string) =>
+    adminApiClient.patch(`/admin/documents/${id}/status`, { status, rejectionReason, secondaryPassword }),
   documentDownload: (documentId: number, fileName: string) => {
     return adminApiClient.get(`/documents/${documentId}/download`, { responseType: 'blob' }).then((r) => {
       const url = window.URL.createObjectURL(new Blob([r.data]));
@@ -33,10 +33,10 @@ export const adminApi = {
   messages: () => adminApiClient.get('/admin/messages').then((r) => r.data),
   users: () => adminApiClient.get('/admin/users').then((r) => r.data),
   updateUserState: (userId: number, state: string) => adminApiClient.patch(`/admin/users/${userId}/state`, { state }),
-  grantPoints: (userId: number, payload: { points: number; reason: string }) =>
-    adminApiClient.post(`/admin/users/${userId}/points/grant`, payload).then((r) => r.data),
-  revokePoints: (userId: number, payload: { points: number; reason: string }) =>
-    adminApiClient.post(`/admin/users/${userId}/points/revoke`, payload).then((r) => r.data),
+  grantPoints: (userId: number, payload: { points: number; reason: string }, secondaryPassword: string) =>
+    adminApiClient.post(`/admin/users/${userId}/points/grant`, payload, { params: { secondaryPassword } }).then((r) => r.data),
+  revokePoints: (userId: number, payload: { points: number; reason: string }, secondaryPassword: string) =>
+    adminApiClient.post(`/admin/users/${userId}/points/revoke`, payload, { params: { secondaryPassword } }).then((r) => r.data),
   /** N일 이상 미접속 활성 계정 일괄 비활성 처리 */
   bulkInactiveByLastLogin: (days: number = 90) =>
     adminApiClient.post<{ count: number; message: string }>('/admin/users/bulk-inactive-by-last-login', null, { params: { days } }).then((r) => r.data),
@@ -68,8 +68,8 @@ export const adminApi = {
     adminApiClient.get<Paged<CardApplication>>('/admin/card-applications', { params }).then((r) => r.data),
   cardApplicationDetail: (id: number) =>
     adminApiClient.get<CardApplication>(`/admin/card-applications/${id}`).then((r) => r.data),
-  approveCardApplication: (id: number, creditLimit: number) =>
-    adminApiClient.post<CardApplication>(`/admin/card-applications/${id}/approve`, null, { params: { creditLimit } }).then((r) => r.data),
+  approveCardApplication: (id: number, creditLimit: number, secondaryPassword: string) =>
+    adminApiClient.post<CardApplication>(`/admin/card-applications/${id}/approve`, null, { params: { creditLimit, secondaryPassword } }).then((r) => r.data),
   rejectCardApplication: (id: number, reason: string) =>
     adminApiClient.post<CardApplication>(`/admin/card-applications/${id}/reject`, null, { params: { reason } }).then((r) => r.data),
   startReview: (id: number) =>
@@ -83,10 +83,10 @@ export const adminApi = {
   loanDetail: (id: number) => adminApiClient.get<LoanDetail>(`/loans/${id}`).then((r) => r.data),
 
   // 대출 상태 조정 (ADMIN 전용)
-  approveLoan: (id: number) =>
-    adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/approve`).then((r) => r.data),
-  disburseLoan: (id: number) =>
-    adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/disburse`).then((r) => r.data),
+  approveLoan: (id: number, secondaryPassword: string) =>
+    adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/approve`, null, { params: { secondaryPassword } }).then((r) => r.data),
+  disburseLoan: (id: number, secondaryPassword: string) =>
+    adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/disburse`, null, { params: { secondaryPassword } }).then((r) => r.data),
   cancelLoan: (id: number) =>
     adminApiClient.patch<LoanDetail>(`/admin/loans/${id}/cancel`).then((r) => r.data),
 

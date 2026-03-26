@@ -76,11 +76,14 @@ public class User {
     @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
 
-    @Transient
+    @Column(name = "failed_login_attempts", nullable = false)
     private Integer failedLoginAttempts = 0;
 
-    @Transient
+    @Column(name = "lock_expiry_time")
     private LocalDateTime lockExpiryTime;
+
+    @Column(name = "last_failed_login_at")
+    private LocalDateTime lastFailedLoginAt;
 
     public User(String email, String password, String fullName) {
         this.email = email;
@@ -197,5 +200,7 @@ public class User {
 
     public void unlock() {
         this.status = "ACTIVE";
+        this.failedLoginAttempts = 0;
+        this.lockExpiryTime = null;
     }
 }

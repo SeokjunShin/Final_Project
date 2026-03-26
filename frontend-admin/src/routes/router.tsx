@@ -48,6 +48,8 @@ export const router = createBrowserRouter([
     element: <PublicRoute />,
     children: [{ path: '/login', element: <AdminLoginPage /> }],
   },
+
+  /* ── 공통: 모든 관리자 역할 접근 가능 ── */
   {
     element: <ProtectedRoute roles={['OPERATOR', 'MASTER_ADMIN', 'REVIEW_ADMIN']} />,
     children: [
@@ -55,23 +57,60 @@ export const router = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { path: '/dashboard', element: <AdminDashboardPage /> },
-          { path: '/board-inquiries', element: <AdminInquiryBoardPage /> },
-          { path: '/support/inquiries', element: <InquiriesPage /> },
-          { path: '/inquiries', element: <Navigate to="/support/inquiries" replace /> },
+        ],
+      },
+    ],
+  },
+
+  /* ── 심사원(REVIEW_ADMIN) 전용: 카드심사, 대출, 문서, 재발급, 메시지 ── */
+  {
+    element: <ProtectedRoute roles={['REVIEW_ADMIN']} />,
+    children: [
+      {
+        element: <AdminLayout />,
+        children: [
           { path: '/card-applications', element: <CardApplicationsPage /> },
           { path: '/reissue-requests', element: <ReissueRequestsPage /> },
           { path: '/loans', element: <LoansPage /> },
           { path: '/documents', element: <DocumentsPage /> },
           { path: '/messages', element: <MessagesPage /> },
-          { path: '/users', element: <UsersPage /> },
-          { path: '/merchants', element: <MerchantsPage /> },
-          { path: '/policies/points', element: <PointPolicyPage /> },
-          { path: '/audit-logs', element: <AuditLogsPage /> },
-          { path: '/events', element: <EventsPage /> },
         ],
       },
     ],
   },
+
+  /* ── 상담원(OPERATOR) 전용: 문의 게시판, 문의 큐 ── */
+  {
+    element: <ProtectedRoute roles={['OPERATOR']} />,
+    children: [
+      {
+        element: <AdminLayout />,
+        children: [
+          { path: '/board-inquiries', element: <AdminInquiryBoardPage /> },
+          { path: '/support/inquiries', element: <InquiriesPage /> },
+          { path: '/inquiries', element: <Navigate to="/support/inquiries" replace /> },
+        ],
+      },
+    ],
+  },
+
+  /* ── 마스터관리자(MASTER_ADMIN) 전용: 사용자, 가맹점, 이벤트, 정책, 감사로그 ── */
+  {
+    element: <ProtectedRoute roles={['MASTER_ADMIN']} />,
+    children: [
+      {
+        element: <AdminLayout />,
+        children: [
+          { path: '/users', element: <UsersPage /> },
+          { path: '/merchants', element: <MerchantsPage /> },
+          { path: '/events', element: <EventsPage /> },
+          { path: '/policies/points', element: <PointPolicyPage /> },
+          { path: '/audit-logs', element: <AuditLogsPage /> },
+        ],
+      },
+    ],
+  },
+
   { path: '/403', element: <ForbiddenPage /> },
   { path: '*', element: <NotFoundPage /> },
 ]);

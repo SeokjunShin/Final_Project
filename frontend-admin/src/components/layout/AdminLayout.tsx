@@ -1,4 +1,4 @@
-﻿import {
+import {
   AppBar,
   Box,
   Breadcrumbs,
@@ -26,7 +26,10 @@ export const AdminLayout = () => {
   const navigate = useNavigate();
   const { user, logout } = useAdminAuth();
 
-  const visibleMenu = useMemo(() => adminMenu, []);
+  const visibleMenu = useMemo(
+    () => adminMenu.filter((item) => user?.role && item.roles.includes(user.role as any)),
+    [user?.role],
+  );
 
   const drawer = (
     <Box sx={{ width: drawerWidth, height: '100%', bgcolor: '#16233d', color: '#d8dfec', display: 'flex', flexDirection: 'column' }}>

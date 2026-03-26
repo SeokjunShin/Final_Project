@@ -1,4 +1,4 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -35,8 +35,18 @@ export const AdminLoginPage = () => {
       } else {
         navigate('/dashboard', { replace: true });
       }
-    } catch {
-      show('로그인에 실패했습니다.', 'error');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+      const errCode = data?.code;
+      const msg = data?.message;
+
+      if (status === 423 || errCode === 'ACCOUNT_LOCKED' || msg?.includes('잠겨')) {
+        show(msg || '계정이 잠겼습니다. 잠시 후 다시 시도해주세요.', 'error');
+      } else {
+        show(msg || '로그인에 실패했습니다.', 'error');
+      }
     }
   };
 

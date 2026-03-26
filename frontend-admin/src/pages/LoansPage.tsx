@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
 import { useAdminSnackbar } from '@/contexts/SnackbarContext';
+import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import type { LoanDetail, LoanListItem, LoanType } from '@/types';
 
 const LOAN_TYPE_LABELS: Record<LoanType, string> = {
@@ -53,6 +54,11 @@ export const LoansPage = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [detailLoanId, setDetailLoanId] = useState<number | null>(null);
+  
+  // 2차 인증 액션 구분을 위한 state
+  const [secondAuthOpen, setSecondAuthOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<null | { type: 'approve' | 'disburse'; id: number }>(null);
+  
   const queryClient = useQueryClient();
   const { show } = useAdminSnackbar();
 
@@ -71,7 +77,7 @@ export const LoansPage = () => {
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: number) => adminApi.approveLoan(id),
+    mutationFn: ({ id, pass }: { id: number; pass: string }) => adminApi.approveLoan(id, pass),
     onSuccess: async (data: LoanDetail) => {
       show('대출이 승인되었습니다.', 'success');
       queryClient.setQueryData(['admin-loan-detail', data.id], data);
@@ -103,7 +109,7 @@ export const LoansPage = () => {
   });
 
   const disburseMutation = useMutation({
-    mutationFn: (id: number) => adminApi.disburseLoan(id),
+    mutationFn: ({ id, pass }: { id: number; pass: string }) => adminApi.disburseLoan(id, pass),
     onSuccess: async (data: LoanDetail) => {
       show('출금 완료 처리되었습니다.', 'success');
       queryClient.setQueryData(['admin-loan-detail', data.id], data);
@@ -296,7 +302,10 @@ export const LoansPage = () => {
                       variant="contained"
                       color="primary"
                       disabled={approveMutation.isPending || cancelMutation.isPending}
-                      onClick={() => approveMutation.mutate(detailData.id)}
+                      onClick={() => {
+                        setPendingAction({ type: 'approve', id: detailData.id });
+                        setSecondAuthOpen(true);
+                      }}
                     >
                       승인
                     </Button>
@@ -318,7 +327,10 @@ export const LoansPage = () => {
                       variant="contained"
                       color="primary"
                       disabled={disburseMutation.isPending || cancelMutation.isPending}
-                      onClick={() => disburseMutation.mutate(detailData.id)}
+                      onClick={() => {
+                        setPendingAction({ type: 'disburse', id: detailData.id });
+                        setSecondAuthOpen(true);
+                      }}
                     >
                       출금완료
                     </Button>
@@ -338,6 +350,21 @@ export const LoansPage = () => {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* 2차 비밀번호 모달 (가상 키패드) */}
+      <SecondAuthDialog
+        open={secondAuthOpen}
+        onClose={() => { setSecondAuthOpen(false); setPendingAction(null); }}
+        onComplete={(pin) => {
+          setSecondAuthOpen(false);
+          if (pendingAction?.type === 'approve') {
+            approveMutation.mutate({ id: pendingAction.id, pass: pin });
+          } else if (pendingAction?.type === 'disburse') {
+            disburseMutation.mutate({ id: pendingAction.id, pass: pin });
+          }
+          setPendingAction(null);
+        }}
+      />
     </Box>
   );
 };

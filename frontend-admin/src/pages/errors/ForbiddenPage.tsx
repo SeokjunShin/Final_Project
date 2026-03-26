@@ -1,4 +1,4 @@
-﻿import { Box, Button, Typography } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
@@ -13,10 +13,9 @@ export const ForbiddenPage = () => {
 
   return (
     <Box sx={{ p: 4 }}>
-      <Typography variant="h4" sx={{ mb: 1 }}>
-        403
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+        권한이 없습니다.
       </Typography>
-      <Typography sx={{ mb: 2 }}>권한이 없습니다.</Typography>
       <Button variant="contained" onClick={handleGoToLogin}>
         로그인으로 이동
       </Button>

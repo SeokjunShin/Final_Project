@@ -1,6 +1,7 @@
 package com.mycard.api.service;
 
 import com.mycard.api.dto.auth.LoginRequest;
+import java.time.format.DateTimeFormatter;
 import com.mycard.api.dto.auth.LoginResponse;
 import com.mycard.api.dto.auth.CancelWithdrawalRequest;
 import com.mycard.api.dto.auth.RegisterRequest;
@@ -71,34 +72,40 @@ public class AuthService {
     @Value("${app.security.login-lockout-duration-minutes:30}")
     private int lockoutDurationMinutes;
 
-    @Transactional
+    @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class})
     public LoginResponse login(LoginRequest request) {
         return secureLogin(request);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class})
     public LoginResponse secureLogin(LoginRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
 
+
+
         // 계정 잠금 확인
         User user = userRepository.findByEmail(email).orElse(null);
+
         if (user != null && user.isWithdrawalPending()) {
             throw new DisabledException("회원 탈퇴가 예약되었습니다. 15분 후 최종 탈퇴 처리됩니다.");
         }
-        if (user != null && user.getLocked() && user.getLockExpiryTime() != null) {
-            if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
-                logLoginAttempt(email, ipAddress, userAgent, false, "Account locked");
-                throw new LockedException("계정이 잠겨있습니다. " +
-                        user.getLockExpiryTime() + " 이후에 다시 시도해주세요.");
-            } else {
+
+        if (user != null && user.getLocked()) {
+            if (user.getLockExpiryTime() != null && LocalDateTime.now().isAfter(user.getLockExpiryTime())) {
                 // 잠금 해제
                 user.setLocked(false);
                 user.setLockExpiryTime(null);
                 user.setFailedLoginAttempts(0);
                 userRepository.save(user);
+            } else {
+                logLoginAttempt(email, ipAddress, userAgent, false, "Account locked");
+                String expiryMsg = user.getLockExpiryTime() != null
+                        ? user.getLockExpiryTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + " 이후에 다시 시도해주세요."
+                        : "관리자에게 문의해주세요.";
+                throw new LockedException("계정이 잠겨있습니다. " + expiryMsg);
             }
         }
 
@@ -163,12 +170,14 @@ public class AuthService {
      * 비활성(DISA BLED) 계정에 대해 비밀번호를 다시 확인한 뒤
      * 활성화 + 로그인까지 한 번에 처리하는 전용 로그인 API.
      */
-    @Transactional
+    @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class})
     public LoginResponse loginAndReactivate(LoginRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+
+
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다."));
@@ -245,12 +254,14 @@ public class AuthService {
                 .build();
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class})
     public LoginResponse cancelWithdrawalAndLogin(CancelWithdrawalRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+
+
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다."));
@@ -326,7 +337,7 @@ public class AuthService {
         storedToken.revoke();
         refreshTokenRepository.save(storedToken);
 
-        // 새 토큰 발급
+        // 새 토큰 발급 (sessionStart를 기존 값 그대로 전달하여 세션 연장 방지)
         Long userId = storedToken.getUser().getId();
         User user = userRepository.findByIdWithRoles(userId)
                 .orElseThrow(() -> new BadRequestException("사용자를 찾을 수 없습니다."));
@@ -346,6 +357,7 @@ public class AuthService {
 
     @Transactional
     public void logout(String refreshToken) {
+        // Refresh Token 폐기
         if (refreshToken != null && !refreshToken.isBlank()) {
             String tokenHash = hashToken(refreshToken);
             refreshTokenRepository.findByTokenHash(tokenHash)
@@ -370,13 +382,20 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email).orElse(null);
         if (user != null) {
+            // 10분 이내 실패만 카운트: 마지막 실패 시점이 10분 이전이면 카운터 초기화
+            LocalDateTime tenMinutesAgo = LocalDateTime.now().minusMinutes(10);
+            if (user.getLastFailedLoginAt() != null && user.getLastFailedLoginAt().isBefore(tenMinutesAgo)) {
+                user.setFailedLoginAttempts(0);
+            }
+
             int attempts = user.getFailedLoginAttempts() + 1;
             user.setFailedLoginAttempts(attempts);
+            user.setLastFailedLoginAt(LocalDateTime.now());
 
             if (attempts >= loginAttemptLimit) {
                 user.setLocked(true);
                 user.setLockExpiryTime(LocalDateTime.now().plusMinutes(lockoutDurationMinutes));
-                log.warn("Account locked due to {} failed attempts: {}", attempts, email);
+                log.warn("Account locked due to {} failed attempts within 10 minutes: {}", attempts, email);
             }
 
             userRepository.save(user);
@@ -429,6 +448,8 @@ public class AuthService {
         }
         return request.getRemoteAddr();
     }
+
+
 
     @Transactional
     public void register(RegisterRequest request) {
@@ -499,9 +520,6 @@ public class AuthService {
 
     @Transactional
     public void sendResetCode(UserPrincipal user, SendResetCodeRequest request) {
-        User targetUser = userRepository.findById(user.getId())
-                .orElseThrow(() -> new BadRequestException("사용자를 찾을 수 없습니다."));
-
         // 이메일 발송
         emailService.sendResetCode(request.getEmail());
     }

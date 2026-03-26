@@ -1,10 +1,11 @@
-﻿import { Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
 import { useAdminSnackbar } from '@/contexts/SnackbarContext';
 import { formatDateTime } from '@/utils/dateUtils';
+import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 
 export const DocumentsPage = () => {
   const [status, setStatus] = useState('');
@@ -15,6 +16,10 @@ export const DocumentsPage = () => {
   const [rejectTargetId, setRejectTargetId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
+  // 승인 사유(비밀번호) 다이얼로그
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [approveTargetId, setApproveTargetId] = useState<number | null>(null);
+
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-documents', status],
     queryFn: async () => {
@@ -22,9 +27,9 @@ export const DocumentsPage = () => {
     },
   });
 
-  const transition = async (id: number, next: 'APPROVED' | 'REJECTED', reason?: string) => {
+  const transition = async (id: number, next: 'APPROVED' | 'REJECTED', reason?: string, pass?: string) => {
     try {
-      await adminApi.documentTransition(id, next, reason);
+      await adminApi.documentTransition(id, next, reason, pass);
       show(`문서가 ${next === 'APPROVED' ? '승인' : '반려'}되었습니다.`, 'success');
       await refetch();
     } catch (e) {
@@ -46,6 +51,18 @@ export const DocumentsPage = () => {
     setRejectOpen(false);
     setRejectTargetId(null);
     setRejectionReason('');
+  };
+
+  const handleApproveClick = (id: number) => {
+    setApproveTargetId(id);
+    setApproveOpen(true);
+  };
+
+  const handleApproveConfirmWithPin = async (pin: string) => {
+    if (approveTargetId !== null) {
+      await transition(approveTargetId, 'APPROVED', undefined, pin);
+    }
+    setApproveTargetId(null);
   };
 
   const handleDownload = async (documentId: number, fileName: string) => {
@@ -166,7 +183,7 @@ export const DocumentsPage = () => {
                 }
                 return (
                   <Stack direction="row" spacing={1}>
-                    <Button size="small" variant="outlined" onClick={() => transition(params.row.id, 'APPROVED')}>
+                    <Button size="small" variant="outlined" onClick={() => handleApproveClick(params.row.id)}>
                       승인
                     </Button>
                     <Button size="small" color="error" variant="outlined" onClick={() => handleRejectClick(params.row.id)}>
@@ -202,6 +219,16 @@ export const DocumentsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 승인 다이얼로그 (2차 비밀번호 가상 키패드) */}
+      <SecondAuthDialog
+        open={approveOpen}
+        onClose={() => setApproveOpen(false)}
+        onComplete={(pin) => {
+          setApproveOpen(false);
+          handleApproveConfirmWithPin(pin);
+        }}
+      />
     </Box>
   );
 };

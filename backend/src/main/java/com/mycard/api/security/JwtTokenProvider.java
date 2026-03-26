@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -54,14 +53,16 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /**
+     * Refresh Token 생성
+     * @param userId 사용자 ID
+     */
     public String generateRefreshToken(Long userId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + refreshTokenValidityMs);
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
-                .id(UUID.randomUUID().toString())
-                .claim("type", "refresh")
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(secretKey)
@@ -69,20 +70,12 @@ public class JwtTokenProvider {
     }
 
     public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        Claims claims = parseClaims(token);
         return Long.parseLong(claims.getSubject());
     }
 
     public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        Claims claims = parseClaims(token);
         return claims.get("username", String.class);
     }
 
@@ -108,15 +101,19 @@ public class JwtTokenProvider {
     }
 
     public Date getExpirationFromRefreshToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        Claims claims = parseClaims(token);
         return claims.getExpiration();
     }
 
     public long getRefreshTokenValidityMs() {
         return refreshTokenValidityMs;
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

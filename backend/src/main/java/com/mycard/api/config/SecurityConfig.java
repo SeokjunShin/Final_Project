@@ -128,6 +128,8 @@ public class SecurityConfig {
                 "http://localhost:5174",
                 "http://localhost:5175",
                 "http://localhost:5176",
+                "http://localhost:8081",
+                "http://local.mycard.com:8081",
                 "http://mycard.local",
                 "http://admin.mycard.local"));
 

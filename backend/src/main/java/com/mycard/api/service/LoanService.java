@@ -17,6 +17,7 @@ import com.mycard.api.repository.MessageRepository;
 import com.mycard.api.repository.UserBankAccountRepository;
 import com.mycard.api.repository.UserRepository;
 import com.mycard.api.security.UserPrincipal;
+import com.mycard.api.util.MaskingUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -153,12 +154,12 @@ public class LoanService {
                 .requestedAt(loan.getRequestedAt())
                 .cardId(loan.getCard() != null ? loan.getCard().getId() : null)
                 .cardAlias(loan.getCard() != null ? loan.getCard().getCardAlias() : null)
-                .cardNumberMasked(loan.getCard() != null ? maskCardNumber(loan.getCard().getCardNumber()) : null)
+                .cardNumberMasked(loan.getCard() != null ? MaskingUtils.maskCardNumber(loan.getCard().getCardNumber()) : null)
                 .depositBankAccountId(loan.getBankAccount() != null ? loan.getBankAccount().getId() : null)
                 .depositBankName(loan.getBankAccount() != null ? loan.getBankAccount().getBankName() : null)
                 .depositAccountNumberMasked(loan.getBankAccount() != null ? loan.getBankAccount().getAccountNumberMasked() : null);
         if (includeUser && loan.getUser() != null) {
-            b.userId(loan.getUser().getId()).userName(loan.getUser().getFullName());
+            b.userId(loan.getUser().getId()).userName(MaskingUtils.maskName(loan.getUser().getFullName()));
         }
         return b.build();
     }
@@ -174,7 +175,7 @@ public class LoanService {
                 .requestedAt(loan.getRequestedAt())
                 .cardId(loan.getCard() != null ? loan.getCard().getId() : null)
                 .cardAlias(loan.getCard() != null ? loan.getCard().getCardAlias() : null)
-                .cardNumberMasked(loan.getCard() != null ? maskCardNumber(loan.getCard().getCardNumber()) : null)
+                .cardNumberMasked(loan.getCard() != null ? MaskingUtils.maskCardNumber(loan.getCard().getCardNumber()) : null)
                 .depositBankAccountId(loan.getBankAccount() != null ? loan.getBankAccount().getId() : null)
                 .depositBankName(loan.getBankAccount() != null ? loan.getBankAccount().getBankName() : null)
                 .depositAccountNumberMasked(loan.getBankAccount() != null ? loan.getBankAccount().getAccountNumberMasked() : null)
@@ -199,21 +200,7 @@ public class LoanService {
                 .orElseThrow(() -> new BadRequestException("입금받을 계좌를 선택해 주세요."));
     }
 
-    private String maskCardNumber(String cardNumber) {
-        if (cardNumber == null || cardNumber.isBlank()) {
-            return null;
-        }
-        String[] parts = cardNumber.split("-");
-        if (parts.length == 4) {
-            return parts[0] + "-" + parts[1] + "-****-****";
-        }
 
-        String digits = cardNumber.replaceAll("\\D", "");
-        if (digits.length() >= 8) {
-            return digits.substring(0, 4) + "-" + digits.substring(4, 8) + "-****-****";
-        }
-        return "****-****-****-****";
-    }
 
     private void createLoanDisbursementTransaction(Loan loan) {
         if (loan.getBankAccount() == null) {

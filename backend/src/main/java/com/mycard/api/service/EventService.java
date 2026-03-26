@@ -6,6 +6,7 @@ import com.mycard.api.entity.Event;
 import com.mycard.api.entity.EventParticipation;
 import com.mycard.api.entity.User;
 import com.mycard.api.exception.BadRequestException;
+import com.mycard.api.exception.DuplicateResourceException;
 import com.mycard.api.exception.ResourceNotFoundException;
 import com.mycard.api.repository.EventParticipationRepository;
 import com.mycard.api.repository.EventRepository;
@@ -148,6 +149,11 @@ public class EventService {
 
             if (!participation.getEvent().getId().equals(eventId)) {
                 throw new BadRequestException("해당 이벤트의 참여 정보가 아닙니다.");
+            }
+
+            // 이미 당첨 처리된 참여자는 중복 지급 방지
+            if (Boolean.TRUE.equals(participation.getWinner())) {
+                throw new DuplicateResourceException("이미 당첨 처리된 참여자입니다. (ID: " + participationId + ")");
             }
 
             participation.setWinner(true);

@@ -18,14 +18,15 @@ import com.mycard.api.repository.CardRepository;
 import com.mycard.api.repository.DocumentRepository;
 import com.mycard.api.repository.MessageRepository;
 import com.mycard.api.repository.UserRepository;
+import com.mycard.api.util.MaskingUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -39,7 +40,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -58,6 +58,7 @@ public class CardApplicationService {
     private final AttachmentRepository attachmentRepository;
     private final MessageRepository messageRepository;
     private final UploadValidationService uploadValidationService;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${app.upload.base-path:uploads}")
     private String uploadDir;
@@ -255,7 +256,7 @@ public class CardApplicationService {
     }
 
     @Transactional
-    public CardApplicationResponse approveApplication(Long applicationId, Long adminId, BigDecimal approvedLimit) {
+    public CardApplicationResponse approveApplication(Long applicationId, Long adminId, BigDecimal approvedLimit, String secondaryPassword) {
         CardApplication application = cardApplicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("신청 정보를 찾을 수 없습니다."));
 
@@ -265,6 +266,13 @@ public class CardApplicationService {
 
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new ResourceNotFoundException("관리자를 찾을 수 없습니다."));
+
+        if (admin.getSecondaryPassword() == null || admin.getSecondaryPassword().isBlank()) {
+            throw new BadRequestException("2차 비밀번호가 설정되어 있지 않습니다.");
+        }
+        if (!passwordEncoder.matches(secondaryPassword, admin.getSecondaryPassword())) {
+            throw new BadRequestException("2차 비밀번호가 일치하지 않습니다.");
+        }
 
         BigDecimal creditLimitInWon = approvedLimit.multiply(BigDecimal.valueOf(10000));
         Card newCard = createCardFromApplication(application, creditLimitInWon);
@@ -536,12 +544,12 @@ public class CardApplicationService {
     private CardApplicationResponse toResponse(CardApplication app) {
         CardApplicationResponse response = new CardApplicationResponse();
         response.setId(app.getId());
-        response.setFullName(app.getFullName());
+        response.setFullName(MaskingUtils.maskName(app.getFullName()));
         response.setMaskedSsn(app.getMaskedSsn());
-        response.setPhone(app.getPhone());
-        response.setEmail(app.getEmail());
+        response.setPhone(MaskingUtils.maskPhone(app.getPhone()));
+        response.setEmail(MaskingUtils.maskEmail(app.getEmail()));
         response.setAddress(app.getAddress());
-        response.setAddressDetail(app.getAddressDetail());
+        response.setAddressDetail(MaskingUtils.maskAddressDetail(app.getAddressDetail()));
         response.setEmploymentType(app.getEmploymentType().name());
         response.setEmployerName(app.getEmployerName());
         response.setJobTitle(app.getJobTitle());
@@ -580,8 +588,8 @@ public class CardApplicationService {
         response.setAdminNotes(app.getAdminNotes());
 
         if (app.getUser() != null) {
-            response.setUserName(app.getUser().getFullName());
-            response.setUserEmail(app.getUser().getEmail());
+            response.setUserName(MaskingUtils.maskName(app.getUser().getFullName()));
+            response.setUserEmail(MaskingUtils.maskEmail(app.getUser().getEmail()));
         }
 
         if (app.getReviewedBy() != null) {

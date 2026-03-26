@@ -33,6 +33,7 @@ import {
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/api';
 import type { CardApplication } from '@/types';
+import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 
 const statusMap: Record<string, { label: string; color: 'default' | 'info' | 'success' | 'error' }> = {
   PENDING: { label: '대기중', color: 'default' },
@@ -67,6 +68,9 @@ export const CardApplicationsPage = () => {
   // 승인 다이얼로그
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [creditLimit, setCreditLimit] = useState('');
+  
+  // 2차 인증 다이얼로그
+  const [secondAuthOpen, setSecondAuthOpen] = useState(false);
 
   // 거절 다이얼로그
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -140,18 +144,18 @@ export const CardApplicationsPage = () => {
     setRejectDialogOpen(true);
   };
 
-  // 승인 처리
-  const handleApprove = async () => {
-    if (!selectedApp || !creditLimit) return;
+  // 승인 처리 (2차 인증 후 콜백)
+  const handleApproveWithPin = async (pin: string) => {
+    if (!selectedApp || !creditLimit || !pin) return;
     try {
       setProcessing(true);
-      await adminApi.approveCardApplication(selectedApp.id, Number(creditLimit));
+      await adminApi.approveCardApplication(selectedApp.id, Number(creditLimit), pin);
       setApproveDialogOpen(false);
       setDetailDialogOpen(false);
       loadApplications();
-    } catch (e) {
+    } catch (e: any) {
       console.error('승인 실패:', e);
-      alert('승인 처리에 실패했습니다.');
+      alert(e.response?.data?.message || '승인 처리에 실패했습니다.');
     } finally {
       setProcessing(false);
     }
@@ -558,6 +562,7 @@ export const CardApplicationsPage = () => {
               endAdornment: <InputAdornment position="end">만원</InputAdornment>,
             }}
             helperText={`희망한도: ${selectedApp?.requestedCreditLimit?.toLocaleString() || 0}만원`}
+            sx={{ mb: 2 }}
           />
         </DialogContent>
         <DialogActions>
@@ -567,13 +572,23 @@ export const CardApplicationsPage = () => {
           <Button
             variant="contained"
             color="success"
-            onClick={handleApprove}
+            onClick={() => setSecondAuthOpen(true)}
             disabled={processing || !creditLimit}
           >
-            {processing ? <CircularProgress size={20} /> : '승인'}
+            {processing ? <CircularProgress size={20} /> : '승인 진행'}
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* 2차 비밀번호 모달 (가상 키패드) */}
+      <SecondAuthDialog
+        open={secondAuthOpen}
+        onClose={() => setSecondAuthOpen(false)}
+        onComplete={(pin) => {
+          setSecondAuthOpen(false);
+          handleApproveWithPin(pin);
+        }}
+      />
 
       {/* 거절 다이얼로그 */}
       <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>

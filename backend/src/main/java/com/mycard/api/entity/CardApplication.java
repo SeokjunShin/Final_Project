@@ -168,8 +168,8 @@ public class CardApplication {
             return "******-*******";
         }
         String cleaned = ssn.replaceAll("-", "");
-        if (cleaned.length() >= 6) {
-            return cleaned.substring(0, 6) + "-*******";
+        if (cleaned.length() >= 7) {
+            return cleaned.substring(0, 6) + "-" + cleaned.charAt(6) + "******";
         }
         return "******-*******";
     }

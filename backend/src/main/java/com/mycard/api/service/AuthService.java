@@ -21,6 +21,8 @@ import com.mycard.api.entity.RefreshToken;
 import com.mycard.api.entity.Role;
 import com.mycard.api.entity.User;
 import com.mycard.api.exception.BadRequestException;
+import com.mycard.api.exception.InvalidLoginCredentialsException;
+import com.mycard.api.exception.LoginBlockedException;
 import com.mycard.api.exception.UnauthorizedException;
 import com.mycard.api.repository.RefreshTokenRepository;
 import com.mycard.api.repository.RoleRepository;
@@ -47,6 +49,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -74,6 +77,9 @@ public class AuthService {
     @Value("${app.security.login-lockout-duration-minutes:30}")
     private int lockoutDurationMinutes;
 
+    @Value("${app.security.ip-attempt-limit:20}")
+    private int ipAttemptLimit;
+
     @Value("${app.jwt.absolute-session-validity-ms:2592000000}")
     private long absoluteSessionValidityMs;
 
@@ -89,15 +95,32 @@ public class AuthService {
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
 
+        if (loginSecurityService.hasTooManyRecentFailuresForIp(ipAddress, ipAttemptLimit, lockoutDurationMinutes)) {
+            loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "IP rate limit exceeded");
+            long retryAfterSeconds = loginSecurityService.getRetryAfterSecondsForIp(
+                    ipAddress,
+                    ipAttemptLimit,
+                    lockoutDurationMinutes);
+            throw buildLoginBlockedException("TOO_MANY_LOGIN_ATTEMPTS", "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.", retryAfterSeconds);
+        }
+
         User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null
+                && loginSecurityService.hasTooManyRecentFailuresForEmail(email, loginAttemptLimit, lockoutDurationMinutes)) {
+            loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "Email rate limit exceeded");
+            long retryAfterSeconds = loginSecurityService.getRetryAfterSecondsForEmail(
+                    email,
+                    loginAttemptLimit,
+                    lockoutDurationMinutes);
+            throw buildLoginBlockedException("TOO_MANY_LOGIN_ATTEMPTS", "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.", retryAfterSeconds);
+        }
         if (user != null && user.isWithdrawalPending()) {
             throw new DisabledException("회원 탈퇴가 예약되었습니다. 15분 후 최종 탈퇴 처리됩니다.");
         }
         if (user != null && user.getLocked() && user.getLockExpiryTime() != null) {
             if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
                 loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "Account locked");
-                throw new LockedException("계정이 잠겨있습니다. " +
-                        user.getLockExpiryTime() + " 이후에 다시 시도해주세요.");
+                throw buildAccountLockedException(user.getLockExpiryTime());
             } else {
                 user.setLocked(false);
                 user.setLockExpiryTime(null);
@@ -127,8 +150,7 @@ public class AuthService {
             return buildLoginResponse(user, userPrincipal, sessionTokens.accessToken(), sessionTokens.refreshToken());
 
         } catch (BadCredentialsException e) {
-            handleFailedLogin(email, ipAddress, userAgent);
-            throw e;
+            throw handleFailedLogin(email, ipAddress, userAgent);
         }
     }
 
@@ -152,8 +174,7 @@ public class AuthService {
         if (user.getLocked() && user.getLockExpiryTime() != null) {
             if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
                 loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "Account locked (reactivate)");
-                throw new LockedException("계정이 잠겨있습니다. " +
-                        user.getLockExpiryTime() + " 이후에 다시 시도해주세요.");
+                throw buildAccountLockedException(user.getLockExpiryTime());
             } else {
                 user.setLocked(false);
                 user.setLockExpiryTime(null);
@@ -163,8 +184,7 @@ public class AuthService {
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            handleFailedLogin(email, ipAddress, userAgent);
-            throw new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다.");
+            throw handleFailedLogin(email, ipAddress, userAgent);
         }
 
         if (!user.getEnabled()) {
@@ -204,8 +224,7 @@ public class AuthService {
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            handleFailedLogin(email, ipAddress, userAgent);
-            throw new BadCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            throw handleFailedLogin(email, ipAddress, userAgent);
         }
 
         if (user.getSecondaryPassword() == null
@@ -329,8 +348,21 @@ public class AuthService {
         auditService.log(AuditLog.ActionType.LOGOUT, "User", userId, "All sessions logged out");
     }
 
-    private void handleFailedLogin(String email, String ipAddress, String userAgent) {
-        loginSecurityService.recordFailedLogin(email, ipAddress, userAgent, loginAttemptLimit, lockoutDurationMinutes);
+    private RuntimeException handleFailedLogin(String email, String ipAddress, String userAgent) {
+        LoginSecurityService.FailedLoginResult result = loginSecurityService.recordFailedLogin(
+                email,
+                ipAddress,
+                userAgent,
+                loginAttemptLimit,
+                lockoutDurationMinutes);
+
+        if (result.blocked() && result.lockExpiryTime() != null) {
+            return buildAccountLockedException(result.lockExpiryTime());
+        }
+
+        return new InvalidLoginCredentialsException(
+                "아이디 또는 비밀번호가 일치하지 않습니다.",
+                result.remainingAttempts());
     }
 
     private void saveRefreshToken(Long userId, String refreshToken, String ipAddress, String userAgent,
@@ -632,5 +664,18 @@ public class AuthService {
     }
 
     private record SessionTokens(String accessToken, String refreshToken) {
+    }
+
+    private LoginBlockedException buildAccountLockedException(LocalDateTime lockExpiryTime) {
+        long retryAfterSeconds = Math.max(1, Duration.between(LocalDateTime.now(), lockExpiryTime).getSeconds());
+        return buildLoginBlockedException(
+                "ACCOUNT_LOCKED",
+                "계정이 잠겨있습니다. 잠시 후 다시 시도해주세요.",
+                retryAfterSeconds);
+    }
+
+    private LoginBlockedException buildLoginBlockedException(String code, String message, long retryAfterSeconds) {
+        LocalDateTime lockExpiresAt = LocalDateTime.now().plusSeconds(Math.max(1, retryAfterSeconds));
+        return new LoginBlockedException(code, message, lockExpiresAt, Math.max(1, retryAfterSeconds));
     }
 }

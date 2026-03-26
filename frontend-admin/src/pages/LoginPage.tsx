@@ -7,7 +7,7 @@ import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { useAdminSnackbar } from '@/contexts/SnackbarContext';
 
 const schema = z.object({
-  email: z.string().email('이메일 형식이 아닙니다.'),
+  email: z.string().min(1, '이메일을 입력하세요.'),
   password: z.string().min(1, '비밀번호를 입력하세요.'),
 });
 
@@ -41,11 +41,27 @@ export const AdminLoginPage = () => {
       const data = err?.response?.data;
       const errCode = data?.code;
       const msg = data?.message;
+      const remainingAttempts =
+        typeof data?.remainingAttempts === 'number' && Number.isFinite(data.remainingAttempts)
+          ? Math.max(0, Math.floor(data.remainingAttempts))
+          : undefined;
+      const retryAfterSeconds =
+        typeof data?.retryAfterSeconds === 'number' && Number.isFinite(data.retryAfterSeconds)
+          ? Math.max(0, Math.ceil(data.retryAfterSeconds))
+          : undefined;
+      const attemptsMessage =
+        typeof remainingAttempts === 'number' && errCode === 'INVALID_CREDENTIALS'
+          ? ` 남은 시도 ${remainingAttempts}회`
+          : '';
+      const remainingMessage =
+        retryAfterSeconds && retryAfterSeconds > 0
+          ? ` 남은 대기 시간 ${Math.floor(retryAfterSeconds / 60)}분 ${retryAfterSeconds % 60}초`
+          : '';
 
       if (status === 423 || errCode === 'ACCOUNT_LOCKED' || msg?.includes('잠겨')) {
-        show(msg || '계정이 잠겼습니다. 잠시 후 다시 시도해주세요.', 'error');
+        show(`${msg || '계정이 잠겼습니다. 잠시 후 다시 시도해주세요.'}${remainingMessage}`, 'error');
       } else {
-        show(msg || '로그인에 실패했습니다.', 'error');
+        show(`${msg || '로그인에 실패했습니다.'}${attemptsMessage}${remainingMessage}`, 'error');
       }
     }
   };

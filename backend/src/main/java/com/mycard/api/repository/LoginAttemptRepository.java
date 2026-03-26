@@ -16,4 +16,10 @@ public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, Long
 
     @Query("SELECT COUNT(la) FROM LoginAttempt la WHERE la.ipAddress = :ipAddress AND la.success = false AND la.attemptedAt > :since")
     long countFailedAttemptsByIpSince(@Param("ipAddress") String ipAddress, @Param("since") LocalDateTime since);
+
+    @Query("SELECT MIN(la.attemptedAt) FROM LoginAttempt la WHERE la.email = :email AND la.success = false AND la.attemptedAt > :since")
+    LocalDateTime findEarliestFailedAttemptSince(@Param("email") String email, @Param("since") LocalDateTime since);
+
+    @Query("SELECT MIN(la.attemptedAt) FROM LoginAttempt la WHERE la.ipAddress = :ipAddress AND la.success = false AND la.attemptedAt > :since")
+    LocalDateTime findEarliestFailedAttemptByIpSince(@Param("ipAddress") String ipAddress, @Param("since") LocalDateTime since);
 }

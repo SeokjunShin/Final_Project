@@ -3,7 +3,9 @@ import type { LoginResponse } from '@/types';
 import { redirectToCommonErrorPage, shouldRedirectToCommonErrorPage } from '@/utils/errorRedirect';
 import { clearSecondAuthPassed } from '@/utils/secondAuth';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://127.0.0.1:8080/api' : '/api');
 const USE_CREDENTIALS = import.meta.env.VITE_API_WITH_CREDENTIALS === 'true';
 
 export const tokenStorage = {
@@ -30,6 +32,20 @@ let queue: Array<{
   reject: (error: Error) => void;
 }> = [];
 
+const HANDLED_AUTH_PATHS = [
+  '/auth/login',
+  '/auth/login/reactivate',
+  '/auth/withdrawal/cancel',
+  '/auth/register',
+  '/auth/check-email',
+  '/auth/password/reset/request',
+  '/auth/password/reset/verify',
+  '/auth/password/reset/confirm',
+];
+
+const shouldHandleAuthErrorLocally = (url?: string) =>
+  typeof url === 'string' && HANDLED_AUTH_PATHS.some((path) => url.includes(path));
+
 const flushQueue = (error: Error | null, token?: string) => {
   queue.forEach((item) => {
     if (error) {
@@ -53,6 +69,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const handledAuthRequest = shouldHandleAuthErrorLocally(original?.url);
     const isLoginRequest = original?.url?.includes('/auth/login');
     const isSecondAuthRequest = original?.url?.includes('/auth/verify-second-password');
     const status = error.response?.status;
@@ -110,6 +127,10 @@ apiClient.interceptors.response.use(
     if (status === 401 && hasToken) {
       tokenStorage.clear();
       clearSecondAuthPassed();
+    }
+
+    if (handledAuthRequest) {
+      return Promise.reject(error);
     }
 
     if (shouldRedirectToCommonErrorPage(status)) {

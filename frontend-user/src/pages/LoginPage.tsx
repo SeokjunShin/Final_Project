@@ -26,18 +26,32 @@ import platinumCard from '@/assets/cards/mycard-platinum.svg';
 import portalBg from '@/assets/hero/portal-bg.svg';
 
 const schema = z.object({
-  email: z.string().email('유효한 이메일을 입력하세요.'),
+  email: z.string().min(1, '이메일을 입력하세요.'),
   password: z.string().min(1, '비밀번호를 입력하세요.'),
 });
 
 type FormValues = z.infer<typeof schema>;
+
+type LoginErrorState = {
+  code?: string;
+  message?: string;
+  retryAfterSeconds?: number;
+  remainingAttempts?: number;
+};
+
+const formatRemainingTime = (seconds: number) => {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+};
 
 export const LoginPage = () => {
   const { login, loginReactivate, cancelWithdrawalAndLogin } = useAuth();
   const { show } = useSnackbar();
   const navigate = useNavigate();
 
-  const [loginError, setLoginError] = useState<{ code?: string; message?: string } | null>(null);
+  const [loginError, setLoginError] = useState<LoginErrorState | null>(null);
   const [cancelWithdrawalOpen, setCancelWithdrawalOpen] = useState(false);
   const [cancelSecondaryPassword, setCancelSecondaryPassword] = useState('');
   const [cancelWithdrawalError, setCancelWithdrawalError] = useState('');
@@ -58,6 +72,23 @@ export const LoginPage = () => {
     getValues,
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
+  useEffect(() => {
+    if (!loginError?.retryAfterSeconds || loginError.retryAfterSeconds <= 0) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setLoginError((current) => {
+        if (!current?.retryAfterSeconds || current.retryAfterSeconds <= 1) {
+          return current ? { ...current, retryAfterSeconds: 0 } : current;
+        }
+        return { ...current, retryAfterSeconds: current.retryAfterSeconds - 1 };
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [loginError?.retryAfterSeconds]);
+
   const onSubmit = async (value: FormValues) => {
     setLoginError(null);
     try {
@@ -65,10 +96,18 @@ export const LoginPage = () => {
       show('로그인되었습니다.', 'success');
       navigate('/');
     } catch (e: unknown) {
-      const data = (e as { response?: { data?: { code?: string; message?: string } } })?.response?.data;
+      const data = (e as { response?: { data?: { code?: string; message?: string; retryAfterSeconds?: number; remainingAttempts?: number } } })?.response?.data;
       const code = data?.code;
       const message = data?.message;
-      setLoginError({ code, message: message ?? '로그인에 실패했습니다.' });
+      const retryAfterSeconds =
+        typeof data?.retryAfterSeconds === 'number' && Number.isFinite(data.retryAfterSeconds)
+          ? Math.max(0, Math.ceil(data.retryAfterSeconds))
+          : undefined;
+      const remainingAttempts =
+        typeof data?.remainingAttempts === 'number' && Number.isFinite(data.remainingAttempts)
+          ? Math.max(0, Math.floor(data.remainingAttempts))
+          : undefined;
+      setLoginError({ code, message: message ?? '로그인에 실패했습니다.', retryAfterSeconds, remainingAttempts });
     }
   };
 
@@ -227,7 +266,19 @@ export const LoginPage = () => {
             <Stack spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
               {loginError && (
                 <Alert severity="error" onClose={() => setLoginError(null)}>
-                  {loginError.message}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    <Typography variant="body2">{loginError.message}</Typography>
+                    {typeof loginError.remainingAttempts === 'number' && loginError.code === 'INVALID_CREDENTIALS' && (
+                      <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        남은 시도 {loginError.remainingAttempts}회
+                      </Typography>
+                    )}
+                  </Box>
+                  {typeof loginError.retryAfterSeconds === 'number' && loginError.retryAfterSeconds > 0 && (
+                    <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>
+                      남은 대기 시간 {formatRemainingTime(loginError.retryAfterSeconds)}
+                    </Typography>
+                  )}
                   {loginError.code === 'ACCOUNT_DISABLED' && (
                     <Box sx={{ mt: 1 }}>
                       <Typography variant="body2" sx={{ mb: 0.5 }}>

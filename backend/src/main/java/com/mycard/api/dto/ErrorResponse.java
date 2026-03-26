@@ -18,6 +18,9 @@ public class ErrorResponse {
     private String code;
     private String message;
     private LocalDateTime timestamp;
+    private LocalDateTime lockExpiresAt;
+    private Long retryAfterSeconds;
+    private Integer remainingAttempts;
     private List<FieldError> errors;
 
     public ErrorResponse(String code, String message) {

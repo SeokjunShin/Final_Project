@@ -2,7 +2,9 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { AdminLoginResponse } from '@/types';
 import { redirectToCommonErrorPage, shouldRedirectToCommonErrorPage } from '@/utils/errorRedirect';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://127.0.0.1:8080/api' : '/api');
 const USE_CREDENTIALS = import.meta.env.VITE_API_WITH_CREDENTIALS === 'true';
 
 export const adminTokenStorage = {
@@ -29,6 +31,14 @@ let queue: Array<{
   reject: (error: Error) => void;
 }> = [];
 
+const HANDLED_AUTH_PATHS = [
+  '/auth/login',
+  '/auth/refresh',
+];
+
+const shouldHandleAuthErrorLocally = (url?: string) =>
+  typeof url === 'string' && HANDLED_AUTH_PATHS.some((path) => url.includes(path));
+
 const flushQueue = (error: Error | null, token?: string) => {
   queue.forEach((item) => {
     if (error) {
@@ -53,6 +63,7 @@ adminApiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const status = error.response?.status;
+    const handledAuthRequest = shouldHandleAuthErrorLocally(original?.url);
 
     if (status === 401 && !original?._retry && !original?.url?.includes('/auth/login')) {
       if (isRefreshing) {
@@ -96,6 +107,10 @@ adminApiClient.interceptors.response.use(
 
     if (status === 401) {
       adminTokenStorage.clear();
+    }
+
+    if (handledAuthRequest) {
+      return Promise.reject(error);
     }
 
     if (shouldRedirectToCommonErrorPage(status)) {

@@ -56,7 +56,9 @@ public class GlobalExceptionHandler {
                 log.debug("Bad request: {}", ex.getMessage());
                 ErrorResponse error = new ErrorResponse(
                                 "BAD_REQUEST",
-                                "요청하신 페이지를 처리할 수 없습니다.");
+                                ex.getMessage() != null && !ex.getMessage().isBlank()
+                                                ? ex.getMessage()
+                                                : "잘못된 요청입니다.");
                 return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
         }
 
@@ -76,7 +78,22 @@ public class GlobalExceptionHandler {
                 log.debug("Bad credentials attempt");
                 ErrorResponse error = new ErrorResponse(
                                 "INVALID_CREDENTIALS",
-                                "요청하신 페이지를 처리할 수 없습니다.");
+                                ex.getMessage() != null && !ex.getMessage().isBlank()
+                                                ? ex.getMessage()
+                                                : "이메일 또는 비밀번호가 올바르지 않습니다.");
+                return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+        }
+
+        @ExceptionHandler(InvalidLoginCredentialsException.class)
+        public ResponseEntity<ErrorResponse> handleInvalidLoginCredentialsException(
+                        InvalidLoginCredentialsException ex, WebRequest request) {
+                log.debug("Invalid login credentials");
+                ErrorResponse error = new ErrorResponse(
+                                "INVALID_CREDENTIALS",
+                                ex.getMessage() != null && !ex.getMessage().isBlank()
+                                                ? ex.getMessage()
+                                                : "아이디 또는 비밀번호가 일치하지 않습니다.");
+                error.setRemainingAttempts(ex.getRemainingAttempts());
                 return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
         }
 
@@ -86,9 +103,25 @@ public class GlobalExceptionHandler {
                 log.debug("Unauthorized request: {}", ex.getCode());
                 ErrorResponse error = new ErrorResponse(
                                 ex.getCode(),
-                                "요청하신 페이지를 처리할 수 없습니다.");
+                                ex.getMessage() != null && !ex.getMessage().isBlank()
+                                                ? ex.getMessage()
+                                                : "인증에 실패했습니다.");
                 return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
         }
+
+    @ExceptionHandler(LoginBlockedException.class)
+    public ResponseEntity<ErrorResponse> handleLoginBlockedException(
+            LoginBlockedException ex, WebRequest request) {
+        log.debug("Login blocked: {}", ex.getCode());
+        ErrorResponse error = new ErrorResponse(
+                ex.getCode(),
+                ex.getMessage() != null && !ex.getMessage().isBlank()
+                        ? ex.getMessage()
+                        : "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.");
+        error.setLockExpiresAt(ex.getLockExpiresAt());
+        error.setRetryAfterSeconds(ex.getRetryAfterSeconds());
+        return new ResponseEntity<>(error, HttpStatus.valueOf(423));
+    }
 
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ErrorResponse> handleLockedException(
@@ -96,7 +129,9 @@ public class GlobalExceptionHandler {
         log.debug("Account locked");
         ErrorResponse error = new ErrorResponse(
                 "ACCOUNT_LOCKED",
-                "요청하신 페이지를 처리할 수 없습니다."
+                ex.getMessage() != null && !ex.getMessage().isBlank()
+                        ? ex.getMessage()
+                        : "계정이 잠겨있습니다. 잠금 해제 시간 이후 다시 시도해 주세요."
         );
         return new ResponseEntity<>(error, HttpStatus.valueOf(423));
     }
@@ -113,7 +148,7 @@ public class GlobalExceptionHandler {
                 : "ACCOUNT_DISABLED";
         ErrorResponse error = new ErrorResponse(
                 code,
-                "요청하신 페이지를 처리할 수 없습니다."
+                message
         );
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }

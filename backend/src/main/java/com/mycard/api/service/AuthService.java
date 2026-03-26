@@ -1,27 +1,27 @@
 package com.mycard.api.service;
 
-import com.mycard.api.dto.auth.LoginRequest;
-import java.time.format.DateTimeFormatter;
-import com.mycard.api.dto.auth.LoginResponse;
 import com.mycard.api.dto.auth.CancelWithdrawalRequest;
-import com.mycard.api.dto.auth.RegisterRequest;
-import com.mycard.api.dto.auth.RegisterSecondPasswordRequest;
-import com.mycard.api.dto.auth.SendResetCodeRequest;
+import com.mycard.api.dto.auth.ConfirmPasswordResetRequest;
 import com.mycard.api.dto.auth.ConfirmResetPasswordRequest;
+import com.mycard.api.dto.auth.LoginRequest;
+import com.mycard.api.dto.auth.LoginResponse;
+import com.mycard.api.dto.auth.PasswordResetRequestResponse;
+import com.mycard.api.dto.auth.PasswordResetVerifyResponse;
+import com.mycard.api.dto.auth.RegisterRequest;
+import com.mycard.api.dto.auth.RegisterResponse;
+import com.mycard.api.dto.auth.RegisterSecondPasswordRequest;
+import com.mycard.api.dto.auth.RequestPasswordResetRequest;
+import com.mycard.api.dto.auth.SendResetCodeRequest;
+import com.mycard.api.dto.auth.TokenResponse;
+import com.mycard.api.dto.auth.VerifyPasswordRecoveryRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
-import com.mycard.api.dto.auth.RequestPasswordResetRequest;
-import com.mycard.api.dto.auth.ConfirmPasswordResetRequest;
-import com.mycard.api.dto.auth.SecurityQuestionResponse;
-import com.mycard.api.dto.auth.VerifyPasswordRecoveryRequest;
-import com.mycard.api.dto.auth.TokenResponse;
 import com.mycard.api.entity.AuditLog;
-import com.mycard.api.entity.LoginAttempt;
 import com.mycard.api.entity.RefreshToken;
 import com.mycard.api.entity.Role;
 import com.mycard.api.entity.User;
 import com.mycard.api.exception.BadRequestException;
-import com.mycard.api.repository.LoginAttemptRepository;
+import com.mycard.api.exception.UnauthorizedException;
 import com.mycard.api.repository.RefreshTokenRepository;
 import com.mycard.api.repository.RoleRepository;
 import com.mycard.api.repository.UserRepository;
@@ -50,6 +50,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -59,12 +60,13 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final LoginAttemptRepository loginAttemptRepository;
     private final RoleRepository roleRepository;
     private final JwtTokenProvider tokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
     private final EmailService emailService;
+    private final LoginSecurityService loginSecurityService;
+    private final TotpService totpService;
 
     @Value("${app.security.login-attempt-limit:5}")
     private int loginAttemptLimit;
@@ -72,40 +74,35 @@ public class AuthService {
     @Value("${app.security.login-lockout-duration-minutes:30}")
     private int lockoutDurationMinutes;
 
-    @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class})
+    @Value("${app.jwt.absolute-session-validity-ms:2592000000}")
+    private long absoluteSessionValidityMs;
+
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         return secureLogin(request);
     }
 
-    @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class})
+    @Transactional
     public LoginResponse secureLogin(LoginRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
 
-
-
-        // 계정 잠금 확인
         User user = userRepository.findByEmail(email).orElse(null);
-
         if (user != null && user.isWithdrawalPending()) {
             throw new DisabledException("회원 탈퇴가 예약되었습니다. 15분 후 최종 탈퇴 처리됩니다.");
         }
-
-        if (user != null && user.getLocked()) {
-            if (user.getLockExpiryTime() != null && LocalDateTime.now().isAfter(user.getLockExpiryTime())) {
-                // 잠금 해제
+        if (user != null && user.getLocked() && user.getLockExpiryTime() != null) {
+            if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
+                loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "Account locked");
+                throw new LockedException("계정이 잠겨있습니다. " +
+                        user.getLockExpiryTime() + " 이후에 다시 시도해주세요.");
+            } else {
                 user.setLocked(false);
                 user.setLockExpiryTime(null);
                 user.setFailedLoginAttempts(0);
                 userRepository.save(user);
-            } else {
-                logLoginAttempt(email, ipAddress, userAgent, false, "Account locked");
-                String expiryMsg = user.getLockExpiryTime() != null
-                        ? user.getLockExpiryTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + " 이후에 다시 시도해주세요."
-                        : "관리자에게 문의해주세요.";
-                throw new LockedException("계정이 잠겨있습니다. " + expiryMsg);
             }
         }
 
@@ -115,69 +112,32 @@ public class AuthService {
 
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
-            // 로그인 성공 시 실패 횟수 초기화 + 마지막 로그인 일시 갱신
             if (user != null) {
                 user.setFailedLoginAttempts(0);
+                user.setLockExpiryTime(null);
                 user.setLastLoginAt(LocalDateTime.now());
                 userRepository.save(user);
             }
 
-            // Access/Refresh Token 생성
-            String accessToken = tokenProvider.generateAccessToken(userPrincipal);
-            String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
+            SessionTokens sessionTokens = issueSessionTokens(userPrincipal, ipAddress, userAgent, false);
 
-            // Refresh Token 해시화 후 저장
-            saveRefreshToken(userPrincipal.getId(), refreshToken, ipAddress, userAgent);
-
-            // 로그인 성공 로깅
-            logLoginAttempt(email, ipAddress, userAgent, true, null);
+            loginSecurityService.recordSuccessfulLogin(userPrincipal.getId(), email, ipAddress, userAgent, null);
             auditService.log(AuditLog.ActionType.LOGIN, "User", userPrincipal.getId(), "User logged in");
 
-            List<String> roles = userPrincipal.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .toList();
-
-            String primaryRole = roles.stream()
-                    .map(r -> r.replace("ROLE_", ""))
-                    .filter(r -> !r.equals("USER"))
-                    .findFirst()
-                    .orElse("USER");
-
-            LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
-                    .id(userPrincipal.getId())
-                    .name(userPrincipal.getFullName())
-                    .email(userPrincipal.getUsername())
-                    .role(primaryRole)
-                    .hasSecondaryPassword(user != null && user.getSecondaryPassword() != null
-                            && !user.getSecondaryPassword().isBlank())
-                    .build();
-
-            return LoginResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .user(userInfo)
-                    .roles(roles)
-                    .build();
+            return buildLoginResponse(user, userPrincipal, sessionTokens.accessToken(), sessionTokens.refreshToken());
 
         } catch (BadCredentialsException e) {
-            // 로그인 실패 처리
             handleFailedLogin(email, ipAddress, userAgent);
             throw e;
         }
     }
 
-    /**
-     * 비활성(DISA BLED) 계정에 대해 비밀번호를 다시 확인한 뒤
-     * 활성화 + 로그인까지 한 번에 처리하는 전용 로그인 API.
-     */
-    @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class})
+    @Transactional
     public LoginResponse loginAndReactivate(LoginRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
-
-
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다."));
@@ -189,10 +149,9 @@ public class AuthService {
             throw new DisabledException("이미 탈퇴 처리된 계정입니다.");
         }
 
-        // 잠금 계정은 여기서도 동일하게 막기
         if (user.getLocked() && user.getLockExpiryTime() != null) {
             if (LocalDateTime.now().isBefore(user.getLockExpiryTime())) {
-                logLoginAttempt(email, ipAddress, userAgent, false, "Account locked (reactivate)");
+                loginSecurityService.recordLockedLoginAttempt(email, ipAddress, userAgent, "Account locked (reactivate)");
                 throw new LockedException("계정이 잠겨있습니다. " +
                         user.getLockExpiryTime() + " 이후에 다시 시도해주세요.");
             } else {
@@ -203,65 +162,39 @@ public class AuthService {
             }
         }
 
-        // 비밀번호 직접 검증
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             handleFailedLogin(email, ipAddress, userAgent);
             throw new BadCredentialsException("아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        // 비활성 -> 활성 전환
         if (!user.getEnabled()) {
             user.enable();
         }
         user.setFailedLoginAttempts(0);
+        user.setLockExpiryTime(null);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
         UserPrincipal userPrincipal = UserPrincipal.create(user);
+        SessionTokens sessionTokens = issueSessionTokens(userPrincipal, ipAddress, userAgent, false);
 
-        // 토큰 발급
-        String accessToken = tokenProvider.generateAccessToken(userPrincipal);
-        String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
-        saveRefreshToken(userPrincipal.getId(), refreshToken, ipAddress, userAgent);
-
-        // 로그인 성공 로깅
-        logLoginAttempt(email, ipAddress, userAgent, true, "Reactivated disabled account");
+        loginSecurityService.recordSuccessfulLogin(
+                userPrincipal.getId(),
+                email,
+                ipAddress,
+                userAgent,
+                "Reactivated disabled account");
         auditService.log(AuditLog.ActionType.LOGIN, "User", userPrincipal.getId(), "User reactivated and logged in");
 
-        List<String> roles = userPrincipal.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .toList();
-
-        String primaryRole = roles.stream()
-                .map(r -> r.replace("ROLE_", ""))
-                .filter(r -> !r.equals("USER"))
-                .findFirst()
-                .orElse("USER");
-
-        LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
-                .id(userPrincipal.getId())
-                .name(userPrincipal.getFullName())
-                .email(userPrincipal.getUsername())
-                .role(primaryRole)
-                .hasSecondaryPassword(user.getSecondaryPassword() != null && !user.getSecondaryPassword().isBlank())
-                .build();
-
-        return LoginResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .user(userInfo)
-                .roles(roles)
-                .build();
+        return buildLoginResponse(user, userPrincipal, sessionTokens.accessToken(), sessionTokens.refreshToken());
     }
 
-    @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class})
+    @Transactional
     public LoginResponse cancelWithdrawalAndLogin(CancelWithdrawalRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
-
-
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("이메일 또는 비밀번호가 올바르지 않습니다."));
@@ -282,17 +215,167 @@ public class AuthService {
 
         user.cancelWithdrawalRequest();
         user.setFailedLoginAttempts(0);
+        user.setLockExpiryTime(null);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
         UserPrincipal userPrincipal = UserPrincipal.create(user);
-        String accessToken = tokenProvider.generateAccessToken(userPrincipal);
-        String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId());
-        saveRefreshToken(userPrincipal.getId(), refreshToken, ipAddress, userAgent);
+        SessionTokens sessionTokens = issueSessionTokens(userPrincipal, ipAddress, userAgent, true);
 
-        logLoginAttempt(email, ipAddress, userAgent, true, "Canceled withdrawal reservation and logged in");
+        loginSecurityService.recordSuccessfulLogin(
+                userPrincipal.getId(),
+                email,
+                ipAddress,
+                userAgent,
+                "Canceled withdrawal reservation and logged in");
         auditService.log(AuditLog.ActionType.UPDATE, "USER_ACCOUNT", userPrincipal.getId(), "회원 탈퇴 예약 취소");
 
+        return buildLoginResponse(user, userPrincipal, sessionTokens.accessToken(), sessionTokens.refreshToken());
+    }
+
+    @Transactional
+    public TokenResponse refreshToken(String refreshToken) {
+        if (!tokenProvider.validateToken(refreshToken)) {
+            throw new UnauthorizedException("INVALID_REFRESH_TOKEN", "유효하지 않은 refresh token입니다.");
+        }
+        if (!tokenProvider.isRefreshToken(refreshToken)) {
+            throw new UnauthorizedException("INVALID_TOKEN_TYPE", "refresh token 형식이 아닙니다.");
+        }
+
+        String tokenHash = hashToken(refreshToken);
+        RefreshToken storedToken = refreshTokenRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new UnauthorizedException("REFRESH_TOKEN_NOT_FOUND", "Refresh token을 찾을 수 없습니다."));
+
+        if (storedToken.isRevoked()) {
+            handleRefreshTokenCompromise(storedToken, "Revoked refresh token reuse detected");
+            throw new UnauthorizedException("REFRESH_TOKEN_REUSED", "재사용된 refresh token이 감지되었습니다.");
+        }
+
+        if (storedToken.isExpired() || storedToken.isAbsoluteExpired()) {
+            revokeSessionTokens(storedToken.getUser().getId(), storedToken.getSessionId());
+            throw new UnauthorizedException("SESSION_EXPIRED", "세션이 만료되었습니다.");
+        }
+
+        HttpServletRequest httpRequest = getCurrentHttpRequest();
+        String ipAddress = getClientIp(httpRequest);
+        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+        if (isSuspiciousSessionFingerprint(storedToken, ipAddress, userAgent)) {
+            handleRefreshTokenCompromise(storedToken, "Refresh token fingerprint mismatch detected");
+            throw new UnauthorizedException("SUSPICIOUS_REFRESH_ACTIVITY", "비정상적인 세션 갱신이 감지되었습니다.");
+        }
+
+        storedToken.revoke();
+        refreshTokenRepository.save(storedToken);
+
+        Long userId = storedToken.getUser().getId();
+        User user = userRepository.findByIdWithRoles(userId)
+                .orElseThrow(() -> new BadRequestException("사용자를 찾을 수 없습니다."));
+
+        UserPrincipal userPrincipal = UserPrincipal.create(
+                user,
+                storedToken.getSessionId(),
+                storedToken.isSecondAuthVerified());
+        String newAccessToken = tokenProvider.generateAccessToken(
+                userPrincipal,
+                storedToken.getSessionId(),
+                storedToken.isSecondAuthVerified());
+        String newRefreshToken = tokenProvider.generateRefreshToken(userId, storedToken.getSessionId());
+
+        saveRefreshToken(
+                userId,
+                newRefreshToken,
+                ipAddress,
+                userAgent,
+                storedToken.getSessionId(),
+                storedToken.isSecondAuthVerified(),
+                storedToken.getSessionStartedAt(),
+                storedToken.getAbsoluteExpiresAt());
+
+        return new TokenResponse(newAccessToken, newRefreshToken);
+    }
+
+    @Transactional
+    public void logout(String accessToken, String refreshToken) {
+        boolean revoked = false;
+
+        if (refreshToken != null && !refreshToken.isBlank()
+                && tokenProvider.validateToken(refreshToken)
+                && tokenProvider.isRefreshToken(refreshToken)) {
+            String tokenHash = hashToken(refreshToken);
+            RefreshToken token = refreshTokenRepository.findByTokenHash(tokenHash).orElse(null);
+            if (token != null) {
+                revokeSessionTokens(token.getUser().getId(), token.getSessionId());
+                auditService.log(AuditLog.ActionType.LOGOUT, "User", token.getUser().getId(), "User logged out");
+                revoked = true;
+            }
+        }
+
+        if (!revoked && accessToken != null && !accessToken.isBlank()
+                && tokenProvider.validateToken(accessToken)
+                && tokenProvider.isAccessToken(accessToken)) {
+            Long userId = tokenProvider.getUserIdFromToken(accessToken);
+            String sessionId = tokenProvider.getSessionIdFromToken(accessToken);
+            if (sessionId != null && !sessionId.isBlank()) {
+                revokeSessionTokens(userId, sessionId);
+                auditService.log(AuditLog.ActionType.LOGOUT, "User", userId, "User logged out");
+            }
+        }
+    }
+
+    @Transactional
+    public void logoutAll(Long userId) {
+        int revokedCount = refreshTokenRepository.revokeAllUserTokens(userId, LocalDateTime.now());
+        log.debug("Revoked {} refresh tokens for user {}", revokedCount, userId);
+        auditService.log(AuditLog.ActionType.LOGOUT, "User", userId, "All sessions logged out");
+    }
+
+    private void handleFailedLogin(String email, String ipAddress, String userAgent) {
+        loginSecurityService.recordFailedLogin(email, ipAddress, userAgent, loginAttemptLimit, lockoutDurationMinutes);
+    }
+
+    private void saveRefreshToken(Long userId, String refreshToken, String ipAddress, String userAgent,
+                                  String sessionId, boolean secondAuthVerified,
+                                  LocalDateTime sessionStartedAt, LocalDateTime absoluteExpiresAt) {
+        User user = userRepository.getReferenceById(userId);
+        String tokenHash = hashToken(refreshToken);
+        LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                tokenProvider.getExpirationFromRefreshToken(refreshToken).toInstant(),
+                ZoneId.systemDefault());
+
+        RefreshToken token = new RefreshToken(
+                user,
+                sessionId,
+                tokenHash,
+                secondAuthVerified,
+                expiresAt,
+                sessionStartedAt,
+                absoluteExpiresAt,
+                userAgent,
+                ipAddress);
+        refreshTokenRepository.save(token);
+    }
+
+    private SessionTokens issueSessionTokens(UserPrincipal userPrincipal, String ipAddress, String userAgent,
+                                             boolean secondAuthVerified) {
+        LocalDateTime sessionStartedAt = LocalDateTime.now();
+        LocalDateTime absoluteExpiresAt = sessionStartedAt.plusNanos(absoluteSessionValidityMs * 1_000_000L);
+        String sessionId = UUID.randomUUID().toString();
+        String accessToken = tokenProvider.generateAccessToken(userPrincipal, sessionId, secondAuthVerified);
+        String refreshToken = tokenProvider.generateRefreshToken(userPrincipal.getId(), sessionId);
+        saveRefreshToken(
+                userPrincipal.getId(),
+                refreshToken,
+                ipAddress,
+                userAgent,
+                sessionId,
+                secondAuthVerified,
+                sessionStartedAt,
+                absoluteExpiresAt);
+        return new SessionTokens(accessToken, refreshToken);
+    }
+
+    private LoginResponse buildLoginResponse(User user, UserPrincipal userPrincipal,
+                                             String accessToken, String refreshToken) {
         List<String> roles = userPrincipal.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
@@ -308,7 +391,8 @@ public class AuthService {
                 .name(userPrincipal.getFullName())
                 .email(userPrincipal.getUsername())
                 .role(primaryRole)
-                .hasSecondaryPassword(user.getSecondaryPassword() != null && !user.getSecondaryPassword().isBlank())
+                .hasSecondaryPassword(user != null && user.getSecondaryPassword() != null
+                        && !user.getSecondaryPassword().isBlank())
                 .build();
 
         return LoginResponse.builder()
@@ -319,105 +403,53 @@ public class AuthService {
                 .build();
     }
 
-    @Transactional
-    public TokenResponse refreshToken(String refreshToken) {
-        if (!tokenProvider.validateToken(refreshToken)) {
-            throw new BadRequestException("유효하지 않은 refresh token입니다.");
+    private String markSecondAuthVerified(UserPrincipal userPrincipal) {
+        String sessionId = userPrincipal.getSessionId();
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new BadRequestException("인증 세션이 유효하지 않습니다.");
         }
 
-        String tokenHash = hashToken(refreshToken);
-        RefreshToken storedToken = refreshTokenRepository.findByTokenHash(tokenHash)
-                .orElseThrow(() -> new BadRequestException("Refresh token을 찾을 수 없습니다."));
+        List<RefreshToken> sessionTokens = refreshTokenRepository.findActiveTokensByUserIdAndSessionId(
+                userPrincipal.getId(),
+                sessionId,
+                LocalDateTime.now());
 
-        if (!storedToken.isValid()) {
-            throw new BadRequestException("Refresh token이 만료되었거나 취소되었습니다.");
+        if (sessionTokens.isEmpty()) {
+            throw new BadRequestException("인증 세션을 찾을 수 없습니다.");
         }
 
-        // 기존 토큰 취소
-        storedToken.revoke();
-        refreshTokenRepository.save(storedToken);
+        sessionTokens.forEach(token -> token.setSecondAuthVerified(true));
+        refreshTokenRepository.saveAll(sessionTokens);
 
-        // 새 토큰 발급 (sessionStart를 기존 값 그대로 전달하여 세션 연장 방지)
-        Long userId = storedToken.getUser().getId();
-        User user = userRepository.findByIdWithRoles(userId)
+        User verifiedUser = userRepository.findByIdWithRoles(userPrincipal.getId())
                 .orElseThrow(() -> new BadRequestException("사용자를 찾을 수 없습니다."));
+        UserPrincipal verifiedPrincipal = UserPrincipal.create(verifiedUser, sessionId, true);
 
-        UserPrincipal userPrincipal = UserPrincipal.create(user);
-        String newAccessToken = tokenProvider.generateAccessToken(userPrincipal);
-        String newRefreshToken = tokenProvider.generateRefreshToken(userId);
-
-        HttpServletRequest httpRequest = getCurrentHttpRequest();
-        String ipAddress = getClientIp(httpRequest);
-        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
-
-        saveRefreshToken(userId, newRefreshToken, ipAddress, userAgent);
-
-        return new TokenResponse(newAccessToken, newRefreshToken);
+        return tokenProvider.generateAccessToken(verifiedPrincipal, sessionId, true);
     }
 
-    @Transactional
-    public void logout(String refreshToken) {
-        // Refresh Token 폐기
-        if (refreshToken != null && !refreshToken.isBlank()) {
-            String tokenHash = hashToken(refreshToken);
-            refreshTokenRepository.findByTokenHash(tokenHash)
-                    .ifPresent(token -> {
-                        token.revoke();
-                        refreshTokenRepository.save(token);
-                        auditService.log(AuditLog.ActionType.LOGOUT, "User", token.getUser().getId(),
-                                "User logged out");
-                    });
+    private void revokeSessionTokens(Long userId, String sessionId) {
+        refreshTokenRepository.revokeSessionTokens(userId, sessionId, LocalDateTime.now());
+    }
+
+    private void handleRefreshTokenCompromise(RefreshToken storedToken, String detail) {
+        revokeSessionTokens(storedToken.getUser().getId(), storedToken.getSessionId());
+        auditService.log(
+                AuditLog.ActionType.SECURITY_ALERT,
+                "AUTH_SESSION",
+                storedToken.getUser().getId(),
+                detail);
+    }
+
+    private boolean isSuspiciousSessionFingerprint(RefreshToken storedToken, String ipAddress, String userAgent) {
+        String storedUserAgent = storedToken.getUserAgent();
+        if (storedUserAgent == null || storedUserAgent.isBlank()) {
+            return false;
         }
-    }
-
-    @Transactional
-    public void logoutAll(Long userId) {
-        int revokedCount = refreshTokenRepository.revokeAllUserTokens(userId, LocalDateTime.now());
-        log.debug("Revoked {} refresh tokens for user {}", revokedCount, userId);
-        auditService.log(AuditLog.ActionType.LOGOUT, "User", userId, "All sessions logged out");
-    }
-
-    private void handleFailedLogin(String email, String ipAddress, String userAgent) {
-        logLoginAttempt(email, ipAddress, userAgent, false, "Invalid credentials");
-
-        User user = userRepository.findByEmail(email).orElse(null);
-        if (user != null) {
-            // 10분 이내 실패만 카운트: 마지막 실패 시점이 10분 이전이면 카운터 초기화
-            LocalDateTime tenMinutesAgo = LocalDateTime.now().minusMinutes(10);
-            if (user.getLastFailedLoginAt() != null && user.getLastFailedLoginAt().isBefore(tenMinutesAgo)) {
-                user.setFailedLoginAttempts(0);
-            }
-
-            int attempts = user.getFailedLoginAttempts() + 1;
-            user.setFailedLoginAttempts(attempts);
-            user.setLastFailedLoginAt(LocalDateTime.now());
-
-            if (attempts >= loginAttemptLimit) {
-                user.setLocked(true);
-                user.setLockExpiryTime(LocalDateTime.now().plusMinutes(lockoutDurationMinutes));
-                log.warn("Account locked due to {} failed attempts within 10 minutes: {}", attempts, email);
-            }
-
-            userRepository.save(user);
+        if (userAgent == null || userAgent.isBlank()) {
+            return false;
         }
-    }
-
-    private void saveRefreshToken(Long userId, String refreshToken, String ipAddress, String userAgent) {
-        User user = userRepository.getReferenceById(userId);
-        String tokenHash = hashToken(refreshToken);
-        LocalDateTime expiresAt = LocalDateTime.ofInstant(
-                tokenProvider.getExpirationFromRefreshToken(refreshToken).toInstant(),
-                ZoneId.systemDefault());
-
-        RefreshToken token = new RefreshToken(user, tokenHash, expiresAt, userAgent, ipAddress);
-        refreshTokenRepository.save(token);
-    }
-
-    private void logLoginAttempt(String email, String ipAddress, String userAgent,
-            boolean success, String failureReason) {
-        LoginAttempt attempt = new LoginAttempt(email, ipAddress, userAgent, success, failureReason);
-        userRepository.findByEmail(email).ifPresent(attempt::setUser);
-        loginAttemptRepository.save(attempt);
+        return !storedUserAgent.equals(userAgent);
     }
 
     private String hashToken(String token) {
@@ -440,8 +472,9 @@ public class AuthService {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        if (request == null)
+        if (request == null) {
             return "unknown";
+        }
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
             return xForwardedFor.split(",")[0].trim();
@@ -449,16 +482,12 @@ public class AuthService {
         return request.getRemoteAddr();
     }
 
-
-
     @Transactional
-    public void register(RegisterRequest request) {
-        // 이메일 중복 확인
+    public RegisterResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("이미 사용 중인 이메일입니다.");
         }
 
-        // 새 사용자 생성
         User user = new User(
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword()),
@@ -466,14 +495,10 @@ public class AuthService {
         user.setSecondaryPassword(passwordEncoder.encode(request.getSecondaryPassword()));
         user.setPhoneNumber(request.getPhone());
         user.setStatus("ACTIVE");
-        if (request.getSecurityQuestion() != null && !request.getSecurityQuestion().isBlank()) {
-            user.setSecurityQuestion(request.getSecurityQuestion());
-        }
-        if (request.getSecurityAnswer() != null && !request.getSecurityAnswer().isBlank()) {
-            user.setSecurityAnswer(passwordEncoder.encode(request.getSecurityAnswer().trim().toLowerCase()));
-        }
+        String otpSecret = totpService.generateSecret();
+        user.setOtpSecret(otpSecret);
+        user.setOtpEnabled(true);
 
-        // USER 역할 부여
         Role userRole = roleRepository.findByName(Role.USER)
                 .orElseThrow(() -> new BadRequestException("USER 역할이 존재하지 않습니다."));
         user.getRoles().add(userRole);
@@ -481,6 +506,11 @@ public class AuthService {
         userRepository.save(user);
 
         log.info("New user registered: {}", request.getEmail());
+        return RegisterResponse.builder()
+                .otpSecret(otpSecret)
+                .otpAuthUri(totpService.buildOtpAuthUri("MyCard", request.getEmail(), otpSecret))
+                .message("회원가입이 완료되었습니다. Google Authenticator에 OTP를 등록해주세요.")
+                .build();
     }
 
     @Transactional
@@ -496,14 +526,17 @@ public class AuthService {
             throw new BadRequestException("비밀번호가 일치하지 않습니다.");
         }
 
+        String accessToken = markSecondAuthVerified(user);
+
         return VerifySecondPasswordResponse.builder()
                 .success(true)
                 .message("인증에 성공했습니다.")
+                .accessToken(accessToken)
                 .build();
     }
 
     @Transactional
-    public void registerSecondPassword(UserPrincipal user, RegisterSecondPasswordRequest request) {
+    public VerifySecondPasswordResponse registerSecondPassword(UserPrincipal user, RegisterSecondPasswordRequest request) {
         User targetUser = userRepository.findById(user.getId())
                 .orElseThrow(() -> new BadRequestException("사용자를 찾을 수 없습니다."));
 
@@ -516,11 +549,18 @@ public class AuthService {
 
         auditService.log(AuditLog.ActionType.UPDATE, "User", targetUser.getId(),
                 "User registered initial secondary password");
+
+        String accessToken = markSecondAuthVerified(user);
+
+        return VerifySecondPasswordResponse.builder()
+                .success(true)
+                .message("2차 비밀번호가 설정되었습니다.")
+                .accessToken(accessToken)
+                .build();
     }
 
     @Transactional
     public void sendResetCode(UserPrincipal user, SendResetCodeRequest request) {
-        // 이메일 발송
         emailService.sendResetCode(request.getEmail());
     }
 
@@ -542,13 +582,13 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public SecurityQuestionResponse requestPasswordReset(RequestPasswordResetRequest request) {
+    public PasswordResetRequestResponse requestPasswordReset(RequestPasswordResetRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadRequestException("해당 이메일로 가입된 사용자를 찾을 수 없습니다."));
-        if (user.getSecurityQuestion() == null || user.getSecurityQuestion().isBlank()) {
-            throw new BadRequestException("등록된 보안 질문이 없습니다. 관리자에게 문의해주세요.");
+        if (!Boolean.TRUE.equals(user.getOtpEnabled()) || user.getOtpSecret() == null || user.getOtpSecret().isBlank()) {
+            throw new BadRequestException("구글 OTP가 등록되지 않은 계정입니다. 관리자에게 문의해주세요.");
         }
-        return new SecurityQuestionResponse(user.getSecurityQuestion());
+        return new PasswordResetRequestResponse("Google OTP 6자리 코드를 입력해 주세요.");
     }
 
     @Transactional
@@ -556,55 +596,41 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadRequestException("해당 이메일로 가입된 사용자를 찾을 수 없습니다."));
 
-        verifyPasswordRecoveryAnswer(user, request.getSecurityAnswer());
+        if (!tokenProvider.validateToken(request.getResetToken())
+                || !tokenProvider.isPasswordResetToken(request.getResetToken())) {
+            throw new BadRequestException("비밀번호 재설정 토큰이 유효하지 않습니다.");
+        }
+        if (!tokenProvider.getUserIdFromToken(request.getResetToken()).equals(user.getId())) {
+            throw new BadRequestException("비밀번호 재설정 토큰이 사용자와 일치하지 않습니다.");
+        }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
         logoutAll(user.getId());
 
         auditService.log(AuditLog.ActionType.UPDATE, "User", user.getId(),
-                "User reset login password via security question");
+                "User reset login password via Google OTP");
     }
 
     @Transactional
-    public VerifySecondPasswordResponse verifyPasswordRecovery(VerifyPasswordRecoveryRequest request) {
+    public PasswordResetVerifyResponse verifyPasswordRecovery(VerifyPasswordRecoveryRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadRequestException("해당 이메일로 가입된 사용자를 찾을 수 없습니다."));
 
-        verifyPasswordRecoveryAnswer(user, request.getSecurityAnswer());
+        if (!Boolean.TRUE.equals(user.getOtpEnabled()) || user.getOtpSecret() == null || user.getOtpSecret().isBlank()) {
+            throw new BadRequestException("구글 OTP가 등록되지 않은 계정입니다.");
+        }
+        if (!totpService.verifyCode(user.getOtpSecret(), request.getOtpCode())) {
+            throw new BadRequestException("OTP 코드가 올바르지 않습니다.");
+        }
 
-        return VerifySecondPasswordResponse.builder()
+        return PasswordResetVerifyResponse.builder()
                 .success(true)
-                .message("인증되었습니다.")
+                .message("OTP 인증이 완료되었습니다.")
+                .resetToken(tokenProvider.generatePasswordResetToken(user.getId()))
                 .build();
     }
 
-    private void verifyPasswordRecoveryAnswer(User user, String securityAnswer) {
-        String normalizedAnswer = securityAnswer.trim().toLowerCase();
-        String storedAnswer = user.getSecurityAnswer();
-
-        if (storedAnswer == null || storedAnswer.isBlank()) {
-            throw new BadRequestException("보안 답변이 올바르지 않습니다.");
-        }
-
-        boolean isEncoded = storedAnswer.startsWith("$2a$")
-                || storedAnswer.startsWith("$2b$")
-                || storedAnswer.startsWith("$2y$");
-
-        if (isEncoded) {
-            if (!passwordEncoder.matches(normalizedAnswer, storedAnswer)) {
-                throw new BadRequestException("보안 답변이 올바르지 않습니다.");
-            }
-            return;
-        }
-
-        // Legacy seed data stored plain text answers. On successful verification,
-        // upgrade the stored value to a bcrypt hash so future checks use one path.
-        if (!storedAnswer.trim().toLowerCase().equals(normalizedAnswer)) {
-            throw new BadRequestException("보안 답변이 올바르지 않습니다.");
-        }
-
-        user.setSecurityAnswer(passwordEncoder.encode(normalizedAnswer));
-        userRepository.save(user);
+    private record SessionTokens(String accessToken, String refreshToken) {
     }
 }

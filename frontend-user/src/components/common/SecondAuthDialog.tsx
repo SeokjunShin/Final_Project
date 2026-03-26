@@ -24,7 +24,6 @@ export const SecondAuthDialog = ({ open, onSuccess, onClose }: Props) => {
         if (secondPwd.length === 6) {
             authApi.verifySecondPassword(secondPwd)
                 .then(() => {
-                    sessionStorage.setItem('second_auth_passed', 'true');
                     const verifiedSecondPassword = secondPwd;
                     setSecondPwd('');
                     onSuccess(verifiedSecondPassword);

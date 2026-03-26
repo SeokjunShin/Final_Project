@@ -15,18 +15,14 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ErrorResponse {
 
-    private int status;
     private String code;
     private String message;
-    private String path;
     private LocalDateTime timestamp;
     private List<FieldError> errors;
 
-    public ErrorResponse(int status, String code, String message, String path) {
-        this.status = status;
+    public ErrorResponse(String code, String message) {
         this.code = code;
         this.message = message;
-        this.path = path;
         this.timestamp = LocalDateTime.now();
     }
 

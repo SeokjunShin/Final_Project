@@ -1,5 +1,6 @@
-﻿import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { AdminLoginResponse } from '@/types';
+import { redirectToCommonErrorPage, shouldRedirectToCommonErrorPage } from '@/utils/errorRedirect';
 
 const API_BASE_URL = '/api';
 const USE_CREDENTIALS = import.meta.env.VITE_API_WITH_CREDENTIALS === 'true';
@@ -51,8 +52,9 @@ adminApiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const status = error.response?.status;
 
-    if (error.response?.status === 401 && !original?._retry && !original?.url?.includes('/auth/login')) {
+    if (status === 401 && !original?._retry && !original?.url?.includes('/auth/login')) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           queue.push({ resolve, reject });
@@ -85,20 +87,19 @@ adminApiClient.interceptors.response.use(
       } catch (refreshError) {
         adminTokenStorage.clear();
         flushQueue(refreshError as Error);
-        window.location.href = '/login';
+        redirectToCommonErrorPage();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    // 로그인 요청 자체의 401은 무시 (로그인 실패)
-    if (error.response?.status === 401 && !original?.url?.includes('/auth/login') && !original?.url?.includes('/auth/refresh')) {
-      // 이미 retry 했거나 다른 이유로 401인 경우에만 로그아웃
-      if (original?._retry) {
-        adminTokenStorage.clear();
-        window.location.href = '/login';
-      }
+    if (status === 401) {
+      adminTokenStorage.clear();
+    }
+
+    if (shouldRedirectToCommonErrorPage(status)) {
+      redirectToCommonErrorPage();
     }
 
     return Promise.reject(error);

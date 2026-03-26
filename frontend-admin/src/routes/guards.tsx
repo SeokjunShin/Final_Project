@@ -22,7 +22,7 @@ export const ProtectedRoute = ({ roles }: { roles: Role[] }) => {
   }
 
   if (!canAccess(roles)) {
-    return <Navigate to="/403" replace />;
+    return <Navigate to="/error" replace />;
   }
 
   return <Outlet />;

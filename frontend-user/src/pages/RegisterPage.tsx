@@ -12,19 +12,16 @@ import {
   Chip,
   Collapse,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
   FormControlLabel,
   IconButton,
-  InputLabel,
   Link,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
-  MenuItem,
-  Select,
   Stack,
   TextField,
   Typography,
@@ -37,6 +34,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import LockIcon from '@mui/icons-material/Lock';
 import CloseIcon from '@mui/icons-material/Close';
 import { SecureKeypad } from '@/components/common/SecureKeypad';
+import { QRCodeSVG } from 'qrcode.react';
 
 const schema = z
   .object({
@@ -109,10 +107,6 @@ export const RegisterPage = () => {
   const [emailChecking, setEmailChecking] = useState(false);
   const [checkedEmail, setCheckedEmail] = useState(''); // 중복확인 완료된 이메일
 
-  /* ─── 보안 질문 상태 ─── */
-  const [securityQuestion, setSecurityQuestion] = useState('');
-  const [securityAnswer, setSecurityAnswer] = useState('');
-
   /* ─── 약관 동의 상태 ─── */
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
@@ -126,6 +120,9 @@ export const RegisterPage = () => {
   const [pinStep, setPinStep] = useState<'input' | 'confirm'>('input');
   const [pinError, setPinError] = useState('');
   const [pinDone, setPinDone] = useState(false); // 설정 완료 여부
+  const [otpSetupOpen, setOtpSetupOpen] = useState(false);
+  const [otpSecret, setOtpSecret] = useState('');
+  const [otpAuthUri, setOtpAuthUri] = useState('');
 
   const pinConditions = checkSecondaryPinConditions(secondaryPin);
 
@@ -228,27 +225,23 @@ export const RegisterPage = () => {
       show('2차 비밀번호를 설정해주세요.', 'error');
       return;
     }
-    if (!securityQuestion || !securityAnswer.trim()) {
-      show('보안 질문을 선택하고 답변을 입력해주세요.', 'error');
-      return;
-    }
     if (!agreeTerms || !agreePrivacy) {
       show('이용약관 및 개인정보처리방침에 동의해주세요.', 'error');
       return;
     }
 
     try {
-      await authApi.register({
+      const result = await authApi.register({
         email: value.email,
         password: value.password,
         name: value.name,
         phone: value.phone || undefined,
         secondaryPin,
-        securityQuestion,
-        securityAnswer: securityAnswer.trim(),
       });
-      show('회원가입이 완료되었습니다. 로그인해주세요.', 'success');
-      navigate('/login');
+      setOtpSecret(result.otpSecret);
+      setOtpAuthUri(result.otpAuthUri);
+      setOtpSetupOpen(true);
+      show(result.message, 'success');
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -412,45 +405,22 @@ export const RegisterPage = () => {
               helperText={errors.phone?.message}
             />
 
-            {/* ─── 보안 질문 ─── */}
             <Box
               sx={{
                 border: '1px solid',
-                borderColor: securityQuestion && securityAnswer.trim() ? '#4caf50' : '#e0e0e0',
+                borderColor: '#e0e0e0',
                 borderRadius: 2,
                 p: 2,
-                bgcolor: securityQuestion && securityAnswer.trim() ? '#f1f8e9' : '#fafbfc',
-                transition: 'all 0.2s',
+                bgcolor: '#fafbfc',
               }}
             >
-              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', mb: 1.5 }}>
-                🔐 보안 질문 (비밀번호 분실 시 본인 확인)
+              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', mb: 0.8 }}>
+                Google OTP 기반 비밀번호 복구
               </Typography>
-              <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-                <InputLabel>보안 질문 선택</InputLabel>
-                <Select
-                  value={securityQuestion}
-                  label="보안 질문 선택"
-                  onChange={(e) => setSecurityQuestion(e.target.value)}
-                >
-                  <MenuItem value="내가 다녔던 초등학교 이름은?">내가 다녔던 초등학교 이름은?</MenuItem>
-                  <MenuItem value="어머니의 성함은?">어머니의 성함은?</MenuItem>
-                  <MenuItem value="첫 번째 반려동물의 이름은?">첫 번째 반려동물의 이름은?</MenuItem>
-                  <MenuItem value="내가 태어난 도시 이름은?">내가 태어난 도시 이름은?</MenuItem>
-                  <MenuItem value="좋아하는 음식은?">좋아하는 음식은?</MenuItem>
-                  <MenuItem value="가장 친한 친구의 이름은?">가장 친한 친구의 이름은?</MenuItem>
-                  <MenuItem value="첫 직장의 이름은?">첫 직장의 이름은?</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="보안 답변"
-                value={securityAnswer}
-                onChange={(e) => setSecurityAnswer(e.target.value)}
-                fullWidth
-                size="small"
-                placeholder="답변은 대소문자 구분 없이 저장됩니다"
-                helperText="비밀번호 분실 시 본인 확인에 사용됩니다."
-              />
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+                회원가입 완료 후 Google Authenticator에 등록할 OTP 시크릿이 발급됩니다.
+                메일 복구 수단 없이 OTP만으로 비밀번호 복구를 진행하므로, 등록 키를 반드시 안전하게 보관해야 합니다.
+              </Typography>
             </Box>
 
             {/* ─── 약관 동의 ─── */}
@@ -586,6 +556,56 @@ export const RegisterPage = () => {
       </Card>
 
       {/* ─── 2차 비밀번호 팝업 (Dialog) ─── */}
+      <Dialog open={otpSetupOpen} onClose={() => { setOtpSetupOpen(false); navigate('/login'); }} fullWidth maxWidth="sm">
+        <DialogTitle>Google OTP 등록</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="warning">
+              이메일 복구 수단 없이 Google OTP만으로 비밀번호 복구를 수행합니다. 아래 시크릿 키를 Google Authenticator에 반드시 등록하세요.
+            </Alert>
+            <Box
+              sx={{
+                alignSelf: 'center',
+                p: 2,
+                borderRadius: 2,
+                bgcolor: '#fff',
+                border: '1px solid #e0e0e0',
+              }}
+            >
+              <QRCodeSVG value={otpAuthUri} size={180} includeMargin />
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Google Authenticator 앱에서 QR을 스캔하거나, `+` {`>`} `설정 키 입력`으로 아래 시크릿을 직접 등록하세요.
+            </Typography>
+            <TextField
+              label="OTP Secret"
+              value={otpSecret}
+              fullWidth
+              InputProps={{ readOnly: true }}
+            />
+            <TextField
+              label="otpauth URI"
+              value={otpAuthUri}
+              fullWidth
+              multiline
+              minRows={3}
+              InputProps={{ readOnly: true }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={async () => {
+            await navigator.clipboard.writeText(otpSecret);
+            show('OTP 시크릿이 복사되었습니다.', 'success');
+          }}>
+            시크릿 복사
+          </Button>
+          <Button variant="contained" onClick={() => { setOtpSetupOpen(false); navigate('/login'); }}>
+            확인
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}

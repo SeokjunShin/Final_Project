@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { ProtectedRoute, PublicRoute } from './guards';
 import { UserLayout } from '@/components/layout/UserLayout';
 import { HomePage } from '@/pages/HomePage';
@@ -21,8 +21,7 @@ import { EventsPage } from '@/pages/EventsPage';
 import { PublicEventsPage } from '@/pages/PublicEventsPage';
 import { CardProductsPage } from '@/pages/CardProductsPage';
 import { RequestActivationPage } from '@/pages/account/RequestActivationPage';
-import { ForbiddenPage } from '@/pages/errors/ForbiddenPage';
-import { NotFoundPage } from '@/pages/errors/NotFoundPage';
+import { CommonErrorPage } from '@/pages/errors/CommonErrorPage';
 import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage';
 import { ShoppingPage } from '@/pages/ShoppingPage';
 import { TermsPage } from '@/pages/TermsPage';
@@ -44,6 +43,7 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '/board', element: <InquiryBoardPage /> },
+  { path: '/error', element: <CommonErrorPage /> },
   {
     element: <ProtectedRoute />,
     children: [
@@ -68,6 +68,5 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: '/403', element: <ForbiddenPage /> },
-  { path: '*', element: <NotFoundPage /> },
+  { path: '*', element: <Navigate to="/error" replace /> },
 ]);

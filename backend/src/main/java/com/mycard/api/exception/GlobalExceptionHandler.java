@@ -8,10 +8,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @Slf4j
@@ -23,10 +25,8 @@ public class GlobalExceptionHandler {
                         ResourceNotFoundException ex, WebRequest request) {
                 log.debug("Resource not found: {}", ex.getMessage());
                 ErrorResponse error = new ErrorResponse(
-                                HttpStatus.NOT_FOUND.value(),
                                 "NOT_FOUND",
-                                ex.getMessage(),
-                                getPath(request));
+                                "요청하신 페이지를 처리할 수 없습니다.");
                 return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
         }
 
@@ -35,10 +35,8 @@ public class GlobalExceptionHandler {
                         AccessDeniedException ex, WebRequest request) {
                 log.debug("Access denied: {}", ex.getMessage());
                 ErrorResponse error = new ErrorResponse(
-                                HttpStatus.FORBIDDEN.value(),
                                 "ACCESS_DENIED",
-                                ex.getMessage(),
-                                getPath(request));
+                                "요청하신 페이지를 처리할 수 없습니다.");
                 return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
         }
 
@@ -47,10 +45,8 @@ public class GlobalExceptionHandler {
                         org.springframework.security.access.AccessDeniedException ex, WebRequest request) {
                 log.debug("Spring access denied: {}", ex.getMessage());
                 ErrorResponse error = new ErrorResponse(
-                                HttpStatus.FORBIDDEN.value(),
                                 "ACCESS_DENIED",
-                                "이 작업을 수행할 권한이 없습니다.",
-                                getPath(request));
+                                "요청하신 페이지를 처리할 수 없습니다.");
                 return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
         }
 
@@ -59,10 +55,8 @@ public class GlobalExceptionHandler {
                         BadRequestException ex, WebRequest request) {
                 log.debug("Bad request: {}", ex.getMessage());
                 ErrorResponse error = new ErrorResponse(
-                                HttpStatus.BAD_REQUEST.value(),
                                 "BAD_REQUEST",
-                                ex.getMessage(),
-                                getPath(request));
+                                "요청하신 페이지를 처리할 수 없습니다.");
                 return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
         }
 
@@ -71,10 +65,8 @@ public class GlobalExceptionHandler {
                         DuplicateResourceException ex, WebRequest request) {
                 log.debug("Duplicate resource: {}", ex.getMessage());
                 ErrorResponse error = new ErrorResponse(
-                                HttpStatus.CONFLICT.value(),
                                 "DUPLICATE_RESOURCE",
-                                ex.getMessage(),
-                                getPath(request));
+                                "요청하신 페이지를 처리할 수 없습니다.");
                 return new ResponseEntity<>(error, HttpStatus.CONFLICT);
         }
 
@@ -83,10 +75,18 @@ public class GlobalExceptionHandler {
                         BadCredentialsException ex, WebRequest request) {
                 log.debug("Bad credentials attempt");
                 ErrorResponse error = new ErrorResponse(
-                                HttpStatus.UNAUTHORIZED.value(),
                                 "INVALID_CREDENTIALS",
-                                "아이디 또는 비밀번호가 올바르지 않습니다.",
-                                getPath(request));
+                                "요청하신 페이지를 처리할 수 없습니다.");
+                return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+        }
+
+        @ExceptionHandler(UnauthorizedException.class)
+        public ResponseEntity<ErrorResponse> handleUnauthorizedException(
+                        UnauthorizedException ex, WebRequest request) {
+                log.debug("Unauthorized request: {}", ex.getCode());
+                ErrorResponse error = new ErrorResponse(
+                                ex.getCode(),
+                                "요청하신 페이지를 처리할 수 없습니다.");
                 return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
         }
 
@@ -95,10 +95,8 @@ public class GlobalExceptionHandler {
             LockedException ex, WebRequest request) {
         log.debug("Account locked");
         ErrorResponse error = new ErrorResponse(
-                423,
                 "ACCOUNT_LOCKED",
-                ex.getMessage() != null ? ex.getMessage() : "계정이 잠겼습니다. 잠시 후 다시 시도해주세요.",
-                getPath(request)
+                "요청하신 페이지를 처리할 수 없습니다."
         );
         return new ResponseEntity<>(error, HttpStatus.valueOf(423));
     }
@@ -114,10 +112,8 @@ public class GlobalExceptionHandler {
                 ? "WITHDRAWAL_PENDING"
                 : "ACCOUNT_DISABLED";
         ErrorResponse error = new ErrorResponse(
-                HttpStatus.UNAUTHORIZED.value(),
                 code,
-                message,
-                getPath(request)
+                "요청하신 페이지를 처리할 수 없습니다."
         );
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
@@ -127,10 +123,8 @@ public class GlobalExceptionHandler {
                         MethodArgumentNotValidException ex, WebRequest request) {
                 log.debug("Validation error");
                 ErrorResponse error = new ErrorResponse(
-                                HttpStatus.BAD_REQUEST.value(),
                                 "VALIDATION_ERROR",
-                                "입력값이 올바르지 않습니다.",
-                                getPath(request));
+                                "요청하신 페이지를 처리할 수 없습니다.");
                 for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
                         error.addFieldError(fieldError.getField(), fieldError.getDefaultMessage());
                 }
@@ -142,11 +136,29 @@ public class GlobalExceptionHandler {
                         MaxUploadSizeExceededException ex, WebRequest request) {
                 log.debug("File size exceeded");
                 ErrorResponse error = new ErrorResponse(
-                                HttpStatus.BAD_REQUEST.value(),
                                 "FILE_SIZE_EXCEEDED",
-                                "파일 크기가 허용된 최대 크기를 초과했습니다.",
-                                getPath(request));
+                                "요청하신 페이지를 처리할 수 없습니다.");
                 return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        }
+
+        @ExceptionHandler(NoHandlerFoundException.class)
+        public ResponseEntity<ErrorResponse> handleNoHandlerFoundException(
+                        NoHandlerFoundException ex, WebRequest request) {
+                log.debug("No handler found: {}", ex.getRequestURL());
+                ErrorResponse error = new ErrorResponse(
+                                "NOT_FOUND",
+                                "요청하신 페이지를 처리할 수 없습니다.");
+                return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+        }
+
+        @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+        public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(
+                        HttpRequestMethodNotSupportedException ex, WebRequest request) {
+                log.debug("Method not supported: {}", ex.getMethod());
+                ErrorResponse error = new ErrorResponse(
+                                "METHOD_NOT_ALLOWED",
+                                "요청하신 페이지를 처리할 수 없습니다.");
+                return new ResponseEntity<>(error, HttpStatus.METHOD_NOT_ALLOWED);
         }
 
         @ExceptionHandler(Exception.class)
@@ -155,14 +167,8 @@ public class GlobalExceptionHandler {
                 // 스택트레이스는 로그로만 기록, 외부 노출 금지
                 log.error("Unhandled exception", ex);
                 ErrorResponse error = new ErrorResponse(
-                                HttpStatus.INTERNAL_SERVER_ERROR.value(),
                                 "INTERNAL_ERROR",
-                                "서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-                                getPath(request));
+                                "요청하신 페이지를 처리할 수 없습니다.");
                 return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
-        private String getPath(WebRequest request) {
-                return request.getDescription(false).replace("uri=", "");
         }
 }

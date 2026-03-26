@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.web.util.HtmlUtils;
 
 import java.time.LocalDateTime;
 
@@ -28,16 +29,20 @@ public class BoardResponse {
     private LocalDateTime updatedAt;
     private LocalDateTime answerUpdatedAt;
 
+    private static String escapeHtml(String value) {
+        return value == null ? null : HtmlUtils.htmlEscape(value);
+    }
+
     public static BoardResponse from(Board board) {
         return BoardResponse.builder()
                 .id(board.getId())
-                .title(board.getTitle())
-                .content(board.getContent())
-                .authorName(board.getAuthorName())
+                .title(escapeHtml(board.getTitle()))
+                .content(escapeHtml(board.getContent()))
+                .authorName(escapeHtml(board.getAuthorName()))
                 .category(board.getCategory())
-                .allowedUsers(board.getAllowedUsers())
-                .answer(board.getAnswer())
-                .answerAuthorName(board.getAnswerAuthorName())
+                .allowedUsers(escapeHtml(board.getAllowedUsers()))
+                .answer(escapeHtml(board.getAnswer()))
+                .answerAuthorName(escapeHtml(board.getAnswerAuthorName()))
                 .isPrivate(board.isPrivate())
                 .createdAt(board.getCreatedAt())
                 .updatedAt(board.getUpdatedAt())

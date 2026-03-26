@@ -8,4 +8,5 @@ import lombok.Getter;
 public class VerifySecondPasswordResponse {
     private boolean success;
     private String message;
+    private String accessToken;
 }

@@ -4,6 +4,8 @@ import com.mycard.api.security.CustomUserDetailsService;
 import com.mycard.api.security.JwtAuthenticationEntryPoint;
 import com.mycard.api.security.JwtAuthenticationFilter;
 import com.mycard.api.security.JwtTokenProvider;
+import com.mycard.api.security.SecondAuthEnforcementFilter;
+import com.mycard.api.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -36,15 +38,17 @@ import java.util.List;
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final JwtTokenProvider tokenProvider;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+    private final SecondAuthEnforcementFilter secondAuthEnforcementFilter;
 
     @Value("${app.cors.allowed-origins:}")
     private String additionalOrigins;
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(tokenProvider, userDetailsService);
+        return new JwtAuthenticationFilter(tokenProvider, userDetailsService, refreshTokenRepository);
     }
 
     @Bean
@@ -109,7 +113,8 @@ public class SecurityConfig {
                         // User endpoints (authenticated users)
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(secondAuthEnforcementFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

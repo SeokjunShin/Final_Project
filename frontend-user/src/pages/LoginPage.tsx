@@ -44,8 +44,8 @@ export const LoginPage = () => {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetStep, setResetStep] = useState<1 | 2 | 3>(1);
   const [resetEmail, setResetEmail] = useState('');
-  const [securityQuestion, setSecurityQuestion] = useState('');
-  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [resetOtpCode, setResetOtpCode] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
@@ -76,8 +76,8 @@ export const LoginPage = () => {
     setResetOpen(true);
     setResetStep(1);
     setResetEmail('');
-    setSecurityQuestion('');
-    setSecurityAnswer('');
+    setResetOtpCode('');
+    setResetToken('');
     setNewPassword('');
     setNewPasswordConfirm('');
     setResetError('');
@@ -123,7 +123,7 @@ export const LoginPage = () => {
     setResetSuccessMessage('');
     try {
       const result = await publicAuthApi.requestPasswordReset(resetEmail);
-      setSecurityQuestion(result.securityQuestion);
+      setResetSuccessMessage(result.message);
       setResetStep(2);
     } catch (e: unknown) {
       const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
@@ -134,8 +134,8 @@ export const LoginPage = () => {
   };
 
   const handleVerifyRecoveryAnswer = async () => {
-    if (!securityAnswer.trim()) {
-      setResetError('보안 답변을 입력해주세요.');
+    if (!resetOtpCode.trim()) {
+      setResetError('Google OTP 코드를 입력해주세요.');
       return;
     }
 
@@ -145,13 +145,14 @@ export const LoginPage = () => {
     try {
       const result = await publicAuthApi.verifyPasswordRecovery({
         email: resetEmail,
-        securityAnswer: securityAnswer.trim(),
+        otpCode: resetOtpCode.trim(),
       });
       setResetSuccessMessage(result.message || '인증되었습니다.');
+      setResetToken(result.resetToken);
       setResetStep(3);
     } catch (e: unknown) {
       const data = (e as { response?: { data?: { message?: string } } })?.response?.data;
-      setResetError(data?.message ?? '보안 답변 인증에 실패했습니다.');
+      setResetError(data?.message ?? 'Google OTP 인증에 실패했습니다.');
     } finally {
       setResetLoading(false);
     }
@@ -169,7 +170,7 @@ export const LoginPage = () => {
     try {
       await publicAuthApi.confirmPasswordReset({
         email: resetEmail,
-        securityAnswer: securityAnswer.trim(),
+        resetToken,
         newPassword,
       });
       show('비밀번호가 복구되었습니다. 새 비밀번호로 로그인하세요.', 'success');
@@ -336,23 +337,17 @@ export const LoginPage = () => {
             />
             {resetStep >= 2 && (
               <>
-                <Typography
-                  variant="body2"
-                  sx={{ bgcolor: '#f0f4ff', border: '1px solid #c5d5ff', borderRadius: 1, p: 1.5, color: '#1a237e', fontWeight: 500 }}
-                >
-                  🔐 보안 질문: {securityQuestion}
-                </Typography>
                 {resetStep === 2 && (
                   <>
                     <Typography variant="body2" color="text.secondary">
-                      가입 시 등록한 보안 질문 답변으로 비밀번호를 복구합니다.
+                      Google Authenticator 앱에 표시된 6자리 OTP 코드를 입력하세요.
                     </Typography>
                     <TextField
-                      label="보안 답변"
-                      value={securityAnswer}
-                      onChange={(e) => setSecurityAnswer(e.target.value)}
+                      label="Google OTP 코드"
+                      value={resetOtpCode}
+                      onChange={(e) => setResetOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       fullWidth
-                      placeholder="가입 시 입력한 답변을 입력하세요"
+                      placeholder="6자리 숫자"
                     />
                   </>
                 )}
@@ -400,7 +395,7 @@ export const LoginPage = () => {
             <Button
               variant="contained"
               onClick={handleVerifyRecoveryAnswer}
-              disabled={resetLoading || !securityAnswer.trim()}
+              disabled={resetLoading || resetOtpCode.trim().length !== 6}
             >
               인증
             </Button>

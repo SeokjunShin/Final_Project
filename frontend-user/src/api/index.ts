@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, tokenStorage } from './client';
 import type {
   Approval,
   CardItem,
@@ -16,6 +16,13 @@ import type {
   Statement,
   StatementDetail,
 } from '@/types';
+import { markSecondAuthPassed } from '@/utils/secondAuth';
+
+interface SecondAuthResponse {
+  success: boolean;
+  message: string;
+  accessToken?: string;
+}
 
 export const dashboardApi = {
   getSummary: () => apiClient.get<DashboardSummary>('/dashboard/summary').then((r) => r.data),
@@ -170,9 +177,21 @@ export const couponsApi = {
 
 export const authApi = {
   verifySecondPassword: (secondaryPin: string) =>
-    apiClient.post('/auth/verify-second-password', { secondaryPassword: secondaryPin }).then((r) => r.data),
+    apiClient.post<SecondAuthResponse>('/auth/verify-second-password', { secondaryPassword: secondaryPin }).then((r) => {
+      if (r.data.accessToken) {
+        tokenStorage.setAccessToken(r.data.accessToken);
+      }
+      markSecondAuthPassed();
+      return r.data;
+    }),
   registerSecondPassword: (secondaryPin: string) =>
-    apiClient.post('/auth/register-second-password', { secondaryPassword: secondaryPin }).then((r) => r.data),
+    apiClient.post<SecondAuthResponse>('/auth/register-second-password', { secondaryPassword: secondaryPin }).then((r) => {
+      if (r.data.accessToken) {
+        tokenStorage.setAccessToken(r.data.accessToken);
+      }
+      markSecondAuthPassed();
+      return r.data;
+    }),
   sendResetCode: (email: string) =>
     apiClient.post('/auth/second-password/reset/request-code', { email }).then((r) => r.data),
   resetSecondPassword: (payload: { email: string; code: string; newSecondPassword: string }) =>

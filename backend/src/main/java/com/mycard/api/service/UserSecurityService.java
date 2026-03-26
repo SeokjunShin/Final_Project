@@ -61,6 +61,7 @@ public class UserSecurityService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        refreshTokenRepository.revokeAllUserTokens(user.getId(), LocalDateTime.now());
         auditService.log(AuditLog.ActionType.UPDATE, "USER_SECURITY", user.getId(), "비밀번호 변경");
     }
 
@@ -73,6 +74,7 @@ public class UserSecurityService {
             user.setSecondaryPassword(passwordEncoder.encode(request.getNewSecondaryPassword()));
         }
         userRepository.save(user);
+        refreshTokenRepository.revokeAllUserTokens(user.getId(), LocalDateTime.now());
 
         auditService.log(AuditLog.ActionType.UPDATE, "USER_SECURITY", user.getId(), "2차 비밀번호 설정 변경");
         return toResponse(user);

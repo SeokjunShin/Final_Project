@@ -4,13 +4,15 @@ import com.mycard.api.dto.auth.AuthUserResponse;
 import com.mycard.api.dto.auth.CancelWithdrawalRequest;
 import com.mycard.api.dto.auth.LoginRequest;
 import com.mycard.api.dto.auth.LoginResponse;
+import com.mycard.api.dto.auth.PasswordResetRequestResponse;
+import com.mycard.api.dto.auth.PasswordResetVerifyResponse;
 import com.mycard.api.dto.auth.RefreshTokenRequest;
 import com.mycard.api.dto.auth.RegisterRequest;
+import com.mycard.api.dto.auth.RegisterResponse;
 import com.mycard.api.dto.auth.SendResetCodeRequest;
 import com.mycard.api.dto.auth.ConfirmResetPasswordRequest;
 import com.mycard.api.dto.auth.RequestPasswordResetRequest;
 import com.mycard.api.dto.auth.ConfirmPasswordResetRequest;
-import com.mycard.api.dto.auth.SecurityQuestionResponse;
 import com.mycard.api.dto.auth.TokenResponse;
 import com.mycard.api.dto.auth.VerifyPasswordRecoveryRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
@@ -39,9 +41,9 @@ public class AuthController {
 
     @Operation(summary = "회원가입")
     @PostMapping("/register")
-    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+        RegisterResponse response = authService.register(request);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "이메일 중복 확인")
@@ -113,11 +115,11 @@ public class AuthController {
 
     @Operation(summary = "2차 비밀번호 최초 설정")
     @PostMapping("/register-second-password")
-    public ResponseEntity<Void> registerSecondPassword(
+    public ResponseEntity<VerifySecondPasswordResponse> registerSecondPassword(
             @CurrentUser UserPrincipal user,
             @Valid @RequestBody com.mycard.api.dto.auth.RegisterSecondPasswordRequest request) {
-        authService.registerSecondPassword(user, request);
-        return ResponseEntity.ok().build();
+        VerifySecondPasswordResponse response = authService.registerSecondPassword(user, request);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "2차 비밀번호 재설정용 인증 코드 메일 발송")
@@ -129,23 +131,23 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "로그인 비밀번호 복구용 보안 질문 조회")
+    @Operation(summary = "로그인 비밀번호 복구 요청")
     @PostMapping("/password/reset/request")
-    public ResponseEntity<SecurityQuestionResponse> requestPasswordReset(
+    public ResponseEntity<PasswordResetRequestResponse> requestPasswordReset(
             @Valid @RequestBody RequestPasswordResetRequest request) {
-        SecurityQuestionResponse response = authService.requestPasswordReset(request);
+        PasswordResetRequestResponse response = authService.requestPasswordReset(request);
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "로그인 비밀번호 복구용 보안 답변 검증")
+    @Operation(summary = "로그인 비밀번호 복구용 Google OTP 검증")
     @PostMapping("/password/reset/verify")
-    public ResponseEntity<VerifySecondPasswordResponse> verifyPasswordRecovery(
+    public ResponseEntity<PasswordResetVerifyResponse> verifyPasswordRecovery(
             @Valid @RequestBody VerifyPasswordRecoveryRequest request) {
-        VerifySecondPasswordResponse response = authService.verifyPasswordRecovery(request);
+        PasswordResetVerifyResponse response = authService.verifyPasswordRecovery(request);
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "로그인 비밀번호 복구 확정 (보안 질문 답변 검증)")
+    @Operation(summary = "로그인 비밀번호 복구 확정 (Google OTP 검증 완료 후)")
     @PostMapping("/password/reset/confirm")
     public ResponseEntity<Void> confirmPasswordReset(
             @Valid @RequestBody ConfirmPasswordResetRequest request) {
@@ -164,9 +166,19 @@ public class AuthController {
 
     @Operation(summary = "로그아웃")
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestBody(required = false) RefreshTokenRequest request) {
-        String refreshToken = (request != null) ? request.getRefreshToken() : null;
-        authService.logout(refreshToken);
+    public ResponseEntity<Void> logout(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody(required = false) RefreshTokenRequest request) {
+        String accessToken = extractBearerToken(authorizationHeader);
+        String refreshToken = request != null ? request.getRefreshToken() : null;
+        authService.logout(accessToken, refreshToken);
         return ResponseEntity.ok().build();
+    }
+
+    private String extractBearerToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        return authorizationHeader.substring(7);
     }
 }

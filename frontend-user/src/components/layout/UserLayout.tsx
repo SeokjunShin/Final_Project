@@ -33,6 +33,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SecureKeypad } from '@/components/common/SecureKeypad';
 import { authApi } from '@/api';
 import { ChatBot } from '@/components/common/ChatBot';
+import { isSecondAuthPassed, markSecondAuthPassed, secondAuthRequiredEventName } from '@/utils/secondAuth';
 
 const drawerWidth = 305;
 
@@ -68,7 +69,7 @@ export const UserLayout = () => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
 
-  const [isSecondAuthPassed, setIsSecondAuthPassed] = useState(() => sessionStorage.getItem('second_auth_passed') === 'true');
+  const [isSecondAuthPassedState, setIsSecondAuthPassedState] = useState(() => isSecondAuthPassed());
   const [secondPwd, setSecondPwd] = useState('');
   const [secondAuthError, setSecondAuthError] = useState('');
 
@@ -76,6 +77,15 @@ export const UserLayout = () => {
   const [tempPwd, setTempPwd] = useState('');
 
   const isSetupMode = user && !user.hasSecondaryPassword;
+
+  useEffect(() => {
+    const syncSecondAuthState = () => {
+      setIsSecondAuthPassedState(isSecondAuthPassed());
+    };
+
+    window.addEventListener(secondAuthRequiredEventName, syncSecondAuthState);
+    return () => window.removeEventListener(secondAuthRequiredEventName, syncSecondAuthState);
+  }, []);
 
   useEffect(() => {
     if (secondPwd.length === 6) {
@@ -98,8 +108,10 @@ export const UserLayout = () => {
           if (secondPwd === tempPwd) {
             authApi.registerSecondPassword(secondPwd)
               .then(() => {
-                sessionStorage.setItem('second_auth_passed', 'true');
-                setIsSecondAuthPassed(true);
+                markSecondAuthPassed();
+                setIsSecondAuthPassedState(true);
+                setSecondPwd('');
+                setSecondAuthError('');
                 // 계정 정보 갱신을 위해 새로고침 처리
                 window.location.reload();
               })
@@ -119,8 +131,9 @@ export const UserLayout = () => {
       } else {
         authApi.verifySecondPassword(secondPwd)
           .then(() => {
-            sessionStorage.setItem('second_auth_passed', 'true');
-            setIsSecondAuthPassed(true);
+            setIsSecondAuthPassedState(true);
+            setSecondPwd('');
+            setSecondAuthError('');
           })
           .catch((err) => {
             setSecondAuthError(err.response?.data?.message || '비밀번호가 일치하지 않습니다.');
@@ -290,12 +303,28 @@ export const UserLayout = () => {
           ml: { md: `${drawerWidth}px` },
         }}
       >
-        <Outlet />
+        {isSecondAuthPassedState ? (
+          <Outlet />
+        ) : (
+          <Box
+            sx={{
+              minHeight: 'calc(100vh - 160px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+            }}
+          >
+            <Typography color="text.secondary">
+              2차 비밀번호 인증 후 마이페이지 내용을 확인할 수 있습니다.
+            </Typography>
+          </Box>
+        )}
       </Box>
 
       {/* 2차 비밀번호 인증 팝업 */}
       <Dialog
-        open={!isSecondAuthPassed}
+        open={!isSecondAuthPassedState}
         fullWidth
         maxWidth="xs"
         PaperProps={{ sx: { borderRadius: 3, p: 1 } }}

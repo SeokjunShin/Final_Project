@@ -6,6 +6,7 @@ import { App } from './App';
 import { appTheme } from './theme';
 import { AuthProvider } from './contexts/AuthContext';
 import { SnackbarProvider } from './contexts/SnackbarContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -21,16 +22,18 @@ async function enableMocking() {
 enableMocking().then(() => {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <ThemeProvider theme={appTheme}>
-        <CssBaseline />
-        <QueryClientProvider client={queryClient}>
-          <SnackbarProvider>
-            <AuthProvider>
-              <App />
-            </AuthProvider>
-          </SnackbarProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider theme={appTheme}>
+          <CssBaseline />
+          <QueryClientProvider client={queryClient}>
+            <SnackbarProvider>
+              <AuthProvider>
+                <App />
+              </AuthProvider>
+            </SnackbarProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     </React.StrictMode>,
   );
 });

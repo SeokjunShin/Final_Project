@@ -33,10 +33,4 @@ public class RegisterRequest {
     @Pattern(regexp = "^\\d{2,3}-\\d{3,4}-\\d{4}$", message = "올바른 전화번호 형식이 아닙니다.")
     private String phone;
 
-    @NotBlank(message = "보안 질문을 선택해주세요.")
-    private String securityQuestion;
-
-    @NotBlank(message = "보안 답변을 입력해주세요.")
-    @Size(min = 2, max = 100, message = "보안 답변은 2~100자 이내로 입력해주세요.")
-    private String securityAnswer;
 }

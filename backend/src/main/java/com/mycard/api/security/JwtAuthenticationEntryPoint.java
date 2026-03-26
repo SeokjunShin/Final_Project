@@ -32,10 +32,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setCharacterEncoding("UTF-8");
 
         ErrorResponse errorResponse = new ErrorResponse(
-                HttpStatus.UNAUTHORIZED.value(),
                 "UNAUTHORIZED",
-                "인증이 필요합니다.",
-                request.getRequestURI()
+                "요청하신 페이지를 처리할 수 없습니다."
         );
 
         objectMapper.writeValue(response.getOutputStream(), errorResponse);

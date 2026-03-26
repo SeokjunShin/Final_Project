@@ -20,10 +20,13 @@ public class UserPrincipal implements UserDetails {
     private final String fullName;
     private final boolean enabled;
     private final boolean locked;
+    private final String sessionId;
+    private final boolean secondAuthVerified;
     private final Collection<? extends GrantedAuthority> authorities;
 
     public UserPrincipal(Long id, String username, String password, String email, String fullName,
-            boolean enabled, boolean locked, Collection<? extends GrantedAuthority> authorities) {
+            boolean enabled, boolean locked, String sessionId, boolean secondAuthVerified,
+            Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.username = username;
         this.password = password;
@@ -31,10 +34,16 @@ public class UserPrincipal implements UserDetails {
         this.fullName = fullName;
         this.enabled = enabled;
         this.locked = locked;
+        this.sessionId = sessionId;
+        this.secondAuthVerified = secondAuthVerified;
         this.authorities = authorities;
     }
 
     public static UserPrincipal create(User user) {
+        return create(user, null, false);
+    }
+
+    public static UserPrincipal create(User user, String sessionId, boolean secondAuthVerified) {
         List<GrantedAuthority> authorities = user.getRoles().stream()
                 .map(role -> role.getName().startsWith("ROLE_") ? role.getName() : "ROLE_" + role.getName())
                 .map(SimpleGrantedAuthority::new)
@@ -48,6 +57,22 @@ public class UserPrincipal implements UserDetails {
                 user.getFullName(),
                 user.getEnabled(),
                 user.getLocked(),
+                sessionId,
+                secondAuthVerified,
+                authorities);
+    }
+
+    public UserPrincipal withSecondAuth(String sessionId, boolean secondAuthVerified) {
+        return new UserPrincipal(
+                id,
+                username,
+                password,
+                email,
+                fullName,
+                enabled,
+                locked,
+                sessionId,
+                secondAuthVerified,
                 authorities);
     }
 

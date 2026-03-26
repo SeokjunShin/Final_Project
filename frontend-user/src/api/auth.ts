@@ -1,10 +1,12 @@
 import { apiClient, tokenStorage } from './client';
-import type { LoginRequest, LoginResponse, RegisterRequest } from '@/types';
+import type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from '@/types';
 import type { AuthUser } from '@shared/types';
+import { clearSecondAuthPassed, markSecondAuthPassed } from '@/utils/secondAuth';
 
 export const authApi = {
   register: async (payload: RegisterRequest) => {
-    await apiClient.post('/auth/register', payload);
+    const { data } = await apiClient.post<RegisterResponse>('/auth/register', payload);
+    return data;
   },
   checkEmail: async (email: string) => {
     const { data } = await apiClient.get<{ exists: boolean }>('/auth/check-email', { params: { email } });
@@ -12,6 +14,7 @@ export const authApi = {
   },
   login: async (payload: LoginRequest) => {
     const { data } = await apiClient.post<LoginResponse>('/auth/login', payload);
+    clearSecondAuthPassed();
     tokenStorage.setAccessToken(data.accessToken);
     if (data.refreshToken) {
       tokenStorage.setRefreshToken(data.refreshToken);
@@ -21,6 +24,7 @@ export const authApi = {
   },
   loginReactivate: async (payload: LoginRequest) => {
     const { data } = await apiClient.post<LoginResponse>('/auth/login/reactivate', payload);
+    clearSecondAuthPassed();
     tokenStorage.setAccessToken(data.accessToken);
     if (data.refreshToken) {
       tokenStorage.setRefreshToken(data.refreshToken);
@@ -35,6 +39,7 @@ export const authApi = {
       tokenStorage.setRefreshToken(data.refreshToken);
     }
     localStorage.setItem('user_profile', JSON.stringify(data.user));
+    markSecondAuthPassed();
     return data;
   },
   logout: async () => {
@@ -43,7 +48,7 @@ export const authApi = {
       await apiClient.post('/auth/logout', refreshToken ? { refreshToken } : undefined);
     } finally {
       tokenStorage.clear();
-      sessionStorage.removeItem('second_auth_passed');
+      clearSecondAuthPassed();
     }
   },
   me: async () => {
@@ -51,15 +56,15 @@ export const authApi = {
     localStorage.setItem('user_profile', JSON.stringify(data));
     return data;
   },
-  requestPasswordReset: async (email: string): Promise<{ securityQuestion: string }> => {
-    const { data } = await apiClient.post<{ securityQuestion: string }>('/auth/password/reset/request', { email });
+  requestPasswordReset: async (email: string): Promise<{ message: string }> => {
+    const { data } = await apiClient.post<{ message: string }>('/auth/password/reset/request', { email });
     return data;
   },
-  verifyPasswordRecovery: async (payload: { email: string; securityAnswer: string }): Promise<{ success: boolean; message: string }> => {
-    const { data } = await apiClient.post<{ success: boolean; message: string }>('/auth/password/reset/verify', payload);
+  verifyPasswordRecovery: async (payload: { email: string; otpCode: string }): Promise<{ success: boolean; message: string; resetToken: string }> => {
+    const { data } = await apiClient.post<{ success: boolean; message: string; resetToken: string }>('/auth/password/reset/verify', payload);
     return data;
   },
-  confirmPasswordReset: async (payload: { email: string; securityAnswer: string; newPassword: string }) => {
+  confirmPasswordReset: async (payload: { email: string; resetToken: string; newPassword: string }) => {
     await apiClient.post('/auth/password/reset/confirm', payload);
   },
 };

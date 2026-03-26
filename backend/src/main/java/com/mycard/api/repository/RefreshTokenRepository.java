@@ -16,12 +16,61 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
-    @Query("SELECT rt FROM RefreshToken rt WHERE rt.user.id = :userId AND rt.revokedAt IS NULL AND rt.expiresAt > :now")
+    @Query("""
+            SELECT rt
+            FROM RefreshToken rt
+            WHERE rt.user.id = :userId
+              AND rt.sessionId = :sessionId
+              AND rt.revokedAt IS NULL
+              AND rt.expiresAt > :now
+              AND rt.absoluteExpiresAt > :now
+            ORDER BY rt.createdAt DESC
+            """)
+    List<RefreshToken> findActiveTokensByUserIdAndSessionId(
+            @Param("userId") Long userId,
+            @Param("sessionId") String sessionId,
+            @Param("now") LocalDateTime now);
+
+    @Query("""
+            SELECT rt
+            FROM RefreshToken rt
+            WHERE rt.user.id = :userId
+              AND rt.revokedAt IS NULL
+              AND rt.expiresAt > :now
+              AND rt.absoluteExpiresAt > :now
+            """)
     List<RefreshToken> findActiveTokensByUserId(@Param("userId") Long userId, @Param("now") LocalDateTime now);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(rt) > 0 THEN true ELSE false END
+            FROM RefreshToken rt
+            WHERE rt.user.id = :userId
+              AND rt.sessionId = :sessionId
+              AND rt.revokedAt IS NULL
+              AND rt.expiresAt > :now
+              AND rt.absoluteExpiresAt > :now
+            """)
+    boolean existsActiveSession(
+            @Param("userId") Long userId,
+            @Param("sessionId") String sessionId,
+            @Param("now") LocalDateTime now);
 
     @Modifying
     @Query("UPDATE RefreshToken rt SET rt.revokedAt = :now WHERE rt.user.id = :userId AND rt.revokedAt IS NULL")
     int revokeAllUserTokens(@Param("userId") Long userId, @Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("""
+            UPDATE RefreshToken rt
+            SET rt.revokedAt = :now
+            WHERE rt.user.id = :userId
+              AND rt.sessionId = :sessionId
+              AND rt.revokedAt IS NULL
+            """)
+    int revokeSessionTokens(
+            @Param("userId") Long userId,
+            @Param("sessionId") String sessionId,
+            @Param("now") LocalDateTime now);
 
     @Modifying
     @Query("DELETE FROM RefreshToken rt WHERE rt.expiresAt < :now OR rt.revokedAt IS NOT NULL")

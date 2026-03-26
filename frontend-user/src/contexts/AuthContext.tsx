@@ -3,6 +3,7 @@ import { authApi } from '@/api/auth';
 import { tokenStorage } from '@/api/client';
 import type { AuthUser } from '@shared/types';
 import type { LoginRequest } from '@/types';
+import { isSecondAuthPassed } from '@/utils/secondAuth';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -27,6 +28,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(JSON.parse(cached));
     }
     if (!token) {
+      setReady(true);
+      return;
+    }
+    if (!isSecondAuthPassed()) {
       setReady(true);
       return;
     }

@@ -1,5 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { LoginResponse } from '@/types';
+import { redirectToCommonErrorPage, shouldRedirectToCommonErrorPage } from '@/utils/errorRedirect';
+import { clearSecondAuthPassed } from '@/utils/secondAuth';
 
 const API_BASE_URL = '/api';
 const USE_CREDENTIALS = import.meta.env.VITE_API_WITH_CREDENTIALS === 'true';
@@ -53,16 +55,18 @@ apiClient.interceptors.response.use(
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const isLoginRequest = original?.url?.includes('/auth/login');
     const isSecondAuthRequest = original?.url?.includes('/auth/verify-second-password');
+    const status = error.response?.status;
+    const responseData = error.response?.data as { code?: string } | undefined;
+    const errorCode = typeof responseData?.code === 'string' ? responseData.code : undefined;
 
-    // 2차 비밀번호 인증 실패(401)는 토큰 만료와 무관하므로 예외 처리
-    if (error.response?.status === 401 && isSecondAuthRequest) {
+    const hasToken = tokenStorage.getAccessToken();
+
+    if (errorCode === 'SECOND_AUTH_REQUIRED') {
+      clearSecondAuthPassed();
       return Promise.reject(error);
     }
 
-    // 비로그인 상태(토큰 없음)에서의 401은 리다이렉트 없이 에러만 전달
-    const hasToken = tokenStorage.getAccessToken();
-
-    if (error.response?.status === 401 && !original?._retry && !isLoginRequest && hasToken) {
+    if (status === 401 && !original?._retry && !isLoginRequest && !isSecondAuthRequest && hasToken) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           queue.push({ resolve, reject });
@@ -94,17 +98,22 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       } catch (refreshError) {
         tokenStorage.clear();
+        clearSecondAuthPassed();
         flushQueue(refreshError as Error);
-        window.location.href = '/login';
+        redirectToCommonErrorPage();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    if (error.response?.status === 401 && !isLoginRequest && !isSecondAuthRequest && hasToken) {
+    if (status === 401 && hasToken) {
       tokenStorage.clear();
-      window.location.href = '/login';
+      clearSecondAuthPassed();
+    }
+
+    if (shouldRedirectToCommonErrorPage(status)) {
+      redirectToCommonErrorPage();
     }
 
     return Promise.reject(error);

@@ -6,6 +6,7 @@ import com.mycard.api.service.BoardService;
 import com.mycard.api.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "자유게시판", description = "자유게시판 API (SQL Injection 취약점 포함)")
+@Tag(name = "문의게시판", description = "문의게시판 API")
 @RestController
 @RequestMapping("/board")
 @RequiredArgsConstructor
@@ -41,7 +42,7 @@ public class BoardController {
     @Operation(summary = "게시글 작성")
     @PostMapping
     public ResponseEntity<BoardResponse> createBoard(
-            @RequestBody BoardRequest request,
+            @Valid @RequestBody BoardRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         return ResponseEntity.ok(boardService.create(request, userPrincipal.getFullName()));
     }
@@ -50,7 +51,7 @@ public class BoardController {
     @PutMapping("/{id}")
     public ResponseEntity<BoardResponse> updateBoard(
             @PathVariable String id,
-            @RequestBody BoardRequest request,
+            @Valid @RequestBody BoardRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         return ResponseEntity.ok(boardService.update(id, request, userPrincipal));
     }

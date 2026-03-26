@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { adminApiClient } from '@/api/client';
 import { adminApi } from '@/api';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { sanitizeBoardInput, toSafePlainText } from '@/utils/safeHtml';
 
 interface Board {
     id: number;
@@ -52,7 +53,12 @@ export const AdminInquiryBoardPage = () => {
     };
 
     const handleCreate = async () => {
-        await adminApiClient.post('/board', formData);
+        const payload = {
+            ...formData,
+            title: sanitizeBoardInput(formData.title),
+            content: sanitizeBoardInput(formData.content),
+        };
+        await adminApiClient.post('/board', payload);
         setOpenForm(false);
         setFormData({ title: '', content: '', category: '사이트 문의', allowedUsers: '', isPrivate: false });
         fetchBoards();
@@ -61,15 +67,15 @@ export const AdminInquiryBoardPage = () => {
     const handleSaveAnswer = async () => {
         if (!selectedBoard) return;
         const res = await adminApiClient.put(`/board/${selectedBoard.id}`, {
-            title: selectedBoard.title,
-            content: selectedBoard.content,
+            title: sanitizeBoardInput(toSafePlainText(selectedBoard.title)),
+            content: sanitizeBoardInput(toSafePlainText(selectedBoard.content)),
             category: selectedBoard.category,
             allowedUsers: selectedBoard.allowedUsers,
             isPrivate: selectedBoard.isPrivate,
-            answer: answerData,
+            answer: sanitizeBoardInput(answerData),
         });
         setSelectedBoard(res.data);
-        setAnswerData(res.data.answer || '');
+        setAnswerData(toSafePlainText(res.data.answer || ''));
         setBoards((prev) => prev.map((board) => (
             board.id === res.data.id ? res.data : board
         )));
@@ -84,7 +90,7 @@ export const AdminInquiryBoardPage = () => {
     const openBoardDetail = async (id: number) => {
         const res = await adminApiClient.get(`/board/${id}`);
         setSelectedBoard(res.data);
-        setAnswerData(res.data.answer || '');
+        setAnswerData(toSafePlainText(res.data.answer || ''));
         setOpenDetail(true);
     };
 
@@ -102,7 +108,7 @@ export const AdminInquiryBoardPage = () => {
 
                     <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                         <TextField
-                            label="검색 (SQL Injection 가능)"
+                            label="검색어"
                             variant="outlined"
                             size="small"
                             fullWidth
@@ -130,17 +136,16 @@ export const AdminInquiryBoardPage = () => {
                                     <TableRow key={b.id} hover>
                                         <TableCell>{b.id}</TableCell>
                                         <TableCell>
-                                            <a href={b.title} onClick={(e) => {
-                                                if (!b.title.startsWith('javascript:')) {
-                                                    e.preventDefault();
-                                                    openBoardDetail(b.id);
-                                                }
-                                            }} style={{ cursor: 'pointer', color: '#1976d2', textDecoration: 'none' }}>
-                                                {b.title}
-                                            </a>
+                                            <Button
+                                                variant="text"
+                                                onClick={() => openBoardDetail(b.id)}
+                                                sx={{ p: 0, minWidth: 0, justifyContent: 'flex-start', textTransform: 'none' }}
+                                            >
+                                                {toSafePlainText(b.title)}
+                                            </Button>
                                         </TableCell>
                                         <TableCell>{b.category || '전체'}</TableCell>
-                                        <TableCell>{b.authorName}</TableCell>
+                                        <TableCell>{toSafePlainText(b.authorName)}</TableCell>
                                         <TableCell>{b.isPrivate ? '🔒' : ''}</TableCell>
                                         <TableCell>{new Date(b.createdAt).toLocaleDateString()}</TableCell>
                                     </TableRow>
@@ -161,7 +166,7 @@ export const AdminInquiryBoardPage = () => {
                 <DialogTitle>새 공지/답변 작성</DialogTitle>
                 <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
                     <TextField
-                        label="제목 (href 속성에 들어갑니다)"
+                        label="제목"
                         fullWidth
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -205,7 +210,7 @@ export const AdminInquiryBoardPage = () => {
                         )}
                     />
                     <TextField
-                        label="내용 (Script 태그 등 HTML 사용 가능)"
+                        label="내용"
                         fullWidth
                         multiline
                         rows={5}
@@ -219,17 +224,18 @@ export const AdminInquiryBoardPage = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* 상세조회 다이얼로그 (XSS 취약점) */}
             <Dialog open={openDetail} onClose={() => setOpenDetail(false)} fullWidth maxWidth="sm">
                 {selectedBoard && (
                     <>
-                        <DialogTitle>{selectedBoard.title}</DialogTitle>
+                        <DialogTitle>{toSafePlainText(selectedBoard.title)}</DialogTitle>
                         <DialogContent dividers>
                             <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                작성자: {selectedBoard.authorName} | 작성일: {new Date(selectedBoard.createdAt).toLocaleString()}
+                                작성자: {toSafePlainText(selectedBoard.authorName)} | 작성일: {new Date(selectedBoard.createdAt).toLocaleString()}
                             </Typography>
                             <Box sx={{ mt: 2, p: 2, bgcolor: '#f9f9f9', borderRadius: 1, minHeight: 100 }}>
-                                <div dangerouslySetInnerHTML={{ __html: selectedBoard.content }} />
+                                <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    {toSafePlainText(selectedBoard.content)}
+                                </Typography>
                             </Box>
 
                             {selectedBoard.answer && (
@@ -238,9 +244,11 @@ export const AdminInquiryBoardPage = () => {
                                         등록된 답변
                                     </Typography>
                                     <Box sx={{ p: 2, border: '1px solid #e1e9f8', borderRadius: 2, bgcolor: '#f7fbff' }}>
-                                        <div dangerouslySetInnerHTML={{ __html: selectedBoard.answer }} />
+                                        <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                            {toSafePlainText(selectedBoard.answer)}
+                                        </Typography>
                                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.2 }}>
-                                            {selectedBoard.answerAuthorName || '관리자'}
+                                            {toSafePlainText(selectedBoard.answerAuthorName || '관리자')}
                                             {selectedBoard.answerUpdatedAt ? ` · ${new Date(selectedBoard.answerUpdatedAt).toLocaleString('ko-KR')}` : ''}
                                         </Typography>
                                     </Box>
@@ -253,7 +261,7 @@ export const AdminInquiryBoardPage = () => {
                                     fullWidth
                                     multiline
                                     rows={4}
-                                    placeholder="답변을 입력하세요 (HTML 태그 사용 가능)"
+                                    placeholder="답변을 입력하세요"
                                     value={answerData}
                                     onChange={(e) => setAnswerData(e.target.value)}
                                     variant="outlined"

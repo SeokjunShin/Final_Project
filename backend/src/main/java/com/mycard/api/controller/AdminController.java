@@ -217,22 +217,7 @@ public class AdminController {
             throw new com.mycard.api.exception.BadRequestException("state 값이 필요합니다. (ACTIVE, LOCKED, INACTIVE)");
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
-
-        if ("LOCKED".equals(state)) {
-            user.lock();
-        } else if ("INACTIVE".equals(state)) {
-            user.disable();
-        } else if ("ACTIVE".equals(state)) {
-            user.enable();
-            user.unlock();
-        } else {
-            throw new com.mycard.api.exception.BadRequestException(
-                    "지원하지 않는 상태입니다. ACTIVE, LOCKED, INACTIVE 중 하나를 사용하세요.");
-        }
-
-        userRepository.save(user);
+        User user = userAdminService.updateUserState(userId, state);
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", user.getId());

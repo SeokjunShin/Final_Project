@@ -14,7 +14,7 @@ public class VerifyPasswordRecoveryRequest {
     @Email(message = "유효한 이메일 형식이 아닙니다.")
     private String email;
 
-    @NotBlank(message = "보안 답변을 입력해주세요.")
-    @Size(min = 1, max = 100, message = "보안 답변은 100자 이하로 입력해주세요.")
-    private String securityAnswer;
+    @NotBlank(message = "OTP 코드를 입력해주세요.")
+    @Size(min = 6, max = 6, message = "OTP 코드는 6자리여야 합니다.")
+    private String otpCode;
 }

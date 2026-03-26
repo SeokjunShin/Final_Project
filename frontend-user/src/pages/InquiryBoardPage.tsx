@@ -5,6 +5,7 @@ import { apiClient } from '@/api/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { ChatBot } from '@/components/common/ChatBot';
+import { sanitizeBoardInput, toSafePlainText } from '@/utils/safeHtml';
 
 interface Board {
     id: number;
@@ -20,6 +21,20 @@ interface Board {
     createdAt: string;
 }
 
+const ALL_CATEGORY = '전체';
+
+const matchesBoardFilters = (board: Board, searchQuery: string, categoryTab: string) => {
+    const normalizedKeyword = searchQuery.trim().toLowerCase();
+    const safeTitle = toSafePlainText(board.title).toLowerCase();
+    const safeContent = toSafePlainText(board.content).toLowerCase();
+    const matchesKeyword = !normalizedKeyword
+        || safeTitle.includes(normalizedKeyword)
+        || safeContent.includes(normalizedKeyword);
+    const matchesCategory = categoryTab === ALL_CATEGORY || board.category === categoryTab;
+
+    return matchesKeyword && matchesCategory;
+};
+
 export const InquiryBoardPage = () => {
     const { isAuthenticated, logout, user } = useAuth();
     const navigate = useNavigate();
@@ -31,7 +46,7 @@ export const InquiryBoardPage = () => {
     const [boards, setBoards] = useState<Board[]>([]);
     const [keyword, setKeyword] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [categoryTab, setCategoryTab] = useState('전체');
+    const [categoryTab, setCategoryTab] = useState(ALL_CATEGORY);
     const [openForm, setOpenForm] = useState(false);
     const [openDetail, setOpenDetail] = useState(false);
     const [selectedBoard, setSelectedBoard] = useState<Board | null>(null);
@@ -67,10 +82,25 @@ export const InquiryBoardPage = () => {
     };
 
     const handleCreate = async () => {
-        await apiClient.post('/board', formData);
+        const payload = {
+            ...formData,
+            title: sanitizeBoardInput(formData.title),
+            content: sanitizeBoardInput(formData.content),
+        };
+        const res = await apiClient.post<Board>('/board', payload);
+        const createdBoard = res.data;
+
+        setBoards((prev) => {
+            if (!matchesBoardFilters(createdBoard, searchQuery, categoryTab)) {
+                return prev;
+            }
+
+            const nextBoards = [createdBoard, ...prev.filter((board) => board.id !== createdBoard.id)];
+            return nextBoards.sort((a, b) => b.id - a.id);
+        });
+
         setOpenForm(false);
         setFormData({ title: '', content: '', category: '사이트 문의', isPrivate: false });
-        fetchBoards();
     };
 
     const handleDelete = async (id: number) => {
@@ -140,7 +170,7 @@ export const InquiryBoardPage = () => {
 
             {/* 본문 콘텐츠 (인증 전에 보여지지 않게 할지 여부, 지금은 틀만 렌더링) */}
             <Container maxWidth="md" sx={{ py: 6 }}>
-                <Typography variant="h4" sx={{ mb: 4, fontWeight: 700 }}>문의게시판 (Security Testing)</Typography>
+                <Typography variant="h4" sx={{ mb: 4, fontWeight: 700 }}>문의게시판</Typography>
 
                 <>
                         <Tabs value={categoryTab} onChange={(_, v) => setCategoryTab(v)} sx={{ mb: 3 }}>
@@ -151,7 +181,7 @@ export const InquiryBoardPage = () => {
 
                         <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
                             <TextField
-                                label="검색 (SQL Injection 발생 가능)"
+                                label="검색어"
                                 variant="outlined"
                                 size="small"
                                 fullWidth
@@ -167,7 +197,7 @@ export const InquiryBoardPage = () => {
                                 <TableHead>
                                     <TableRow>
                                         <TableCell width="10%">번호</TableCell>
-                                        <TableCell width="30%">제목 (XSS 발생 가능)</TableCell>
+                                        <TableCell width="30%">제목</TableCell>
                                         <TableCell width="10%">카테고리</TableCell>
                                         <TableCell width="15%">작성자</TableCell>
                                         <TableCell width="10%">비공개</TableCell>
@@ -179,18 +209,16 @@ export const InquiryBoardPage = () => {
                                         <TableRow key={b.id} hover>
                                             <TableCell>{b.id}</TableCell>
                                             <TableCell>
-                                                {/* 의도적인 href Injection 취약점: 사용자가 javascript:alert() 입력 가능 */}
-                                                <a href={b.title} onClick={(e) => {
-                                                    if (!b.title.startsWith('javascript:')) {
-                                                        e.preventDefault();
-                                                        openBoardDetail(b.id);
-                                                    }
-                                                }} style={{ cursor: 'pointer', color: '#1976d2', textDecoration: 'none' }}>
-                                                    {b.title}
-                                                </a>
+                                                <Button
+                                                    variant="text"
+                                                    onClick={() => openBoardDetail(b.id)}
+                                                    sx={{ p: 0, minWidth: 0, justifyContent: 'flex-start', textTransform: 'none' }}
+                                                >
+                                                    {toSafePlainText(b.title)}
+                                                </Button>
                                             </TableCell>
                                             <TableCell>{b.category || '전체'}</TableCell>
-                                            <TableCell>{b.authorName}</TableCell>
+                                            <TableCell>{toSafePlainText(b.authorName)}</TableCell>
                                             <TableCell>{b.isPrivate ? '🔒' : ''}</TableCell>
                                             <TableCell>{new Date(b.createdAt).toLocaleDateString()}</TableCell>
                                         </TableRow>
@@ -209,7 +237,7 @@ export const InquiryBoardPage = () => {
                             <DialogTitle>새 게시글 작성</DialogTitle>
                             <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
                                 <TextField
-                                    label="제목 (href 속성에 들어갑니다)"
+                                    label="제목"
                                     fullWidth
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -236,7 +264,7 @@ export const InquiryBoardPage = () => {
                                 </Box>
 
                                 <TextField
-                                    label="내용 (Script 태그 등 HTML 사용 가능)"
+                                    label="내용"
                                     fullWidth
                                     multiline
                                     rows={5}
@@ -253,13 +281,15 @@ export const InquiryBoardPage = () => {
                         <Dialog open={openDetail} onClose={() => setOpenDetail(false)} fullWidth maxWidth="sm">
                             {selectedBoard && (
                                 <>
-                                    <DialogTitle>{selectedBoard.title}</DialogTitle>
+                                    <DialogTitle>{toSafePlainText(selectedBoard.title)}</DialogTitle>
                                     <DialogContent dividers>
                                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                            작성자: {selectedBoard.authorName} | 작성일: {new Date(selectedBoard.createdAt).toLocaleString()}
+                                            작성자: {toSafePlainText(selectedBoard.authorName)} | 작성일: {new Date(selectedBoard.createdAt).toLocaleString()}
                                         </Typography>
                                         <Box sx={{ mt: 2, p: 2, bgcolor: '#f9f9f9', borderRadius: 1, minHeight: 100 }}>
-                                            <div dangerouslySetInnerHTML={{ __html: selectedBoard.content }} />
+                                            <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                {toSafePlainText(selectedBoard.content)}
+                                            </Typography>
                                         </Box>
 
                                         {selectedBoard.answer && (
@@ -268,9 +298,11 @@ export const InquiryBoardPage = () => {
                                                     관리자 답변
                                                 </Typography>
                                                 <Box sx={{ p: 2, border: '1px solid #e1e9f8', borderRadius: 2, bgcolor: '#f7fbff' }}>
-                                                    <div dangerouslySetInnerHTML={{ __html: selectedBoard.answer }} />
+                                                    <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                        {toSafePlainText(selectedBoard.answer)}
+                                                    </Typography>
                                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.2 }}>
-                                                        {selectedBoard.answerAuthorName || '관리자'}
+                                                        {toSafePlainText(selectedBoard.answerAuthorName || '관리자')}
                                                         {selectedBoard.answerUpdatedAt ? ` · ${new Date(selectedBoard.answerUpdatedAt).toLocaleString('ko-KR')}` : ''}
                                                     </Typography>
                                                 </Box>

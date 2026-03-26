@@ -46,6 +46,12 @@ public class User {
     @Column(name = "security_answer", length = 255)
     private String securityAnswer;
 
+    @Column(name = "otp_secret", length = 64)
+    private String otpSecret;
+
+    @Column(name = "otp_enabled", nullable = false)
+    private Boolean otpEnabled = false;
+
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE";
 

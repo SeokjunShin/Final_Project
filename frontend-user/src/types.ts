@@ -16,8 +16,12 @@ export interface RegisterRequest {
   name: string;
   phone?: string;
   secondaryPin?: string;
-  securityQuestion?: string;
-  securityAnswer?: string;
+}
+
+export interface RegisterResponse {
+  otpSecret: string;
+  otpAuthUri: string;
+  message: string;
 }
 
 export interface LoginResponse {

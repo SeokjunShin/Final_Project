@@ -23,11 +23,23 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "session_id", nullable = false, length = 36)
+    private String sessionId;
+
     @Column(name = "token_hash", nullable = false, unique = true, length = 64)
     private String tokenHash;
 
+    @Column(name = "second_auth_verified", nullable = false)
+    private boolean secondAuthVerified;
+
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
+
+    @Column(name = "session_started_at", nullable = false)
+    private LocalDateTime sessionStartedAt;
+
+    @Column(name = "absolute_expires_at", nullable = false)
+    private LocalDateTime absoluteExpiresAt;
 
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
@@ -42,10 +54,16 @@ public class RefreshToken {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public RefreshToken(User user, String tokenHash, LocalDateTime expiresAt, String userAgent, String ipAddress) {
+    public RefreshToken(User user, String sessionId, String tokenHash, boolean secondAuthVerified,
+                        LocalDateTime expiresAt, LocalDateTime sessionStartedAt,
+                        LocalDateTime absoluteExpiresAt, String userAgent, String ipAddress) {
         this.user = user;
+        this.sessionId = sessionId;
         this.tokenHash = tokenHash;
+        this.secondAuthVerified = secondAuthVerified;
         this.expiresAt = expiresAt;
+        this.sessionStartedAt = sessionStartedAt;
+        this.absoluteExpiresAt = absoluteExpiresAt;
         this.userAgent = userAgent;
         this.ipAddress = ipAddress;
     }
@@ -59,10 +77,14 @@ public class RefreshToken {
     }
 
     public boolean isValid() {
-        return !isExpired() && !isRevoked();
+        return !isExpired() && !isAbsoluteExpired() && !isRevoked();
     }
 
     public void revoke() {
         this.revokedAt = LocalDateTime.now();
+    }
+
+    public boolean isAbsoluteExpired() {
+        return LocalDateTime.now().isAfter(absoluteExpiresAt);
     }
 }

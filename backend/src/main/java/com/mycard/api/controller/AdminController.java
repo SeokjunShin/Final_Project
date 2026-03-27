@@ -48,7 +48,7 @@ import java.util.*;
 @Slf4j
 @RestController
 @RequestMapping("/admin")
-@PreAuthorize("hasAnyAuthority('ROLE_MASTER_ADMIN', 'ROLE_REVIEW_ADMIN', 'ROLE_OPERATOR')")
+@PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AdminController {
@@ -78,9 +78,7 @@ public class AdminController {
         }
         User admin = userRepository.findById(adminUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("관리자를 찾을 수 없습니다."));
-        if (admin.getSecondaryPassword() == null || admin.getSecondaryPassword().isBlank()) {
-            throw new com.mycard.api.exception.BadRequestException("2차 비밀번호가 설정되어 있지 않습니다.");
-        }
+        // 미설정 체크 로직 제거 (이제 마이그레이션을 통해 무조건 설정됨)
         if (!passwordEncoder.matches(rawPassword, admin.getSecondaryPassword())) {
             throw new com.mycard.api.exception.BadRequestException("2차 비밀번호가 일치하지 않습니다.");
         }
@@ -165,7 +163,7 @@ public class AdminController {
      * 사용자 목록 조회
      */
     @Operation(summary = "사용자 목록 조회", description = "전체 사용자 목록을 조회합니다.")
-    @PreAuthorize("hasRole('MASTER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
     @GetMapping("/users")
     public ResponseEntity<List<Map<String, Object>>> getUsers() {
         List<User> users = userRepository.findAll();
@@ -747,32 +745,57 @@ public class AdminController {
      * 메시지 발송
      */
     @Operation(summary = "메시지 발송", description = "사용자에게 메시지를 발송합니다.")
-    @PreAuthorize("hasRole('REVIEW_ADMIN')")
     @PostMapping("/messages")
-    @Transactional
+    @Transactional(readOnly = false)
     public ResponseEntity<Map<String, Object>> sendMessage(
+            @AuthenticationPrincipal UserPrincipal adminUser,
             @RequestBody Map<String, String> request) {
 
         String userIdStr = request.get("userId");
         String content = request.get("content");
 
-        Long userId = Long.parseLong(userIdStr);
+        log.info("[Admin-Message] 발송 시도 - AdminID: {}, TargetUserID: {}", adminUser.getId(), userIdStr);
+
+        if (userIdStr == null || userIdStr.isBlank()) {
+            throw new com.mycard.api.exception.BadRequestException("수신자 ID가 누락되었습니다.");
+        }
+
+        Long userId;
+        try {
+            userId = Long.parseLong(userIdStr);
+        } catch (NumberFormatException e) {
+            log.error("[Admin-Message] 유효하지 않은 수신자 ID 형식: {}", userIdStr);
+            throw new com.mycard.api.exception.BadRequestException("유효하지 않은 수신자 ID 형식입니다.");
+        }
+
         User recipient = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> {
+                    log.error("[Admin-Message] 수신자를 찾을 수 없음 - ID: {}", userId);
+                    return new ResourceNotFoundException("사용자를 찾을 수 없습니다.");
+                });
 
-        // 시스템 사용자(관리자)를 sender로 사용 - ID 1로 고정 또는 현재 로그인한 관리자
-        User sender = userRepository.findById(1L).orElse(recipient);
+        // 현재 로그인한 관리자를 sender로 사용
+        User sender = userRepository.findById(adminUser.getId())
+                .orElseThrow(() -> {
+                    log.error("[Admin-Message] 발신자(관리자) 정보를 찾을 수 없음 - AdminID: {}", adminUser.getId());
+                    return new ResourceNotFoundException("관리자 정보를 찾을 수 없습니다.");
+                });
 
-        Message message = new Message(sender, recipient, Message.MessageType.SYSTEM, "관리자 메시지", content);
+        try {
+            Message message = new Message(sender, recipient, Message.MessageType.SYSTEM, "관리자 메시지", content);
+            messageRepository.save(message);
+            log.info("[Admin-Message] 발송 성공 - MessageID: {}", message.getId());
 
-        messageRepository.save(message);
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("id", message.getId());
-        result.put("userId", userIdStr);
-        result.put("content", content);
-        result.put("sentAt", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-        return ResponseEntity.ok(result);
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", message.getId());
+            result.put("userId", userIdStr);
+            result.put("content", content);
+            result.put("sentAt", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("[Admin-Message] DB 저장 중 에러 발생: {}", e.getMessage(), e);
+            throw new RuntimeException("메시지 저장 중 내부 오류가 발생했습니다: " + e.getMessage());
+        }
     }
 
     // ===================== 포인트 정책 관리 =====================

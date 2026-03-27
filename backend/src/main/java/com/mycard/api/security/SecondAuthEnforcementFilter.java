@@ -44,7 +44,8 @@ public class SecondAuthEnforcementFilter extends OncePerRequestFilter {
             "/auth/register-second-password",
             "/auth/refresh",
             "/auth/logout",
-            "/auth/second-password/reset");
+            "/auth/second-password/reset",
+            "/admin/messages");
 
     private final ObjectMapper objectMapper;
 
@@ -98,7 +99,7 @@ public class SecondAuthEnforcementFilter extends OncePerRequestFilter {
 
     private boolean isExemptPath(String requestUri) {
         return SECOND_AUTH_EXEMPT_PREFIXES.stream()
-                .anyMatch(prefix -> requestUri.equals(prefix) || requestUri.startsWith(prefix + "/"));
+                .anyMatch(prefix -> requestUri.contains(prefix));
     }
 
     private void writeForbiddenResponse(HttpServletResponse response) throws IOException {

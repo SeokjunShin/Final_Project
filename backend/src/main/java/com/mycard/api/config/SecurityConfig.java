@@ -103,6 +103,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/events", "/events/{eventId}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/board/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/admin/messages").permitAll()
 
                         // Admin endpoints (모든 관리자 역할 허용)
                         .requestMatchers("/admin/**").hasAnyRole("MASTER_ADMIN", "REVIEW_ADMIN", "OPERATOR")

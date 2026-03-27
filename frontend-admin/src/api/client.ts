@@ -113,7 +113,7 @@ adminApiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (shouldRedirectToCommonErrorPage(status)) {
+    if (shouldRedirectToCommonErrorPage(status) && !original?.url?.includes('/messages')) {
       redirectToCommonErrorPage();
     }
 

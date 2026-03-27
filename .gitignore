@@ -52,3 +52,15 @@ backend/bin/
 .gradle-user-home/
 .npm-cache/
 **/*.tsbuildinfo
+
+# ===== Personal & Project Assets (Added for safety) =====
+.obsidian/
+cloud/
+*.base
+backend/HashGen.java
+backend/repair_flyway_42.js
+backend/src/main/resources/application copy
+TOMCAT_DEPLOY_GUIDE.md
+aws_cloud_architecture.md
+backend/card_data_exfiltration_scenario.md
+backend/privilege_escalation_scenario.md

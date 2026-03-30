@@ -58,23 +58,6 @@ public class UploadValidationService {
         }
 
         String normalizedFilename = originalFilename.trim();
-        if (normalizedFilename.startsWith(".") || normalizedFilename.endsWith(".")) {
-            throw new BadRequestException("파일명이 올바르지 않습니다.");
-        }
-
-        String extension = extractExtension(normalizedFilename);
-        if (!allowedExtensions.contains(extension)) {
-            throw new BadRequestException("허용되지 않은 파일 형식입니다.");
-        }
-
-        String contentType = file.getContentType();
-        if (!StringUtils.hasText(contentType)) {
-            throw new BadRequestException("파일 형식을 확인할 수 없습니다.");
-        }
-
-        if (imageOnly && !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            throw new BadRequestException("이미지 파일만 업로드할 수 있습니다.");
-        }
 
         return normalizedFilename;
     }

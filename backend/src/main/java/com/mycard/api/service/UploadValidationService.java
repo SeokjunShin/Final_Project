@@ -8,7 +8,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,12 +16,6 @@ import java.util.stream.Collectors;
 public class UploadValidationService {
 
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "webp");
-    private static final Set<String> DANGEROUS_EXTENSIONS = Set.of(
-            "php", "phtml", "php3", "php4", "php5",
-            "jsp", "jspx", "asp", "aspx",
-            "exe", "dll", "bat", "cmd", "com", "scr", "msi",
-            "js", "jar", "war", "class", "sh", "ps1", "vbs"
-    );
 
     @Value("${app.upload.allowed-extensions}")
     private String allowedExtensions;
@@ -74,8 +67,6 @@ public class UploadValidationService {
             throw new BadRequestException("허용되지 않은 파일 형식입니다.");
         }
 
-        validateDoubleExtension(normalizedFilename);
-
         String contentType = file.getContentType();
         if (!StringUtils.hasText(contentType)) {
             throw new BadRequestException("파일 형식을 확인할 수 없습니다.");
@@ -86,22 +77,6 @@ public class UploadValidationService {
         }
 
         return normalizedFilename;
-    }
-
-    private void validateDoubleExtension(String filename) {
-        List<String> parts = Arrays.stream(filename.toLowerCase(Locale.ROOT).split("\\."))
-                .filter(StringUtils::hasText)
-                .collect(Collectors.toList());
-
-        if (parts.size() < 2) {
-            throw new BadRequestException("허용되지 않은 파일 형식입니다.");
-        }
-
-        for (int i = 0; i < parts.size() - 1; i++) {
-            if (DANGEROUS_EXTENSIONS.contains(parts.get(i))) {
-                throw new BadRequestException("이중 확장자 파일은 업로드할 수 없습니다.");
-            }
-        }
     }
 
     private Set<String> getConfiguredAllowedExtensions() {

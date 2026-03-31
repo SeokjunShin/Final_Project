@@ -1,4 +1,4 @@
-﻿import type { AuthUser } from '@shared/types';
+import type { AuthUser } from '@shared/types';
 import type { AdminLoginRequest, AdminLoginResponse } from '@/types';
 import { adminApiClient, adminTokenStorage } from './client';
 
@@ -25,5 +25,8 @@ export const adminAuthApi = {
   },
   resetPassword: async (payload: { email: string; pin: string; newPassword: string }) => {
     await adminApiClient.post('/auth/admin/password/reset', payload);
+  },
+  changePassword: async (payload: any) => {
+    await adminApiClient.post('/me/password', payload);
   },
 };

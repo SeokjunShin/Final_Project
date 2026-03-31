@@ -1,7 +1,6 @@
 package com.mycard.api.controller;
 
 import com.mycard.api.dto.auth.AuthUserResponse;
-import com.mycard.api.dto.auth.AdminPasswordResetRequest;
 import com.mycard.api.dto.auth.CancelWithdrawalRequest;
 import com.mycard.api.dto.auth.LoginRequest;
 import com.mycard.api.dto.auth.LoginResponse;
@@ -18,7 +17,6 @@ import com.mycard.api.dto.auth.VerifySecondPasswordRequest;
 import com.mycard.api.dto.auth.VerifySecondPasswordResponse;
 import com.mycard.api.security.CurrentUser;
 import com.mycard.api.security.UserPrincipal;
-import com.mycard.api.service.AdminSecurityService;
 import com.mycard.api.service.AuthService;
 import com.mycard.api.entity.User;
 import com.mycard.api.repository.UserRepository;
@@ -37,7 +35,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final AdminSecurityService adminSecurityService;
     private final UserRepository userRepository;
 
     @Operation(summary = "회원가입")
@@ -75,12 +72,6 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "관리자 비밀번호 재설정")
-    @PostMapping("/admin/password/reset")
-    public ResponseEntity<Void> resetAdminPassword(@Valid @RequestBody AdminPasswordResetRequest request) {
-        adminSecurityService.resetPasswordByPin(request);
-        return ResponseEntity.ok().build();
-    }
 
     @Operation(summary = "현재 사용자 정보")
     @GetMapping("/me")

@@ -1,4 +1,4 @@
-﻿import {
+import {
   AppBar,
   Box,
   Breadcrumbs,
@@ -17,11 +17,13 @@ import { useMemo, useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { adminMenu } from '@shared/menu';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { AdminChangePasswordDialog } from '@/components/common/AdminChangePasswordDialog';
 
 const drawerWidth = 290;
 
 export const AdminLayout = () => {
   const [open, setOpen] = useState(false);
+  const [isPwdDialogOpen, setIsPwdDialogOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAdminAuth();
@@ -132,6 +134,15 @@ export const AdminLayout = () => {
             <Link
               component="button"
               underline="hover"
+              sx={{ fontSize: 13, lineHeight: 1, color: 'text.secondary' }}
+              onClick={() => setIsPwdDialogOpen(true)}
+            >
+              비밀번호 변경
+            </Link>
+            <Box sx={{ width: '1px', height: 16, bgcolor: '#d0d5dd' }} />
+            <Link
+              component="button"
+              underline="hover"
               sx={{ fontSize: 13, lineHeight: 1 }}
               onClick={async () => {
                 await logout();
@@ -143,6 +154,11 @@ export const AdminLayout = () => {
           </Box>
         </Toolbar>
       </AppBar>
+
+      <AdminChangePasswordDialog
+        open={isPwdDialogOpen}
+        onClose={() => setIsPwdDialogOpen(false)}
+      />
 
       <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth, bgcolor: '#16233d' } }}>
         {drawer}

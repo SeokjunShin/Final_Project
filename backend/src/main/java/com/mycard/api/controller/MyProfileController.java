@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "My Profile", description = "내 정보/보안 설정 API")
 @RestController
 @RequestMapping("/me")
-@PreAuthorize("hasRole('USER')")
+@PreAuthorize("hasAnyRole('USER', 'MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
 @RequiredArgsConstructor
 public class MyProfileController {
 

@@ -50,7 +50,7 @@ public class UserDocumentController {
     private final UserRepository userRepository;
     private final UploadValidationService uploadValidationService;
 
-    @Value("${file.upload-dir:uploads}")
+    @Value("${app.upload.base-path}")
     private String uploadDir;
 
     @Operation(summary = "내 문서 목록 조회")

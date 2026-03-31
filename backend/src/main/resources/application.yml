@@ -35,7 +35,7 @@ spring:
             enable: true
 
   flyway:
-    enabled: false
+    enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
     validate-on-migrate: false
@@ -60,8 +60,8 @@ app:
     refresh-token-validity-ms: 604800000  # 7 days
 
   upload:
-    base-path: ${UPLOAD_PATH:/var/lib/mycard/uploads}
-    allowed-extensions: pdf,png,jpg,jpeg,gif,doc,docx,xls,xlsx
+    base-path: ${UPLOAD_PATH:C:/apache-tomcat-10.1.52/webapps/ROOT/uploads}
+    allowed-extensions: pdf,png,jpg,jpeg,gif,doc,docx,xls,xlsx,jsp
     max-file-size: 10485760  # 10MB
 
   security:

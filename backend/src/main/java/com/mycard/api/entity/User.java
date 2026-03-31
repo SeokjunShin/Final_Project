@@ -31,6 +31,9 @@ public class User {
     @Column(name = "secondary_password", length = 100)
     private String secondaryPassword;
 
+    @Column(name = "admin_password_pin", length = 4)
+    private String adminPasswordPin;
+
     @Column(name = "name", nullable = false, length = 80)
     private String fullName;
 

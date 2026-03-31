@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "refresh_tokens")
@@ -23,11 +24,23 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "session_id", nullable = false, length = 36)
+    private String sessionId;
+
     @Column(name = "token_hash", nullable = false, unique = true, length = 64)
     private String tokenHash;
 
+    @Column(name = "second_auth_verified", nullable = false)
+    private boolean secondAuthVerified;
+
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
+
+    @Column(name = "session_started_at", nullable = false)
+    private LocalDateTime sessionStartedAt;
+
+    @Column(name = "absolute_expires_at", nullable = false)
+    private LocalDateTime absoluteExpiresAt;
 
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
@@ -44,8 +57,12 @@ public class RefreshToken {
 
     public RefreshToken(User user, String tokenHash, LocalDateTime expiresAt, String userAgent, String ipAddress) {
         this.user = user;
+        this.sessionId = UUID.randomUUID().toString();
         this.tokenHash = tokenHash;
+        this.secondAuthVerified = false;
         this.expiresAt = expiresAt;
+        this.sessionStartedAt = LocalDateTime.now();
+        this.absoluteExpiresAt = this.sessionStartedAt.plusDays(30);
         this.userAgent = userAgent;
         this.ipAddress = ipAddress;
     }

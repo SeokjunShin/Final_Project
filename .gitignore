@@ -48,3 +48,6 @@ uploads/
 # ===== Custom Ignore =====
 bin/
 backend/bin/
+
+.gradle-user-home/
+.npm-cache/

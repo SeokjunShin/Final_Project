@@ -23,4 +23,7 @@ export const adminAuthApi = {
       adminTokenStorage.clear();
     }
   },
+  resetPassword: async (payload: { email: string; pin: string; newPassword: string }) => {
+    await adminApiClient.post('/auth/admin/password/reset', payload);
+  },
 };

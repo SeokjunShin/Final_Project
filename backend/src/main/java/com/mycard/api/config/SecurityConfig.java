@@ -82,6 +82,7 @@ public class SecurityConfig {
                                 "/auth/login",
                                 "/auth/login/reactivate",
                                 "/auth/withdrawal/cancel",
+                                "/auth/admin/password/reset",
                                 "/auth/register",
                                 "/auth/check-email",
                                 "/auth/refresh",
@@ -129,7 +130,8 @@ public class SecurityConfig {
                 "http://localhost:5175",
                 "http://localhost:5176",
                 "http://mycard.local",
-                "http://admin.mycard.local"));
+                "http://admin.mycard.local",
+                "http://192.168.100.67:5174"));
 
         // 환경변수로 추가 origins 설정 (쉼표로 구분)
         // 예: CORS_ALLOWED_ORIGINS=http://192.168.10.137,http://192.168.10.137:8081

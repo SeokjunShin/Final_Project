@@ -102,7 +102,7 @@ export const AdminInquiryBoardPage = () => {
 
                     <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                         <TextField
-                            label="검색 (SQL Injection 가능)"
+                            label="검색"
                             variant="outlined"
                             size="small"
                             fullWidth
@@ -161,7 +161,7 @@ export const AdminInquiryBoardPage = () => {
                 <DialogTitle>새 공지/답변 작성</DialogTitle>
                 <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
                     <TextField
-                        label="제목 (href 속성에 들어갑니다)"
+                        label="제목"
                         fullWidth
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -205,7 +205,7 @@ export const AdminInquiryBoardPage = () => {
                         )}
                     />
                     <TextField
-                        label="내용 (Script 태그 등 HTML 사용 가능)"
+                        label="내용"
                         fullWidth
                         multiline
                         rows={5}

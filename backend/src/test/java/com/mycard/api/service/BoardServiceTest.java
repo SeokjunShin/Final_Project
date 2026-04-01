@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -29,12 +30,12 @@ class BoardServiceTest {
     private BoardService boardService;
 
     @Test
-    void findAllRejectsSqlInjectionPayloadInKeyword() {
-        assertThatThrownBy(() -> boardService.findAll("' OR 1=1 #", "전체", null))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("검색어");
+    void findAllAllowsSpecialCharactersInKeywordWhenUsingBoundParameters() {
+        when(boardRepository.searchPublic(any(), any())).thenReturn(java.util.List.of());
 
-        verifyNoInteractions(boardRepository);
+        assertThat(boardService.findAll("' OR 1=1 # )", "전체", null)).isEmpty();
+
+        verify(boardRepository).searchPublic(eq("' OR 1=1 # )"), eq(null));
     }
 
     @Test

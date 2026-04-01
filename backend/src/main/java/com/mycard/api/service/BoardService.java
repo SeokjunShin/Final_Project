@@ -27,7 +27,6 @@ public class BoardService {
     private static final String DEFAULT_CATEGORY = "사이트 문의";
     private static final String ALL_CATEGORY = "전체";
     private static final Set<String> ALLOWED_CATEGORIES = Set.of(DEFAULT_CATEGORY, "금융 문의");
-    private static final Pattern SEARCH_KEYWORD_PATTERN = Pattern.compile("^[\\p{L}\\p{N}\\s.,!?()_\\-/:&]*$");
     private static final Pattern BOARD_ID_PATTERN = Pattern.compile("^\\d+$");
     private static final Pattern USER_NAME_PATTERN = Pattern.compile("^[\\p{L}\\p{N}\\s._()\\-]+$");
     private static final int MAX_SEARCH_KEYWORD_LENGTH = 100;
@@ -187,9 +186,6 @@ public class BoardService {
         String normalized = keyword.trim();
         if (normalized.length() > MAX_SEARCH_KEYWORD_LENGTH) {
             throw new BadRequestException("검색어는 100자 이하여야 합니다.");
-        }
-        if (!SEARCH_KEYWORD_PATTERN.matcher(normalized).matches()) {
-            throw new BadRequestException("검색어에 허용되지 않은 문자가 포함되어 있습니다.");
         }
         return normalized;
     }

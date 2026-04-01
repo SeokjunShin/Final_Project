@@ -28,6 +28,7 @@ import com.mycard.api.repository.RefreshTokenRepository;
 import com.mycard.api.repository.RoleRepository;
 import com.mycard.api.repository.UserRepository;
 import com.mycard.api.security.JwtTokenProvider;
+import com.mycard.api.security.SessionFingerprintUtils;
 import com.mycard.api.security.UserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -88,8 +89,8 @@ public class AuthService {
     public LoginResponse secureLogin(LoginRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
-        String ipAddress = getClientIp(httpRequest);
-        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+        String ipAddress = SessionFingerprintUtils.extractClientIp(httpRequest);
+        String userAgent = SessionFingerprintUtils.extractUserAgent(httpRequest);
 
         enforceIpRateLimit(email, ipAddress, userAgent, "IP rate limit exceeded");
 
@@ -126,8 +127,8 @@ public class AuthService {
     public LoginResponse loginAndReactivate(LoginRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
-        String ipAddress = getClientIp(httpRequest);
-        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+        String ipAddress = SessionFingerprintUtils.extractClientIp(httpRequest);
+        String userAgent = SessionFingerprintUtils.extractUserAgent(httpRequest);
         enforceIpRateLimit(email, ipAddress, userAgent, "IP rate limit exceeded (reactivate)");
 
         User user = userRepository.findByEmail(email)
@@ -171,8 +172,8 @@ public class AuthService {
     public LoginResponse cancelWithdrawalAndLogin(CancelWithdrawalRequest request) {
         String email = request.getEmail();
         HttpServletRequest httpRequest = getCurrentHttpRequest();
-        String ipAddress = getClientIp(httpRequest);
-        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+        String ipAddress = SessionFingerprintUtils.extractClientIp(httpRequest);
+        String userAgent = SessionFingerprintUtils.extractUserAgent(httpRequest);
         enforceIpRateLimit(email, ipAddress, userAgent, "IP rate limit exceeded (cancel withdrawal)");
 
         User user = userRepository.findByEmail(email)
@@ -234,8 +235,8 @@ public class AuthService {
         }
 
         HttpServletRequest httpRequest = getCurrentHttpRequest();
-        String ipAddress = getClientIp(httpRequest);
-        String userAgent = httpRequest != null ? httpRequest.getHeader("User-Agent") : null;
+        String ipAddress = SessionFingerprintUtils.extractClientIp(httpRequest);
+        String userAgent = SessionFingerprintUtils.extractUserAgent(httpRequest);
         if (isSuspiciousSessionFingerprint(storedToken, ipAddress, userAgent)) {
             handleRefreshTokenCompromise(storedToken, "Refresh token fingerprint mismatch detected");
             throw new UnauthorizedException("SUSPICIOUS_REFRESH_ACTIVITY", "비정상적인 세션 갱신이 감지되었습니다.");
@@ -450,14 +451,7 @@ public class AuthService {
     }
 
     private boolean isSuspiciousSessionFingerprint(RefreshToken storedToken, String ipAddress, String userAgent) {
-        String storedUserAgent = storedToken.getUserAgent();
-        if (storedUserAgent == null || storedUserAgent.isBlank()) {
-            return false;
-        }
-        if (userAgent == null || userAgent.isBlank()) {
-            return false;
-        }
-        return !storedUserAgent.equals(userAgent);
+        return !SessionFingerprintUtils.matches(storedToken, ipAddress, userAgent);
     }
 
     private String hashToken(String token) {
@@ -477,17 +471,6 @@ public class AuthService {
     private HttpServletRequest getCurrentHttpRequest() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         return attributes != null ? attributes.getRequest() : null;
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        if (request == null) {
-            return "unknown";
-        }
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 
     @Transactional

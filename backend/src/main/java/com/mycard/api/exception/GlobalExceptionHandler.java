@@ -157,9 +157,16 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ErrorResponse> handleValidationException(
                         MethodArgumentNotValidException ex, WebRequest request) {
                 log.debug("Validation error");
+                String message = "입력값을 다시 확인해 주세요.";
+                FieldError firstFieldError = ex.getBindingResult().getFieldError();
+                if (firstFieldError != null
+                                && firstFieldError.getDefaultMessage() != null
+                                && !firstFieldError.getDefaultMessage().isBlank()) {
+                        message = firstFieldError.getDefaultMessage();
+                }
                 ErrorResponse error = new ErrorResponse(
                                 "VALIDATION_ERROR",
-                                "요청하신 페이지를 처리할 수 없습니다.");
+                                message);
                 for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
                         error.addFieldError(fieldError.getField(), fieldError.getDefaultMessage());
                 }

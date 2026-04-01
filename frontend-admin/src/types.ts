@@ -11,6 +11,12 @@ export interface AdminLoginResponse {
   user: AuthUser;
 }
 
+export interface AdminPasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+  pemKey: string;
+}
+
 export interface QueueItem {
   id: number;
   category?: string;

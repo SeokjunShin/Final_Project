@@ -1,5 +1,5 @@
 ﻿import type { AuthUser } from '@shared/types';
-import type { AdminLoginRequest, AdminLoginResponse } from '@/types';
+import type { AdminLoginRequest, AdminLoginResponse, AdminPasswordChangeRequest } from '@/types';
 import { adminApiClient, adminTokenStorage } from './client';
 
 export const adminAuthApi = {
@@ -13,6 +13,9 @@ export const adminAuthApi = {
     return data;
   },
   me: () => adminApiClient.get<AuthUser>('/auth/me').then((r) => r.data),
+  changePassword: async (payload: AdminPasswordChangeRequest) => {
+    await adminApiClient.post('/admin/account/password', payload);
+  },
   logout: async () => {
     const refreshToken = adminTokenStorage.getRefreshToken();
     try {

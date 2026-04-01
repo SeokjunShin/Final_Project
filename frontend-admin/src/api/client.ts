@@ -34,6 +34,8 @@ let queue: Array<{
 const HANDLED_AUTH_PATHS = [
   '/auth/login',
   '/auth/refresh',
+  '/auth/logout',
+  '/admin/account/password',
 ];
 
 const shouldHandleAuthErrorLocally = (url?: string) =>

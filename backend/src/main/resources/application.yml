@@ -70,6 +70,7 @@ app:
     login-attempt-limit: 5
     login-lockout-duration-minutes: 5
     ip-attempt-limit: 5
+    admin-password-change-public-key-pem: ${ADMIN_PASSWORD_CHANGE_PUBLIC_KEY_PEM:}
 
   cors:
     # 추가 CORS 허용 origins (쉼표로 구분)

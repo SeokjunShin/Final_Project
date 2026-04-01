@@ -2,6 +2,7 @@ import {
   AppBar,
   Box,
   Breadcrumbs,
+  Button,
   Drawer,
   IconButton,
   Link,
@@ -17,11 +18,13 @@ import { useMemo, useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { adminMenu } from '@shared/menu';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { AdminPasswordChangeDialog } from '@/components/profile/AdminPasswordChangeDialog';
 
 const drawerWidth = 290;
 
 export const AdminLayout = () => {
   const [open, setOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAdminAuth();
@@ -132,6 +135,14 @@ export const AdminLayout = () => {
                   user?.role === 'OPERATOR' ? '상담사' : user?.role}
             </Typography>
             <Box sx={{ width: '1px', height: 16, bgcolor: '#d0d5dd' }} />
+            <Button
+              variant="text"
+              size="small"
+              sx={{ minWidth: 0, px: 0.5, fontSize: 13 }}
+              onClick={() => setPasswordDialogOpen(true)}
+            >
+              비밀번호 변경
+            </Button>
             <Link
               component="button"
               underline="hover"
@@ -161,6 +172,10 @@ export const AdminLayout = () => {
       <Box component="main" sx={{ flex: 1, px: { xs: 2, md: 3 }, py: 3, mt: 8, ml: { md: `${drawerWidth}px` } }}>
         <Outlet />
       </Box>
+      <AdminPasswordChangeDialog
+        open={passwordDialogOpen}
+        onClose={() => setPasswordDialogOpen(false)}
+      />
     </Box>
   );
 };

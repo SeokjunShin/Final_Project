@@ -12,6 +12,7 @@ interface AdminAuthContextValue {
   login: (payload: AdminLoginRequest) => Promise<void>;
   logout: () => Promise<void>;
   canAccess: (roles: Role[]) => boolean;
+  refreshSession: () => Promise<AuthUser | null>;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
@@ -48,6 +49,25 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(data.user);
   };
 
+  const refreshSession = async () => {
+    const token = adminTokenStorage.getAccessToken();
+    if (!token) {
+      setUser(null);
+      return null;
+    }
+
+    try {
+      const profile = await adminAuthApi.me();
+      setUser(profile);
+      localStorage.setItem('admin_profile', JSON.stringify(profile));
+      return profile;
+    } catch {
+      adminTokenStorage.clear();
+      setUser(null);
+      return null;
+    }
+  };
+
   const logout = async () => {
     await adminAuthApi.logout();
     setUser(null);
@@ -61,6 +81,7 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
       login,
       logout,
       canAccess: (roles) => hasAnyRole(user?.role, roles),
+      refreshSession,
     }),
     [ready, user],
   );

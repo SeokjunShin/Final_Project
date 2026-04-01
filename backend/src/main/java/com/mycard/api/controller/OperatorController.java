@@ -39,7 +39,7 @@ import java.util.Map;
 @Tag(name = "OPERATOR", description = "운영자 전용 API")
 @RestController
 @RequestMapping("/operator")
-@PreAuthorize("hasAnyRole('OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN')")
+@PreAuthorize("hasAnyRole('OPERATOR', 'MASTER_ADMIN')")
 @RequiredArgsConstructor
 public class OperatorController {
 
@@ -192,6 +192,7 @@ public class OperatorController {
     }
 
     @Operation(summary = "감사로그 조회")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @GetMapping("/audit-logs")
     public ResponseEntity<Page<AuditLogResponse>> getAuditLogs(
             @RequestParam(required = false) Long userId,

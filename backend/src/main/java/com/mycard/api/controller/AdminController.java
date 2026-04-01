@@ -75,6 +75,7 @@ public class AdminController {
      * 관리자 대시보드 통계
      */
     @Operation(summary = "대시보드 통계", description = "관리자 대시보드용 통계를 조회합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> getDashboard() {
         // 오늘 문의 수
@@ -148,6 +149,7 @@ public class AdminController {
      * 사용자 목록 조회
      */
     @Operation(summary = "사용자 목록 조회", description = "전체 사용자 목록을 조회합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @GetMapping("/users")
     public ResponseEntity<List<Map<String, Object>>> getUsers() {
         List<User> users = userRepository.findAll();
@@ -172,7 +174,7 @@ public class AdminController {
      * 사용자 상태 변경
      */
     @Operation(summary = "사용자 상태 변경", description = "사용자의 활성화/잠금 상태를 변경합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PatchMapping("/users/{userId}/status")
     public ResponseEntity<UserAdminResponse> updateUserStatus(
             @PathVariable Long userId,
@@ -187,7 +189,7 @@ public class AdminController {
      * ACTIVE=활성화, LOCKED=잠금, INACTIVE=비활성
      */
     @Operation(summary = "사용자 상태 변경 (state)", description = "사용자의 상태를 변경합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PatchMapping("/users/{userId}/state")
     @Transactional
     public ResponseEntity<Map<String, Object>> updateUserState(
@@ -226,7 +228,7 @@ public class AdminController {
      * 사용자 계정 잠금 해제
      */
     @Operation(summary = "계정 잠금 해제", description = "잠긴 사용자 계정을 해제합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PostMapping("/users/{userId}/unlock")
     public ResponseEntity<Void> unlockUser(@PathVariable Long userId) {
         userAdminService.unlockUser(userId);
@@ -239,7 +241,7 @@ public class AdminController {
      * @param days 미접속 일수 (기본 90일). 이 기간 동안 로그인 이력이 없거나 마지막 로그인이 이전인 계정을 비활성 처리
      */
     @Operation(summary = "미접속 계정 비활성 처리", description = "지정 일수 이상 로그인하지 않은 활성 계정을 비활성 처리합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PostMapping("/users/bulk-inactive-by-last-login")
     @Transactional
     public ResponseEntity<Map<String, Object>> bulkInactiveByLastLogin(
@@ -267,7 +269,7 @@ public class AdminController {
      * 관리자 수동 포인트 지급
      */
     @Operation(summary = "사용자 포인트 메뉴얼 지급", description = "관리자가 특정 사용자에게 직접 포인트를 지급합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PostMapping("/users/{userId}/points/grant")
     @Transactional
     public ResponseEntity<Map<String, Object>> grantPointsToUser(
@@ -288,7 +290,7 @@ public class AdminController {
      * 관리자 수동 포인트 차감
      */
     @Operation(summary = "사용자 포인트 수동 차감", description = "관리자가 특정 사용자의 포인트를 차감합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PostMapping("/users/{userId}/points/revoke")
     @Transactional
     public ResponseEntity<Map<String, Object>> revokePointsFromUser(
@@ -311,11 +313,11 @@ public class AdminController {
      * 상담원 목록 조회 (OPERATOR, ADMIN 역할)
      */
     @Operation(summary = "상담원 목록 조회", description = "문의 배정 가능한 상담원/관리자 목록을 조회합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'OPERATOR')")
     @GetMapping("/operators")
     public ResponseEntity<List<Map<String, Object>>> getOperators() {
         List<User> operators = userRepository.findAll().stream()
-                .filter(u -> "OPERATOR".equals(u.getRole()) || "MASTER_ADMIN".equals(u.getRole())
-                        || "REVIEW_ADMIN".equals(u.getRole()))
+                .filter(u -> "OPERATOR".equals(u.getRole()) || "MASTER_ADMIN".equals(u.getRole()))
                 .filter(u -> Boolean.TRUE.equals(u.getEnabled()) && !Boolean.TRUE.equals(u.getLocked()))
                 .toList();
 
@@ -336,6 +338,7 @@ public class AdminController {
      * 문의를 특정 상담원에게 배정
      */
     @Operation(summary = "문의 배정", description = "특정 문의를 지정된 상담원에게 배정합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'OPERATOR')")
     @Transactional
     @PostMapping("/inquiries/{inquiryId}/assign/{operatorId}")
     public ResponseEntity<Map<String, Object>> assignInquiryToOperator(
@@ -354,6 +357,7 @@ public class AdminController {
     // ===================== 대출 관리 =====================
 
     @Operation(summary = "대출 승인", description = "REQUESTED 상태의 대출을 승인 처리합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @PatchMapping("/loans/{loanId}/approve")
     public ResponseEntity<LoanDetailResponse> approveLoan(@PathVariable Long loanId) {
         LoanDetailResponse response = loanService.approveLoanAsAdmin(loanId);
@@ -361,6 +365,7 @@ public class AdminController {
     }
 
     @Operation(summary = "대출 출금 처리", description = "APPROVED 상태의 대출을 출금완료(DISBURSED) 처리합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @PatchMapping("/loans/{loanId}/disburse")
     public ResponseEntity<LoanDetailResponse> disburseLoan(@PathVariable Long loanId) {
         LoanDetailResponse response = loanService.disburseLoanAsAdmin(loanId);
@@ -368,6 +373,7 @@ public class AdminController {
     }
 
     @Operation(summary = "대출 취소/거절", description = "대출을 취소(CANCELED) 상태로 변경합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @PatchMapping("/loans/{loanId}/cancel")
     public ResponseEntity<LoanDetailResponse> cancelLoan(@PathVariable Long loanId) {
         LoanDetailResponse response = loanService.cancelLoanAsAdmin(loanId);
@@ -380,6 +386,7 @@ public class AdminController {
      * 가맹점 목록 조회
      */
     @Operation(summary = "가맹점 목록 조회", description = "전체 가맹점 목록을 조회합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @GetMapping("/merchants")
     public ResponseEntity<List<MerchantResponse>> getMerchants(
             @RequestParam(required = false) String keyword) {
@@ -399,6 +406,7 @@ public class AdminController {
      * 가맹점 등록
      */
     @Operation(summary = "가맹점 등록", description = "새 가맹점을 등록합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PostMapping("/merchants")
     public ResponseEntity<Map<String, Object>> createMerchant(
             @RequestBody Map<String, String> request) {
@@ -415,6 +423,7 @@ public class AdminController {
      * 가맹점 상세 조회
      */
     @Operation(summary = "가맹점 상세 조회", description = "특정 가맹점의 상세 정보를 조회합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @GetMapping("/merchants/{merchantId}")
     public ResponseEntity<MerchantResponse> getMerchant(@PathVariable Long merchantId) {
         MerchantResponse merchant = merchantService.getMerchant(merchantId);
@@ -425,6 +434,7 @@ public class AdminController {
      * 가맹점 상태 변경
      */
     @Operation(summary = "가맹점 상태 변경", description = "가맹점의 상태를 변경합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PatchMapping("/merchants/{merchantId}/status")
     public ResponseEntity<MerchantResponse> updateMerchantStatus(
             @PathVariable Long merchantId,
@@ -441,6 +451,7 @@ public class AdminController {
      * 이벤트 목록 조회
      */
     @Operation(summary = "이벤트 목록 조회", description = "전체 이벤트 목록을 조회합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @GetMapping("/events")
     public ResponseEntity<List<Map<String, Object>>> getEvents() {
         List<Event> events = eventRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -466,6 +477,7 @@ public class AdminController {
      * 이벤트 생성
      */
     @Operation(summary = "이벤트 생성", description = "새 이벤트를 생성합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PostMapping("/events")
     @Transactional
     public ResponseEntity<Map<String, Object>> createEvent(
@@ -486,6 +498,7 @@ public class AdminController {
      * 이벤트 마감 처리
      */
     @Operation(summary = "이벤트 마감", description = "이벤트를 마감 처리합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PatchMapping("/events/{eventId}/close")
     @Transactional
     public ResponseEntity<Map<String, Object>> closeEvent(@PathVariable Long eventId) {
@@ -502,6 +515,7 @@ public class AdminController {
      * 이벤트 참여자 목록 조회
      */
     @Operation(summary = "참여자 목록 조회", description = "이벤트 참여자 목록을 조회합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @GetMapping("/events/{eventId}/participants")
     public ResponseEntity<List<Map<String, Object>>> getParticipants(@PathVariable Long eventId) {
         Page<EventParticipation> participants = participationRepository.findByEventId(
@@ -526,6 +540,7 @@ public class AdminController {
      * 당첨 처리 (여러 명 가능) 및 포인트 지급
      */
     @Operation(summary = "당첨 처리", description = "선택한 참여자를 당첨 처리하고 포인트를 지급합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PostMapping("/events/{eventId}/draw")
     @Transactional
     public ResponseEntity<Map<String, Object>> drawWinners(
@@ -580,7 +595,7 @@ public class AdminController {
      * 문서 목록 조회
      */
     @Operation(summary = "문서 목록 조회", description = "문서 목록을 조회합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @GetMapping("/documents")
     public ResponseEntity<Map<String, Object>> getDocuments(
             @RequestParam(required = false) String status,
@@ -648,7 +663,7 @@ public class AdminController {
      * 문서 상태 변경
      */
     @Operation(summary = "문서 상태 변경", description = "문서의 상태를 변경합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @PatchMapping("/documents/{documentId}/status")
     @Transactional
     public ResponseEntity<Map<String, Object>> updateDocumentStatus(
@@ -687,7 +702,7 @@ public class AdminController {
      * 메시지 목록 조회
      */
     @Operation(summary = "메시지 목록 조회", description = "발송된 메시지 목록을 조회합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'OPERATOR')")
     @GetMapping("/messages")
     public ResponseEntity<List<Map<String, Object>>> getMessages() {
         List<Message> messages = messageRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -711,7 +726,7 @@ public class AdminController {
      * 메시지 발송
      */
     @Operation(summary = "메시지 발송", description = "사용자에게 메시지를 발송합니다.")
-    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'OPERATOR')")
     @PostMapping("/messages")
     @Transactional
     public ResponseEntity<Map<String, Object>> sendMessage(
@@ -745,6 +760,7 @@ public class AdminController {
      * 포인트 정책 목록 조회
      */
     @Operation(summary = "포인트 정책 목록 조회", description = "전체 포인트 정책을 조회합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @GetMapping("/point-policies")
     public ResponseEntity<List<PointPolicyResponse>> getPointPolicies() {
         List<PointPolicyResponse> policies = pointPolicyService.getAllPolicies();
@@ -755,6 +771,7 @@ public class AdminController {
      * 포인트 정책 조회 (단일)
      */
     @Operation(summary = "포인트 정책 조회", description = "포인트 정책을 조회합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @GetMapping("/policies/points")
     public ResponseEntity<Map<String, Object>> getPointPolicy() {
         List<PointPolicyResponse> policies = pointPolicyService.getAllPolicies();
@@ -782,6 +799,7 @@ public class AdminController {
      * 포인트 정책 업데이트
      */
     @Operation(summary = "포인트 정책 업데이트", description = "포인트 정책을 업데이트합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PutMapping("/policies/points")
     public ResponseEntity<Map<String, Object>> updatePointPolicy(
             @RequestBody Map<String, Object> request) {
@@ -797,6 +815,7 @@ public class AdminController {
      * 포인트 정책 값 변경
      */
     @Operation(summary = "포인트 정책 값 변경", description = "포인트 정책의 값을 변경합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PatchMapping("/point-policies/{policyId}")
     public ResponseEntity<PointPolicyResponse> updatePointPolicyValue(
             @PathVariable Long policyId,
@@ -811,6 +830,7 @@ public class AdminController {
      * 포인트 정책 활성화/비활성화
      */
     @Operation(summary = "포인트 정책 상태 토글", description = "포인트 정책을 활성화/비활성화합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @PostMapping("/point-policies/{policyId}/toggle")
     public ResponseEntity<PointPolicyResponse> togglePointPolicy(@PathVariable Long policyId) {
         PointPolicyResponse policy = pointPolicyService.togglePolicyStatus(policyId);
@@ -823,6 +843,7 @@ public class AdminController {
      * 감사로그 조회
      */
     @Operation(summary = "감사로그 조회", description = "감사로그를 조회합니다.")
+    @PreAuthorize("hasRole('MASTER_ADMIN')")
     @GetMapping("/audit-logs")
     public ResponseEntity<Map<String, Object>> getAuditLogs(
             @RequestParam(required = false) String action,
@@ -881,6 +902,7 @@ public class AdminController {
      * 카드 신청 목록 조회
      */
     @Operation(summary = "카드 신청 목록", description = "카드 신청 목록을 조회합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @GetMapping("/card-applications")
     public ResponseEntity<Map<String, Object>> getCardApplications(
             @RequestParam(defaultValue = "0") int page,
@@ -910,6 +932,7 @@ public class AdminController {
      * 카드 신청 상세 조회
      */
     @Operation(summary = "카드 신청 상세", description = "카드 신청 상세 정보를 조회합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @GetMapping("/card-applications/{applicationId}")
     public ResponseEntity<CardApplicationResponse> getCardApplicationDetail(
             @PathVariable Long applicationId) {
@@ -921,6 +944,7 @@ public class AdminController {
      * 카드 신청 승인
      */
     @Operation(summary = "카드 신청 승인", description = "카드 신청을 승인하고 카드를 발급합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @PostMapping("/card-applications/{applicationId}/approve")
     @Transactional
     public ResponseEntity<CardApplicationResponse> approveCardApplication(
@@ -936,6 +960,7 @@ public class AdminController {
      * 카드 신청 거절
      */
     @Operation(summary = "카드 신청 거절", description = "카드 신청을 거절합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @PostMapping("/card-applications/{applicationId}/reject")
     @Transactional
     public ResponseEntity<CardApplicationResponse> rejectCardApplication(
@@ -951,6 +976,7 @@ public class AdminController {
      * 카드 신청 심사 시작
      */
     @Operation(summary = "카드 신청 심사 시작", description = "카드 신청 상태를 심사중으로 변경합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @PostMapping("/card-applications/{applicationId}/start-review")
     @Transactional
     public ResponseEntity<CardApplicationResponse> startReview(
@@ -965,6 +991,7 @@ public class AdminController {
      * 대기중인 카드 신청 건수
      */
     @Operation(summary = "대기중 카드 신청 건수", description = "대기중인 카드 신청 건수를 조회합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @GetMapping("/card-applications/pending-count")
     public ResponseEntity<Map<String, Long>> getPendingApplicationCount() {
         long count = cardApplicationService.getPendingCount();
@@ -974,6 +1001,7 @@ public class AdminController {
     // ===================== 재발급 신청 관리 =====================
 
     @Operation(summary = "재발급 신청 목록", description = "상태가 재발급 신청(REISSUE_REQUESTED)인 카드 목록을 조회합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @GetMapping("/reissue-requests")
     public ResponseEntity<List<ReissueRequestResponse>> getReissueRequests() {
         List<Card> cards = cardRepository.findByStatusWithUserOrderByUpdatedAtDesc(Card.CardStatus.REISSUE_REQUESTED);
@@ -995,6 +1023,7 @@ public class AdminController {
     }
 
     @Operation(summary = "재발급 완료 처리", description = "재발급 신청 카드를 재발급 완료(REISSUED) 상태로 변경합니다.")
+    @PreAuthorize("hasAnyRole('MASTER_ADMIN', 'REVIEW_ADMIN')")
     @PatchMapping("/cards/{cardId}/reissue-complete")
     @Transactional
     public ResponseEntity<ReissueRequestResponse> completeReissue(@PathVariable Long cardId) {

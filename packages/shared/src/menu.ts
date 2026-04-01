@@ -23,14 +23,14 @@ export const userMenu: MenuItemDef[] = [
 ];
 
 export const adminMenu: MenuItemDef[] = [
-  { label: '운영 대시보드', path: '/dashboard', roles: ['OPERATOR', 'MASTER_ADMIN'] },
+  { label: '운영 대시보드', path: '/dashboard', roles: ['OPERATOR', 'REVIEW_ADMIN', 'MASTER_ADMIN'] },
   { label: '게시판 문의', path: '/board-inquiries', roles: ['OPERATOR', 'MASTER_ADMIN'] },
   { label: '문의 큐', path: '/support/inquiries', roles: ['OPERATOR', 'MASTER_ADMIN'] },
-  { label: '메시지 발송', path: '/messages', roles: ['MASTER_ADMIN'] },
-  { label: '카드 신청 관리', path: '/card-applications', roles: ['REVIEW_ADMIN'] },
-  { label: '재발급 신청', path: '/reissue-requests', roles: ['REVIEW_ADMIN'] },
-  { label: '대출 현황', path: '/loans', roles: ['REVIEW_ADMIN'] },
-  { label: '문서 검토', path: '/documents', roles: ['REVIEW_ADMIN'] },
+  { label: '메시지 발송', path: '/messages', roles: ['OPERATOR', 'MASTER_ADMIN'] },
+  { label: '카드 신청 관리', path: '/card-applications', roles: ['REVIEW_ADMIN', 'MASTER_ADMIN'] },
+  { label: '재발급 신청', path: '/reissue-requests', roles: ['REVIEW_ADMIN', 'MASTER_ADMIN'] },
+  { label: '대출 현황', path: '/loans', roles: ['REVIEW_ADMIN', 'MASTER_ADMIN'] },
+  { label: '문서 검토', path: '/documents', roles: ['REVIEW_ADMIN', 'MASTER_ADMIN'] },
   { label: '사용자 관리', path: '/users', roles: ['MASTER_ADMIN'] },
   { label: '가맹점 관리', path: '/merchants', roles: ['MASTER_ADMIN'] },
   { label: '이벤트 관리', path: '/events', roles: ['MASTER_ADMIN'] },

@@ -2,6 +2,11 @@ import {
   AppBar,
   Box,
   Breadcrumbs,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Drawer,
   IconButton,
   Link,
@@ -15,7 +20,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { adminMenu } from '@shared/menu';
+import { adminMenu, type MenuItemDef } from '@shared/menu';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { AdminChangePasswordDialog } from '@/components/common/AdminChangePasswordDialog';
 
@@ -24,11 +29,33 @@ const drawerWidth = 290;
 export const AdminLayout = () => {
   const [open, setOpen] = useState(false);
   const [isPwdDialogOpen, setIsPwdDialogOpen] = useState(false);
+  const [checkingPath, setCheckingPath] = useState<string | null>(null);
+  const [accessDeniedOpen, setAccessDeniedOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAdminAuth();
+  const { user, logout, refreshSession } = useAdminAuth();
 
   const visibleMenu = useMemo(() => adminMenu, []);
+
+  const handleMenuNavigate = async (item: MenuItemDef) => {
+    setCheckingPath(item.path);
+    try {
+      const profile = await refreshSession();
+      if (!profile) {
+        navigate('/login');
+        return;
+      }
+
+      if (item.roles.includes(profile.role)) {
+        navigate(item.path);
+      } else {
+        setAccessDeniedOpen(true);
+      }
+    } finally {
+      setOpen(false);
+      setCheckingPath(null);
+    }
+  };
 
   const drawer = (
     <Box sx={{ width: drawerWidth, height: '100%', bgcolor: '#16233d', color: '#d8dfec', display: 'flex', flexDirection: 'column' }}>
@@ -50,14 +77,15 @@ export const AdminLayout = () => {
             <ListItemButton
               key={item.path}
               selected={active}
+              disabled={checkingPath !== null}
               onClick={() => {
-                navigate(item.path);
-                setOpen(false);
+                void handleMenuNavigate(item);
               }}
               sx={{
                 borderRadius: 2,
                 mb: 0.4,
                 color: active ? '#fff' : '#d8dfec',
+                opacity: checkingPath === item.path ? 0.72 : 1,
                 '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.14)' },
                 '&.Mui-selected:hover': { bgcolor: 'rgba(255,255,255,0.2)' },
               }}
@@ -159,6 +187,20 @@ export const AdminLayout = () => {
         open={isPwdDialogOpen}
         onClose={() => setIsPwdDialogOpen(false)}
       />
+
+      <Dialog open={accessDeniedOpen} onClose={() => setAccessDeniedOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>권한 없음</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary">
+            해당 기능에 접근할 권한이 없습니다.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button variant="contained" onClick={() => setAccessDeniedOpen(false)} sx={{ bgcolor: '#16233d', '&:hover': { bgcolor: '#0d1626' } }}>
+            확인
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth, bgcolor: '#16233d' } }}>
         {drawer}

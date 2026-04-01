@@ -1,4 +1,5 @@
 import { Box, CircularProgress, Typography } from '@mui/material';
+import { type ReactNode } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import type { Role } from '@shared/types';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
@@ -10,7 +11,7 @@ const LoadingScreen = () => (
   </Box>
 );
 
-export const ProtectedRoute = ({ roles }: { roles: Role[] }) => {
+export const ProtectedRoute = ({ roles, children }: { roles: Role[]; children?: ReactNode }) => {
   const { ready, isAuthenticated, canAccess } = useAdminAuth();
 
   if (!ready) {
@@ -25,7 +26,7 @@ export const ProtectedRoute = ({ roles }: { roles: Role[] }) => {
     return <Navigate to="/403" replace />;
   }
 
-  return <Outlet />;
+  return children ? <>{children}</> : <Outlet />;
 };
 
 export const PublicRoute = () => {

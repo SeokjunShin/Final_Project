@@ -2,7 +2,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { AdminTable } from '@/components/common/AdminTable';
-import { useAdminAuth } from '@/contexts/AdminAuthContext';import { formatDateTime } from '@/utils/dateUtils';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { formatDateTime } from '@/utils/dateUtils';
+import { maskName } from '@shared/masking';
 interface DashboardData {
   todayInquiries?: number;
   pendingDocuments?: number;
@@ -84,7 +86,7 @@ export const AdminDashboardPage = () => {
               rows={data.recentUnassigned ?? []}
               columns={[
                 { field: 'title', headerName: '제목', flex: 2 },
-                { field: 'userName', headerName: '작성자', flex: 1 },
+                { field: 'userName', headerName: '작성자', flex: 1, valueGetter: (_: unknown, row: { userName?: string }) => row.userName ? maskName(row.userName) : '-' },
                 { field: 'status', headerName: '상태', flex: 1 },
                 { field: 'createdAt', headerName: '접수일', flex: 1, valueFormatter: (v: string) => formatDateTime(v) },
               ]}
@@ -96,7 +98,7 @@ export const AdminDashboardPage = () => {
               rows={data.myRecentInquiries ?? []}
               columns={[
                 { field: 'title', headerName: '제목', flex: 2 },
-                { field: 'userName', headerName: '작성자', flex: 1 },
+                { field: 'userName', headerName: '작성자', flex: 1, valueGetter: (_: unknown, row: { userName?: string }) => row.userName ? maskName(row.userName) : '-' },
                 { field: 'status', headerName: '상태', flex: 1 },
                 { field: 'createdAt', headerName: '접수일', flex: 1, valueFormatter: (v: string) => formatDateTime(v) },
               ]}

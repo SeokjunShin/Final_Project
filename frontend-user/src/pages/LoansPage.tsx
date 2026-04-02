@@ -7,6 +7,7 @@ import { useSnackbar } from '@/contexts/SnackbarContext';
 import { bankAccountApi, cardsApi, loansApi, type BankAccount } from '@/api';
 import type { LoanType } from '@/types';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import { maskName } from '@shared/masking';
 
 const LOAN_TYPE_LABELS: Record<LoanType, string> = {
   CASH_ADVANCE: '현금서비스',
@@ -229,7 +230,7 @@ export const LoansPage = () => {
                   field: 'userName',
                   headerName: '회원',
                   flex: 1,
-                  valueGetter: (_: unknown, row: { userName?: string }) => row.userName ?? '-',
+                  valueGetter: (_: unknown, row: { userName?: string }) => row.userName ? maskName(row.userName) : '-',
                 }] : []),
                 {
                   field: 'loanType',

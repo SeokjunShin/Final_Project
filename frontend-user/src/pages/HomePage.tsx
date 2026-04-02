@@ -26,6 +26,7 @@ import ForumIcon from '@mui/icons-material/Forum';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/api/client';
 import { ChatBot } from '@/components/common/ChatBot';
+import { maskName } from '@shared/masking';
 
 // Unsplash 무료 이미지  URLs
 const IMAGES = {
@@ -117,7 +118,7 @@ export const HomePage = () => {
               {isAuthenticated ? (
                 <Stack direction="row" spacing={2} alignItems="center">
                   <Typography variant="body2" sx={{ color: '#333', fontWeight: 600 }}>
-                    {user?.name}님
+                    {maskName(user?.name)}님
                   </Typography>
                   <Button
                     variant="text"

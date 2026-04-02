@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link as RouterLink } from 'react-router-dom';
 import { formatDateTime } from '@/utils/dateUtils';
 import { CreditCard as CreditCardVisual } from '@/components/common/CreditCard';
+import { maskName } from '@shared/masking';
 
 const money = (v: number | undefined | null) => `${(v ?? 0).toLocaleString('ko-KR')}원`;
 
@@ -92,7 +93,7 @@ export const DashboardPage = () => {
             </Avatar>
             <Box>
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-                안녕하세요, {user?.name || '고객'}님
+                안녕하세요, {maskName(user?.name) || '고객'}님
               </Typography>
               <Typography sx={{ opacity: 0.9 }}>
                 오늘도 MyCard와 함께 스마트한 금융생활 되세요.

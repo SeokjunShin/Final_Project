@@ -11,11 +11,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SecureKeypad } from '@/components/common/SecureKeypad';
 import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { ResetSecondPasswordModal } from '@/components/profile/ResetSecondPasswordModal';
+import { maskName, maskPhone } from '@shared/masking';
 import PersonIcon from '@mui/icons-material/Person';
 import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import HomeIcon from '@mui/icons-material/Home';
 import SecurityIcon from '@mui/icons-material/Security';
 import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 const profileSchema = z.object({
   currentPassword: z.string().min(1, '현재 비밀번호를 입력하세요.'),
@@ -55,11 +58,12 @@ export const MyProfilePage = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authTarget, setAuthTarget] = useState<'profile' | 'password'>('profile');
+  const [authTarget, setAuthTarget] = useState<'profile' | 'password' | 'reveal'>('profile');
   const [isPwdModalOpen, setIsPwdModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [isWithdrawSecondAuthOpen, setIsWithdrawSecondAuthOpen] = useState(false);
+  const [isSensitiveInfoVisible, setIsSensitiveInfoVisible] = useState(false);
   const [secondPwd, setSecondPwd] = useState('');
   const [secondAuthError, setSecondAuthError] = useState('');
   const [withdrawForm, setWithdrawForm] = useState({
@@ -75,6 +79,9 @@ export const MyProfilePage = () => {
           setIsAuthModalOpen(false);
           if (authTarget === 'profile') {
             setIsEditing(true);
+            setIsSensitiveInfoVisible(true);
+          } else if (authTarget === 'reveal') {
+            setIsSensitiveInfoVisible(true);
           } else {
             pwdForm.reset();
             setIsPwdModalOpen(true);
@@ -140,6 +147,17 @@ export const MyProfilePage = () => {
     },
   });
 
+  const visibleName = isSensitiveInfoVisible || isEditing ? (data?.name ?? '') : maskName(data?.name);
+  const visiblePhone = isSensitiveInfoVisible || isEditing ? (data?.phone ?? '') : maskPhone(data?.phone);
+  const authDialogTitle = authTarget === 'reveal'
+    ? '개인정보 보기 인증'
+    : authTarget === 'password'
+      ? '비밀번호 변경 인증'
+      : '정보수정 인증';
+  const authDialogDescription = authTarget === 'reveal'
+    ? '개인정보를 확인하기 위해\n2차 비밀번호(6자리)를 입력해 주세요.'
+    : '소중한 개인정보 보호를 위해\n2차 비밀번호(6자리)를 입력해 주세요.';
+
   return (
     <Box maxWidth="sm" sx={{ mx: 'auto', mt: 2 }}>
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
@@ -156,10 +174,10 @@ export const MyProfilePage = () => {
             <Avatar
               sx={{ width: 80, height: 80, mx: 'auto', mb: 2, bgcolor: '#d32f2f', fontSize: '2rem', fontWeight: 600, boxShadow: '0 4px 15px rgba(211,47,47,0.3)' }}
             >
-              {data?.name ? data.name.substring(0, 1) : '익'}
+              {visibleName ? visibleName.substring(0, 1) : '익'}
             </Avatar>
             <Typography variant="h6" sx={{ fontWeight: 700, color: '#333', mb: 0.5 }}>
-              {data?.name || '고객'}님, 안녕하세요!
+              {visibleName || '고객'}님, 안녕하세요!
             </Typography>
             <Typography variant="body2" color="text.secondary">
               회원님의 소중한 정보를 안전하게 관리하고 있습니다.
@@ -172,7 +190,7 @@ export const MyProfilePage = () => {
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#d32f2f', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                   <EditIcon fontSize="small" /> 정보 수정
                 </Typography>
-                <TextField label="이름" {...form.register('name')} error={!!form.formState.errors.name} helperText={form.formState.errors.name?.message} fullWidth disabled />
+                <TextField label="이름" value={data?.name ?? ''} fullWidth disabled />
                 <TextField label="연락처 옵션" {...form.register('phone')} fullWidth placeholder="010-0000-0000" />
                 <TextField label="배송 주소" {...form.register('address')} fullWidth placeholder="거주하시는 주소를 입력해주세요" />
 
@@ -209,7 +227,7 @@ export const MyProfilePage = () => {
                   </Box>
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>이름</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>{data?.name || '-'}</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>{visibleName || '-'}</Typography>
                   </Box>
                 </Stack>
                 <Divider />
@@ -222,10 +240,43 @@ export const MyProfilePage = () => {
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>연락처</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>
-                      {data?.phone ? <Chip label={data.phone} size="small" variant="outlined" /> : <Typography color="text.disabled">등록된 연락처가 없습니다.</Typography>}
+                      {data?.phone ? <Chip label={visiblePhone} size="small" variant="outlined" /> : <Typography color="text.disabled">등록된 연락처가 없습니다.</Typography>}
                     </Typography>
                   </Box>
                 </Stack>
+                <Divider />
+
+                <Box sx={{ py: 2, display: 'flex', justifyContent: 'center' }}>
+                  {isSensitiveInfoVisible ? (
+                    <Button
+                      variant="text"
+                      color="inherit"
+                      startIcon={<VisibilityOffIcon />}
+                      onClick={() => setIsSensitiveInfoVisible(false)}
+                      sx={{ color: '#666' }}
+                    >
+                      이름·연락처 다시 숨기기
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outlined"
+                      startIcon={<VisibilityIcon />}
+                      onClick={() => {
+                        setAuthTarget('reveal');
+                        setIsAuthModalOpen(true);
+                      }}
+                      sx={{
+                        borderRadius: 10,
+                        fontWeight: 600,
+                        borderColor: '#333',
+                        color: '#333',
+                        '&:hover': { bgcolor: '#f8f9fa', borderColor: '#111' },
+                      }}
+                    >
+                      이름·연락처 보기
+                    </Button>
+                  )}
+                </Box>
                 <Divider />
 
                 {/* 주소 */}
@@ -311,12 +362,16 @@ export const MyProfilePage = () => {
         }}
       >
         <DialogTitle sx={{ textAlign: 'center', fontWeight: 800, color: '#333', pt: 3, pb: 1 }}>
-          정보수정 인증
+          {authDialogTitle}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 4, overflow: 'hidden' }}>
           <Typography color="text.secondary" variant="body2" sx={{ lineHeight: 1.6, textAlign: 'center', mb: 3 }}>
-            소중한 개인정보 보호를 위해<br />
-            2차 비밀번호(6자리)를 입력해 주세요.
+            {authDialogDescription.split('\n').map((line) => (
+              <span key={line}>
+                {line}
+                <br />
+              </span>
+            ))}
           </Typography>
           <Box sx={{ width: '100%', maxWidth: 300 }}>
             <SecureKeypad

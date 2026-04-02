@@ -3,6 +3,7 @@ import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, D
 import { useQuery } from '@tanstack/react-query';
 import { adminApiClient } from '@/api/client';
 import { adminApi } from '@/api';
+import { maskName } from '@shared/masking';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { sanitizeBoardInput, toSafePlainText } from '@/utils/safeHtml';
 
@@ -21,7 +22,8 @@ interface Board {
 }
 
 export const AdminInquiryBoardPage = () => {
-    useAdminAuth();
+    const { user } = useAdminAuth();
+    const isOperator = user?.role === 'OPERATOR';
 
     const [boards, setBoards] = useState<Board[]>([]);
     const [keyword, setKeyword] = useState('');
@@ -145,7 +147,7 @@ export const AdminInquiryBoardPage = () => {
                                             </Button>
                                         </TableCell>
                                         <TableCell>{b.category || '전체'}</TableCell>
-                                        <TableCell>{toSafePlainText(b.authorName)}</TableCell>
+                                        <TableCell>{isOperator ? maskName(toSafePlainText(b.authorName)) : toSafePlainText(b.authorName)}</TableCell>
                                         <TableCell>{b.isPrivate ? '🔒' : ''}</TableCell>
                                         <TableCell>{new Date(b.createdAt).toLocaleDateString()}</TableCell>
                                     </TableRow>
@@ -230,7 +232,7 @@ export const AdminInquiryBoardPage = () => {
                         <DialogTitle>{toSafePlainText(selectedBoard.title)}</DialogTitle>
                         <DialogContent dividers>
                             <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                작성자: {toSafePlainText(selectedBoard.authorName)} | 작성일: {new Date(selectedBoard.createdAt).toLocaleString()}
+                                작성자: {isOperator ? maskName(toSafePlainText(selectedBoard.authorName)) : toSafePlainText(selectedBoard.authorName)} | 작성일: {new Date(selectedBoard.createdAt).toLocaleString()}
                             </Typography>
                             <Box sx={{ mt: 2, p: 2, bgcolor: '#f9f9f9', borderRadius: 1, minHeight: 100 }}>
                                 <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>

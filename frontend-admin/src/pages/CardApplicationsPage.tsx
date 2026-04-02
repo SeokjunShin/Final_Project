@@ -34,6 +34,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '@/api';
 import type { CardApplication } from '@/types';
 import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
+import { maskPhone } from '@shared/masking';
 
 const statusMap: Record<string, { label: string; color: 'default' | 'info' | 'success' | 'error' }> = {
   PENDING: { label: '대기중', color: 'default' },
@@ -362,7 +363,7 @@ export const CardApplicationsPage = () => {
                     <ListItemText primary="주민번호 (마스킹)" secondary={selectedApp.maskedSsn} />
                   </ListItem>
                   <ListItem>
-                    <ListItemText primary="연락처" secondary={selectedApp.phone} />
+                    <ListItemText primary="연락처" secondary={maskPhone(selectedApp.phone)} />
                   </ListItem>
                   <ListItem>
                     <ListItemText primary="이메일" secondary={selectedApp.email} />

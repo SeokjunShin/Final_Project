@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { ChatBot } from '@/components/common/ChatBot';
 import { sanitizeBoardInput, toSafePlainText } from '@/utils/safeHtml';
+import { maskName } from '@shared/masking';
 
 interface Board {
     id: number;
@@ -140,7 +141,7 @@ export const InquiryBoardPage = () => {
                             {isAuthenticated ? (
                                 <Stack direction="row" spacing={2} alignItems="center">
                                     <Typography variant="body2" sx={{ color: '#333', fontWeight: 600 }}>
-                                        {user?.name}님
+                                        {maskName(user?.name)}님
                                     </Typography>
                                     <Button
                                         variant="text"

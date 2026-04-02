@@ -28,6 +28,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useState, useEffect } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { maskName } from '@shared/masking';
 import { userMenu } from '@shared/menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { SecureKeypad } from '@/components/common/SecureKeypad';
@@ -221,7 +222,7 @@ export const UserLayout = () => {
       </List>
       <Box sx={{ flexShrink: 0, p: 2, borderTop: '1px solid #333', bgcolor: '#1a1a1a' }}>
         <Box sx={{ bgcolor: '#252525', borderRadius: 2, p: 2, mb: 2 }}>
-          <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem', mb: 0.5 }}>{user?.name || '사용자'}</Typography>
+          <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem', mb: 0.5 }}>{maskName(user?.name) || '사용자'}</Typography>
           <Typography sx={{ color: '#666', fontSize: '0.75rem' }}>{user?.email || ''}</Typography>
         </Box>
         <Button

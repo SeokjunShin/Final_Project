@@ -34,6 +34,7 @@ import { useSnackbar } from '@/contexts/SnackbarContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { bankAccountApi, cardApplicationApi, docsApi, type BankAccount } from '@/api';
 import type { CardApplication, CardApplicationDocument, CardApplicationRequest } from '@/types';
+import { maskName, maskPhone } from '@shared/masking';
 
 const steps = ['개인정보', '직업/소득', '카드 선택', '계좌 연결'];
 
@@ -580,7 +581,7 @@ export const CardApplicationsPage = () => {
               <TextField
                 fullWidth
                 label="예금주"
-                value={user?.name || formData.fullName || ''}
+                value={maskName(user?.name || formData.fullName || '')}
                 helperText="회원 본인 명의로 자동 개설됩니다."
                 disabled
               />
@@ -914,10 +915,10 @@ export const CardApplicationsPage = () => {
                     <ListItemText primary="카드 상품" secondary={`${selectedApp.cardProduct} (${selectedApp.cardType})`} />
                   </ListItem>
                   <ListItem>
-                    <ListItemText primary="신청자 정보" secondary={`${selectedApp.fullName} / ${selectedApp.maskedSsn}`} />
+                    <ListItemText primary="신청자 정보" secondary={`${maskName(selectedApp.fullName)} / ${selectedApp.maskedSsn}`} />
                   </ListItem>
                   <ListItem>
-                    <ListItemText primary="연락처" secondary={selectedApp.phone} />
+                    <ListItemText primary="연락처" secondary={maskPhone(selectedApp.phone)} />
                   </ListItem>
                   <ListItem>
                     <ListItemText primary="이메일" secondary={selectedApp.email} />

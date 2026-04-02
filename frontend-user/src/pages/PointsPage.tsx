@@ -13,6 +13,7 @@ import { SecondAuthDialog } from '@/components/common/SecondAuthDialog';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDateTime } from '@/utils/dateUtils';
+import { maskName } from '@shared/masking';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -377,7 +378,7 @@ export const PointsPage = () => {
                             )}
                           </Stack>
                           <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                            {revealedAccountIds.has(account.id) ? account.accountNumber : account.accountNumberMasked} · {account.accountHolder}
+                            {revealedAccountIds.has(account.id) ? account.accountNumber : account.accountNumberMasked} · {maskName(account.accountHolder)}
                           </Typography>
                           <Typography variant="caption" sx={{ display: 'block', mt: 0.4, fontWeight: 700, color: '#1b5e20' }}>
                             현재 잔액 {Number(account.currentBalance ?? 0).toLocaleString('ko-KR')}원
@@ -557,7 +558,7 @@ export const PointsPage = () => {
 
               <TextField
                 label="예금주명"
-                value={user?.name || ''}
+                value={maskName(user?.name || '')}
                 helperText="회원 정보 기준으로 본인 명의 계좌가 개설됩니다."
                 fullWidth
                 disabled

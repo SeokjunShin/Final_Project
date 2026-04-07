@@ -47,21 +47,21 @@
 |------|-----------|------|
 | **DNS** | Route 53 | 도메인 라우팅 |
 | **WAF** | AWS WAF | 웹 방화벽 (SQL Injection, XSS 등 차단) |
-| **로드밸런서** | ALB (Application Load Balancer) | HTTPS 트래픽 분산, ACM 인증서 적용 |
+| **로드밸런서** | ALB (Application Load Balancer) | User Page 접근, HTTPS 트래픽 분산, ACM 인증서 적용 |
 | **SSL 인증서** | ACM (AWS Certificate Manager) | HTTPS 인증서 관리 |
 | **WEB (EC2)** | Private Subnet / Ubuntu + Nginx + React | 정적 파일 서빙, API 리버스 프록시 |
 | **WAS (EC2)** | Private Subnet / Ubuntu + Spring Boot | REST API, JWT 인증, 비즈니스 로직 |
 | **DB (EC2)** | Private Subnet / Ubuntu + MySQL | 데이터베이스 |
-| **Bastion Host** | Public Subnet / EC2 + EIP | 관리자 SSH 접근 전용 (Admin Only) |
+| **Bastion Host** | Public Subnet / EC2 + EIP | 관리자 페이지 접근, Private Subnet SSH 접근 전용 (Admin Only) |
 | **NAT Gateway** | Public Subnet | Private Subnet 인스턴스의 아웃바운드 인터넷 |
 | **모니터링** | CloudWatch + CloudWatch Agent | 인프라·애플리케이션 로그 수집, 메트릭 모니터링 |
 | **감사 로그** | CloudTrail | AWS API 호출 감사 추적 |
-| **이벤트** | EventBridge + Lambda | 보안 이벤트 자동 대응 |
+| **이벤트** | EventBridge + Lambda | Log 수집 |
 | **스토리지** | S3 | CloudWatch Log, CloudTrail Log, Infra Log, DBMS Log, Data Backup |
 
 #### 네트워크 흐름
 
-- **사용자** → Route 53 → WAF → ALB (ACM) → NAT → EC2 WEB → EC2 WAS → EC2 DB
+- **사용자** → Route 53 → WAF → ALB (ACM) → EC2 WEB → EC2 WAS → EC2 DB
 - **관리자** → Bastion Host (EIP, Admin Only) → EC2 WEB/WAS/DB
 - 모든 EC2에 **CloudWatch Agent** 배포 → CloudWatch로 로그 중앙 수집
 - CloudTrail + EventBridge → Lambda 연동으로 보안 이벤트 자동 탐지

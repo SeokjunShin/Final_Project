@@ -3,7 +3,7 @@
 카드 발급·관리·포인트·대출 서비스를 제공하는 웹 애플리케이션.  
 사용자 포털과 관리자 포털을 분리 운영하며, VMware 기반 3-Tier 아키텍처로 배포합니다.
 
-> **현재 상태**: 모든 보안 취약점 조치 완료 (2026-03-12 기준)
+> **현재 상태**: 모든 보안 취약점 조치 완료 (2026-04-02 기준)
 
 ---
 
@@ -63,8 +63,8 @@
 
 - **사용자** → Route 53 → WAF → ALB (ACM) → EC2 WEB → EC2 WAS → EC2 DB
 - **관리자** → Bastion Host (EIP, Admin Only) → EC2 WEB/WAS/DB
-- 모든 EC2에 **CloudWatch Agent** 배포 → CloudWatch로 로그 중앙 수집
-- CloudWatch + EventBridge → Lambda 연동으로 로그 S3로 자동 백업업
+- 모든 Instance에 **CloudWatch Agent** 배포 → CloudWatch로 로그 중앙 수집
+- CloudWatch + EventBridge → Lambda 연동으로 로그 S3로 자동 백업
 - S3에 로그 장기 보관 (Infra Log, DBMS Log, Data Backup)
 
 ---
@@ -365,18 +365,6 @@ WEB_HOST=<WEB_IP> WAS_HOST=<WAS_IP> SSH_USER=mycard \
 
 ---
 
-## 테스트 계정
-
-| 역할 | 이메일 | 비밀번호 |
-|------|--------|----------|
-| 사용자 | user1@mycard.local | MyCard!234 |
-| 사용자 | user2@mycard.local | MyCard!234 |
-| 심사관리자 | reviewadmin@mycard.local | MyCard!234 |
-| 상담원 | op1@mycard.local | MyCard!234 |
-| 상담원 | op2@mycard.local | MyCard!234 |
-| 마스터관리자 | masteradmin@mycard.local | MyCard!234 |
-
----
 
 ## 주요 API
 

@@ -64,7 +64,7 @@
 - **사용자** → Route 53 → WAF → ALB (ACM) → EC2 WEB → EC2 WAS → EC2 DB
 - **관리자** → Bastion Host (EIP, Admin Only) → EC2 WEB/WAS/DB
 - 모든 EC2에 **CloudWatch Agent** 배포 → CloudWatch로 로그 중앙 수집
-- CloudTrail + EventBridge → Lambda 연동으로 보안 이벤트 자동 탐지
+- CloudWatch + EventBridge → Lambda 연동으로 로그 S3로 자동 백업업
 - S3에 로그 장기 보관 (Infra Log, DBMS Log, Data Backup)
 
 ---

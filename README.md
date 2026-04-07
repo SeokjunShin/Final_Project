@@ -15,7 +15,7 @@
 | **Frontend** | React 18, TypeScript 5.7, Vite 6, MUI 5, React Query, React Hook Form + Zod, DOMPurify |
 | **Database** | MySQL 8.0 |
 | **Web Server** | Windows Server 2016, Nginx (리버스 프록시, React SPA 정적 서빙) |
-| **WAS** | Ubuntu 24.04, Spring Boot Standalone JAR, systemd |
+| **WAS** | Ubuntu 24.04, Tomcat Standalone , systemd |
 | **DB Server** | Ubuntu 24.04, MySQL 8.0 |
 | **Network** | VMware NAT (VMnet8), Public/Private 네트워크 분리 |
 
@@ -50,7 +50,7 @@
 | **로드밸런서** | ALB (Application Load Balancer) | User Page 접근, HTTPS 트래픽 분산, ACM 인증서 적용 |
 | **SSL 인증서** | ACM (AWS Certificate Manager) | HTTPS 인증서 관리 |
 | **WEB (EC2)** | Private Subnet / Ubuntu + Nginx + React | 정적 파일 서빙, API 리버스 프록시 |
-| **WAS (EC2)** | Private Subnet / Ubuntu + Spring Boot | REST API, JWT 인증, 비즈니스 로직 |
+| **WAS (EC2)** | Private Subnet / Ubuntu + Tomcat | REST API, JWT 인증, 비즈니스 로직 |
 | **DB (EC2)** | Private Subnet / Ubuntu + MySQL | 데이터베이스 |
 | **Bastion Host** | Public Subnet / EC2 + EIP | 관리자 페이지 접근, Private Subnet SSH 접근 전용 (Admin Only) |
 | **NAT Gateway** | Public Subnet | Private Subnet 인스턴스의 아웃바운드 인터넷 |

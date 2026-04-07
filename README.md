@@ -12,7 +12,7 @@
 | 계층 | 기술 |
 |------|------|
 | **Backend** | Java 21, Spring Boot 3.2.2, Tomcat 10 (Standalone JAR), Spring Security + JWT, JPA/Hibernate, Flyway |
-| **Frontend** | React 18, TypeScript 5.7, Vite 6, MUI 5, React Query, React Hook Form + Zod, DOMPurify |
+| **Frontend** | React 18, TypeScript 5.7, Vite 6, MUI 5, React Query, React Hook Form + Zod |
 | **Database** | MySQL 8.0 |
 | **Web Server** | Windows Server 2016, Nginx (리버스 프록시, React SPA 정적 서빙) |
 | **WAS** | Ubuntu 24.04, Tomcat Standalone , systemd |
